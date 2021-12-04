@@ -1,0 +1,4 @@
+name = "CondaPkg"
+uuid = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
+authors = ["Christopher Doris <github.com/cjdoris>"]
+version = "0.1.0"
