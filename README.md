@@ -1,10 +1,10 @@
 # CondaPkg.jl
 
-Add Conda dependencies to your Julia environment.
+Add [Conda](https://docs.conda.io/en/latest/) dependencies to your Julia project.
 
 You declare Conda dependencies in a `CondaPkg.toml` file, and CondaPkg will install those
 dependencies into a Conda environment. This environment is specific to the current Julia
-project, so there are not cross-project version conflicts.
+project, so there are no cross-project version conflicts.
 
 ## Install
 
@@ -17,7 +17,7 @@ pkg> add CondaPkg
 ### CondaPkg.toml
 
 To specify Conda dependencies, create a file called `CondaPkg.toml` in your Julia
-project/environment/package.
+project.
 
 For example:
 ```toml
@@ -29,8 +29,8 @@ perl = ">=5,<6"
 The next time dependencies are resolved, a Conda environment specific to your current Julia
 project is created with these dependencies.
 
-Dependencies from `CondaPkg.toml` files in any packages installed in the current environment
-are also included. This means that package authors can write a `CondaPkg.toml` file and
+Dependencies from `CondaPkg.toml` files in any packages installed in the current project are
+also included. This means that package authors can write a `CondaPkg.toml` file and
 dependencies should just work.
 
 ### API
