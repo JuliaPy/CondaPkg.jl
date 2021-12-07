@@ -36,21 +36,24 @@ dependencies should just work.
 ### API
 
 - `resolve(; force=false)` resolves dependencies. You don't normally need to call this
-  because all other API functions will automatically resolve first. Pass `force=true` if
+  because the other API functions will automatically resolve first. Pass `force=true` if
   you change a `CondaPkg.toml` file mid-session.
-- `env()` returns the path to the Conda environment.
-- `withenv(f)` returns `f(env())` evaluated in the Conda environment.
+- `withenv(f)` returns `f()` evaluated in the Conda environment.
+- `envdir()` returns the root directory of the Conda environment.
+- `bindir()` returns the binary directory of the Conda environment.
+- `scriptdir()` returns the script directory of the Conda environment.
+- `libdir()` returns the library directory of the Conda environment.
+- `pythonpath()` returns the path of the Python executable in the Conda environment.
 
 ### Examples
 
 Assuming one of the dependencies in `CondaPkg.toml` is `python` then the following runs
 Python to print its version.
 ```julia
-CondaPkg.withenv(env -> run(`python --version`))
+CondaPkg.withenv(); do run(`$(CondaPkg.pythonpath()) --version`); end
 ```
 
-If you wish to be more explicit, you can use the `env` argument. For example on Windows
-you can do:
+Similarly, the following will run Perl, assuming `perl` is a dependency:
 ```julia
-CondaPkg.withenv(env -> run(`$env/python.exe --version`))
+CondaPkg.withenv(); do run(`$(CondaPkg.bindir("perl"))) --version`); end
 ```

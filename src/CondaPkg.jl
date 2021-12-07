@@ -15,6 +15,7 @@ end
     resolved::Bool = false
     load_path::Vector{String} = String[]
     meta_dir::String = ""
+    frozen::Bool = false
 end
 
 const STATE = State()
@@ -109,6 +110,10 @@ function write_meta(io::IO, x::PkgSpec)
 end
 
 function resolve(; force::Bool=false)
+    # if frozen, do nothing
+    if STATE.frozen
+        return
+    end
     # skip resolving if already resolved and LOAD_PATH unchanged
     # this is a very fast check which avoids touching the file system
     load_path = Base.load_path()
@@ -258,18 +263,8 @@ function resolve(; force::Bool=false)
     return
 end
 
-"""
-    env()
-
-Return the path to the Conda environment.
-"""
-function env()
-    resolve()
-    joinpath(STATE.meta_dir, "env")
-end
-
 function shell(cmd)
-    if Sys.iswindows()
+    @static if Sys.iswindows()
         shell = "powershell"
         exportvarregex = r"^\$Env:([^ =]+) *= *\"(.*)\"$"
         setvarregex = exportvarregex
@@ -282,7 +277,7 @@ function shell(cmd)
         unsetvarregex = r"^\\?unset +([^ ]+)$"
         runscriptregex = r"^\\?\. +\"(.*)\"$"
     end
-    for line in eachline(MicroMamba.cmd(`shell -s $shell $cmd -p $(env())`))
+    for line in eachline(MicroMamba.cmd(`shell -s $shell $cmd -p $(envdir())`))
         if (m = match(exportvarregex, line)) !== nothing
             @debug "Setting environment" key=m.captures[1] value=m.captures[2]
             ENV[m.captures[1]] = m.captures[2]
@@ -303,9 +298,13 @@ Call `f()` while the Conda environment is active.
 function withenv(f::Function)
     old_env = copy(ENV)
     shell("activate")
+    frozen = STATE.frozen
+    STATE.frozen = true
     try
-        return f(joinpath(STATE.meta_dir, "env"))
+        return f()
     finally
+        STATE.frozen = frozen
+        # shell("deactivate")
         for k in collect(keys(ENV))
             if !haskey(old_env, k)
                 delete!(ENV, k)
@@ -316,5 +315,52 @@ function withenv(f::Function)
         end
     end
 end
+
+"""
+    envdir(...)
+
+The root directory of the Conda environment.
+
+Any additional arguments are joined to the path.
+"""
+function envdir(args...)
+    resolve()
+    joinpath(STATE.meta_dir, "env", args...)
+end
+
+"""
+    bindir(...)
+
+The bin directory of the Conda environment.
+
+Any additional arguments are joined to the path.
+"""
+bindir(args...) = @static Sys.iswindows() ? envdir("Library", "bin", args...) : envdir("bin", args...)
+
+"""
+    scriptdir(...)
+
+The script directory of the Conda environment.
+
+Any additional arguments are joined to the path.
+"""
+scriptdir(args...) = @static Sys.iswindows() ? envdir("Scripts", args...) : envdir("bin", args...)
+
+"""
+    libdir(...)
+
+The library directory of the Conda environment.
+
+Any additional arguments are joined to the path.
+"""
+libdir(args...) = @static Sys.iswindows() ? envdir("Library", "bin", args...) : envdir("lib", args...)
+
+"""
+    pythonpath()
+
+The path to the Python executable in the Conda environment,
+assuming the `python` is a dependency.
+"""
+pythonpath() = @static Sys.iswindows() ? envdir("python.exe") : envdir("bin", "python")
 
 end # module
