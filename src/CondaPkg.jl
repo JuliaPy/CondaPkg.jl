@@ -270,19 +270,28 @@ end
 
 function shell(cmd)
     if Sys.iswindows()
-        for line in eachline(MicroMamba.cmd(`shell -s powershell $cmd -p $(env())`))
-            if (m = match(r"^\$Env:([A-Za-z0-9_]+) *= *\"(.*)\"$", line)) !== nothing
-                @debug "Setting environment" key=m.captures[1] value=m.captures[2]
-                ENV[m.captures[1]] = m.captures[2]
-            elseif (m = match(r"^Remove-Item +Env:/?([A-Za-z0-9_]+)$", line)) !== nothing
-                @debug "Deleting environment" key=m.captures[1]
-                delete!(ENV, m.captures[1])
-            else
-                @debug "Ignoring shell $cmd line" line
-            end
-        end
+        shell = "powershell"
+        exportvarregex = r"^\$Env:([^ =]+) *= *\"(.*)\"$"
+        setvarregex = exportvarregex
+        unsetvarregex = r"^(Remove-Item +\$Env:/|Remove-Variable +)([^ =]+)$"
+        runscriptregex = r"^\. +\"(.*)\"$"
     else
-        error("not implemented for non-Windows systems")
+        shell = "posix"
+        exportvarregex = r"^\\?export ([^ =]+)='(.*)'$"
+        setvarregex = r"^([^ =]+)='(.*)'"
+        unsetvarregex = r"^\\?unset +([^ ]+)$"
+        runscriptregex = r"^\\?\. +\"(.*)\"$"
+    end
+    for line in eachline(MicroMamba.cmd(`shell -s $shell $cmd -p $(env())`))
+        if (m = match(exportvarregex, line)) !== nothing
+            @debug "Setting environment" key=m.captures[1] value=m.captures[2]
+            ENV[m.captures[1]] = m.captures[2]
+        elseif (m = match(unsetvarregex, line)) !== nothing
+            @debug "Deleting environment" key=m.captures[1]
+            delete!(ENV, m.captures[1])
+        else
+            @debug "Ignoring shell $cmd line" line
+        end
     end
 end
 
