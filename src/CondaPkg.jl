@@ -312,17 +312,6 @@ function activate!(e)
 end
 
 """
-    setenv(command::Cmd, env=ENV; dir="")
-
-Set the environment of the given command to be the Conda environment.
-
-The starting environment is the dictionary `env`.
-
-You can optionally specify the working directory `dir`.
-"""
-setenv(command::Cmd, env=ENV; dir="") = Base.setenv(command, activate!(convert(Dict{String,String}, copy(env))); dir=dir)
-
-"""
     withenv(f::Function)
 
 Call `f()` while the Conda environment is active.

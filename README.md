@@ -38,7 +38,6 @@ dependencies should just work.
 - `resolve(; force=false)` resolves dependencies. You don't normally need to call this
   because the other API functions will automatically resolve first. Pass `force=true` if
   you change a `CondaPkg.toml` file mid-session.
-- `setenv(cmd)` sets the environment of the command to the Conda environment.
 - `withenv(f)` returns `f()` evaluated in the Conda environment.
 - `envdir()` returns the root directory of the Conda environment.
 - `which(progname)` find the program in the Conda environment.
@@ -48,13 +47,11 @@ dependencies should just work.
 Assuming one of the dependencies in `CondaPkg.toml` is `python` then the following runs
 Python to print its version.
 ```julia
-# Simplest.
-run(CondaPkg.setenv(`python --version`))
-# Essentially equivalent to the above, but more flexible.
+# Simplest version.
 CondaPkg.withenv(); do
   run(`python --version`)
 end
-# Guaranteed not to use some Python outside the environment.
+# Guaranteed not to use Python from outside the Conda environment.
 CondaPkg.withenv(); do
   python = CondaPkg.which("python")
   run(`$python --version`)
