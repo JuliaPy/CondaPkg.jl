@@ -291,13 +291,46 @@ function shell(cmd)
 end
 
 """
+    activate!(env)
+
+"Activate" the Conda environment by modifying the given dict of environment variables.
+"""
+function activate!(e)
+    old_path = get(e, "PATH", "")
+    d = envdir()
+    path_sep = Sys.iswindows() ? ';' : ':'
+    new_path = join(bindirs(), path_sep)
+    if old_path != ""
+        new_path = "$(new_path)$(path_sep)$(old_path)"
+    end
+    e["PATH"] = new_path
+    e["CONDA_PREFIX"] = d
+    e["CONDA_DEFAULT_ENV"] = d
+    e["CONDA_SHLVL"] = "1"
+    e["CONDA_PROMPT_MODIFIER"] = "($d) "
+    e
+end
+
+"""
+    setenv(command::Cmd, env=ENV; dir="")
+
+Set the environment of the given command to be the Conda environment.
+
+The starting environment is the dictionary `env`.
+
+You can optionally specify the working directory `dir`.
+"""
+setenv(command::Cmd, env=ENV; dir="") = Base.setenv(command, activate!(convert(Dict{String,String}, copy(env))); dir=dir)
+
+"""
     withenv(f::Function)
 
 Call `f()` while the Conda environment is active.
 """
 function withenv(f::Function)
     old_env = copy(ENV)
-    shell("activate")
+    # shell("activate")
+    activate!(ENV)
     frozen = STATE.frozen
     STATE.frozen = true
     try
@@ -305,6 +338,7 @@ function withenv(f::Function)
     finally
         STATE.frozen = frozen
         # shell("deactivate")
+        # copy!(ENV, old_env) does not work (empty!(ENV) not implemented)
         for k in collect(keys(ENV))
             if !haskey(old_env, k)
                 delete!(ENV, k)
@@ -329,38 +363,37 @@ function envdir(args...)
 end
 
 """
-    bindir(...)
+    bindirs()
 
-The bin directory of the Conda environment.
-
-Any additional arguments are joined to the path.
+The directories containing binaries in the Conda environment.
 """
-bindir(args...) = @static Sys.iswindows() ? envdir("Library", "bin", args...) : envdir("bin", args...)
-
-"""
-    scriptdir(...)
-
-The script directory of the Conda environment.
-
-Any additional arguments are joined to the path.
-"""
-scriptdir(args...) = @static Sys.iswindows() ? envdir("Scripts", args...) : envdir("bin", args...)
+function bindirs()
+    e = envdir()
+    @static if Sys.iswindows()
+        ("$e", "$e\\Library\\mingw-w64\\bin", "$e\\Library\\usr\\bin", "$e\\Library\\bin", "$e\\Scripts", "$e\\bin")
+    else
+        ("$e/bin", #="$(micromamba_root_prefix)/condabin"=#)
+    end
+end
 
 """
-    libdir(...)
+    which(progname)
 
-The library directory of the Conda environment.
-
-Any additional arguments are joined to the path.
+Find the binary called `progname` in the Conda environment.
 """
-libdir(args...) = @static Sys.iswindows() ? envdir("Library", "bin", args...) : envdir("lib", args...)
-
-"""
-    pythonpath()
-
-The path to the Python executable in the Conda environment,
-assuming the `python` is a dependency.
-"""
-pythonpath() = @static Sys.iswindows() ? envdir("python.exe") : envdir("bin", "python")
+function which(progname)
+    # Set the PATH to dirs in the environment, then use Sys.which().
+    old_path = get(ENV, "PATH", nothing)
+    ENV["PATH"] = join(bindirs(), Sys.iswindows() ? ';' : ':')
+    try
+        Sys.which(progname)
+    finally
+        if old_path === nothing
+            delete!(ENV, "PATH")
+        else
+            ENV["PATH"] = old_path
+        end
+    end
+end
 
 end # module
