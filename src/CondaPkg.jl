@@ -22,7 +22,7 @@ const STATE = State()
 
 @kwdef struct PkgSpec
     name::String
-    version::String
+    versions::Vector{String}
     channels::Vector{String}
 end
 
@@ -34,7 +34,7 @@ end
     packages::Vector{PkgSpec}
 end
 
-const META_VERSION = 1 # increment whenever the metadata format changes
+const META_VERSION = 2 # increment whenever the metadata format changes
 
 function read_meta(io::IO)
     if read(io, Int) == META_VERSION
@@ -73,7 +73,7 @@ end
 function read_meta(io::IO, ::Type{PkgSpec})
     PkgSpec(
         name = read_meta(io, String),
-        version = read_meta(io, String),
+        versions = read_meta(io, Vector{String}),
         channels = read_meta(io, Vector{String}),
     )
 end
@@ -105,7 +105,7 @@ function write_meta(io::IO, x::VersionNumber)
 end
 function write_meta(io::IO, x::PkgSpec)
     write_meta(io, x.name)
-    write_meta(io, x.version)
+    write_meta(io, x.versions)
     write_meta(io, x.channels)
 end
 
@@ -179,7 +179,9 @@ function resolve(; force::Bool=false)
                 for (name, spec) in deps
                     name isa String || error("deps key must be a string")
                     if spec isa String
-                        pspec = PkgSpec(name=name, version=strip(spec), channels=channels)
+                        version = strip(spec)
+                        versions = version == "" ? String[] : [version]
+                        pspec = PkgSpec(name=name, versions=versions, channels=channels)
                     else
                         error("deps value must be a string (for now)")
                     end
@@ -193,7 +195,11 @@ function resolve(; force::Bool=false)
     for (name, pkgs) in packages
         @assert length(pkgs) > 0
         @assert all(pkg.name == name for pkg in values(pkgs))
-        version = join([pkg.version for pkg in values(pkgs) if pkg.version != ""], ",")
+        versions = String[]
+        for pkg in values(pkgs)
+            append!(versions, pkg.versions)
+        end
+        sort!(unique!(versions))
         channels = String[]
         for pkg in values(pkgs)
             if isempty(channels)
@@ -208,7 +214,8 @@ function resolve(; force::Bool=false)
                 end
             end
         end
-        push!(specs, PkgSpec(name=name, version=version, channels=sort(channels)))
+        sort!(unique!(channels))
+        push!(specs, PkgSpec(name=name, versions=versions, channels=channels))
     end
     # skip any conda calls if the dependencies haven't changed
     if isfile(meta_file) && isdir(conda_env)
@@ -235,10 +242,12 @@ function resolve(; force::Bool=false)
     for (channels, specs) in gspecs
         args = String[]
         for spec in specs
-            if spec.version == ""
+            if isempty(spec.versions)
                 push!(args, spec.name)
             else
-                push!(args, "$(spec.name) $(spec.version)")
+                for version in spec.versions
+                    push!(args, "$(spec.name) $(version)")
+                end
             end
         end
         for channel in channels
