@@ -56,16 +56,16 @@ Assuming one of the dependencies in `CondaPkg.toml` is `python` then the followi
 Python to print its version.
 ```julia
 # Simplest version.
-CondaPkg.withenv(); do
+CondaPkg.withenv() do
   run(`python --version`)
 end
 # Guaranteed not to use Python from outside the Conda environment.
-CondaPkg.withenv(); do
+CondaPkg.withenv() do
   python = CondaPkg.which("python")
   run(`$python --version`)
 end
 # Explicitly specifies the path to the executable (this is package-dependent).
-CondaPkg.withenv(); do
+CondaPkg.withenv() do
   python = joinpath(CondaPkg.envdir(), Sys.iswindows() ? "python.exe" : "bin/python")
   run(`$python --version`)
 end
