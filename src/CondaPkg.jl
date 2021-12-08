@@ -385,4 +385,104 @@ function which(progname)
     end
 end
 
+function cur_deps_file()
+    e = Base.load_path()[1]
+    if !isdir(e)
+        e = dirname(e)
+        @assert isdir(e)
+    end
+    joinpath(e, "CondaPkg.toml")
+end
+
+function read_deps(; file=cur_deps_file())
+    isfile(file) ? TOML.parsefile(file) : Dict{String,Any}()
+end
+
+function write_deps(toml; file=cur_deps_file())
+    open(file, "w") do io
+        TOML.print(io, toml)
+    end
+end
+
+"""
+    status()
+
+Show the status of the current environment.
+
+This does not include dependencies from nested environments.
+"""
+function status(io::IO=stdout)
+    dfile = cur_deps_file()
+    printstyled(io, "Status", color=:light_green)
+    print(io, " ")
+    printstyled(io, dfile, bold=true)
+    dstr = isfile(dfile) ? rstrip(read(dfile, String)) : ""
+    if dstr == ""
+        println(io, " (no dependencies)")
+    else
+        println(io)
+        println(io, dstr)
+    end
+end
+
+"""
+    add(deps...)
+
+Adds the given dependencies to the current environment.
+
+Dependencies are package names, `name => spec` pairs, or iterables of these.
+"""
+function add(deps...)
+    toml = read_deps()
+    for dep in deps
+        _add!(toml, dep)
+    end
+    write_deps(toml)
+    STATE.resolved = false
+    return
+end
+
+function _add!(toml, dep::String)
+    get!(Dict{String,Any}, toml, "deps")[dep] = ""
+end
+
+function _add!(toml, dep::Pair)
+    push!(get!(Dict{String,Any}, toml, "deps"), dep)
+end
+
+function _add!(toml, deps)
+    for dep in deps
+        _add!(toml, dep)
+    end
+end
+
+"""
+    rm(deps...)
+
+Removes the given depenencies from the current environment.
+
+Dependencies are package names, or iterables of these.
+"""
+function rm(deps...)
+    toml = read_deps()
+    for dep in deps
+        _rm!(toml, dep)
+    end
+    write_deps(toml)
+    STATE.resolved = false
+    return
+end
+
+function _rm!(toml, dep::String)
+    dict = get!(Dict{String,Any}, toml, "deps")
+    delete!(dict, dep)
+    isempty(dict) && delete!(toml, "deps")
+end
+
+function _rm!(toml, deps)
+    for dep in deps
+        _rm!(toml, dep)
+    end
+end
+
 end # module

@@ -33,14 +33,22 @@ Dependencies from `CondaPkg.toml` files in any packages installed in the current
 also included. This means that package authors can write a `CondaPkg.toml` file and
 dependencies should just work.
 
-### API
+### Specify dependencies interactively
 
+These functions act on the `CondaPkg.toml` file of the current project.
+
+- `status()` shows the Conda dependencies.
+- `add(deps...)` adds/replaces dependencies (package names, `name => spec` pairs, or iterables of these).
+- `rm(deps...)` removes dependencies (package names or iterables of these).
+
+### Access the Conda environment
+
+- `envdir()` returns the root directory of the Conda environment.
+- `withenv(f)` returns `f()` evaluated in the Conda environment.
+- `which(progname)` find the program in the Conda environment.
 - `resolve(; force=false)` resolves dependencies. You don't normally need to call this
   because the other API functions will automatically resolve first. Pass `force=true` if
   you change a `CondaPkg.toml` file mid-session.
-- `withenv(f)` returns `f()` evaluated in the Conda environment.
-- `envdir()` returns the root directory of the Conda environment.
-- `which(progname)` find the program in the Conda environment.
 
 ### Examples
 
