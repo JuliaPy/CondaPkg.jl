@@ -74,3 +74,12 @@ CondaPkg.withenv() do
   run(`$python --version`)
 end
 ```
+
+### FAQs
+
+#### Conda channels?
+
+By default, packages are installed from the `conda-forge` channel.
+
+You can instead specify a list of channels to use under the `channels` key, or use the
+`add_channel` function. If `channels` is not specified, it defaults to `["conda-forge"]`.
