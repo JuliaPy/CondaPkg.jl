@@ -1,3 +1,5 @@
+<img src="https://github.com/cjdoris/CondaPkg.jl/raw/main/logo.png">
+
 # CondaPkg.jl
 
 Add [Conda](https://docs.conda.io/en/latest/) dependencies to your Julia project.
