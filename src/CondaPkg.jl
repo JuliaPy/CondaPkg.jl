@@ -191,6 +191,7 @@ function resolve(; force::Bool=false)
         fn = joinpath(dir, "CondaPkg.toml")
         if isfile(fn)
             env in load_path || push!(extra_path, env)
+            @info "Found CondaPkg dependencies" file=fn
             toml = TOML.parsefile(fn)
             if haskey(toml, "channels")
                 append!(channels, toml["channels"])
@@ -529,8 +530,10 @@ end
 Removes a dependency from the current environment.
 """
 function rm(pkg::AbstractString)
+    pkg = normalise_pkg(pkg)
     toml = read_deps()
     deps = get!(Dict{String,Any}, toml, "deps")
+    filter!(kv -> normalise_pkg(kv[1]) != pkg, deps)
     delete!(deps, pkg)
     isempty(deps) && delete!(toml, "deps")
     write_deps(toml)
@@ -595,10 +598,11 @@ end
 Removes a pip dependency from the current environment.
 """
 function rm_pip(pkg::AbstractString)
+    pkg = normalise_pip_pkg(pkg)
     toml = read_deps()
     pip = get!(Dict{String,Any}, toml, "pip")
     deps = get!(Dict{String,Any}, pip, "deps")
-    delete!(deps, pkg)
+    filter!(kv -> normalise_pip_pkg(kv[1]) != pkg, deps)
     isempty(deps) && delete!(pip, "deps")
     isempty(pip) && delete!(toml, "pip")
     write_deps(toml)
