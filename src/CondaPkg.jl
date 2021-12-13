@@ -172,19 +172,36 @@ function resolve(; force::Bool=false)
         if isfile(fn)
             env in load_path || push!(extra_path, env)
             toml = TOML.parsefile(fn)
-            channels = ["conda-forge"]
+            dflt_channels = ["conda-forge"]
             if haskey(toml, "deps")
                 deps = toml["deps"]
                 deps isa Dict || error("deps must be a table")
                 for (name, spec) in deps
                     name isa String || error("deps key must be a string")
                     if spec isa String
-                        version = strip(spec)
-                        versions = version == "" ? String[] : [version]
-                        pspec = PkgSpec(name=name, versions=versions, channels=channels)
+                        version = spec
+                        channel = ""
+                    elseif spec isa AbstractDict
+                        version = get(spec, "version", "")
+                        channel = get(spec, "channel", "")
                     else
                         error("deps value must be a string (for now)")
                     end
+                    if version isa String
+                        version = strip(version)
+                        versions = version == "" ? String[] : [version]
+                    else
+                        error("version must be a string")
+                    end
+                    if channel isa String
+                        channel = strip(channel)
+                        channels = channel == "" ? dflt_channels : [channel]
+                    elseif channel isa AbstractVector
+                        channels = convert(Vector{String}, channel)
+                    else
+                        error("channel must be a string or vector of strings")
+                    end
+                    pspec = PkgSpec(name=name, versions=versions, channels=channels)
                     get!(Dict{String,PkgSpec}, packages, name)[fn] = pspec
                 end
             end
