@@ -25,10 +25,16 @@ const STATE = State()
     versions::Vector{String}
 end
 
+Base.:(==)(x::PkgSpec, y::PkgSpec) = (x.name == y.name) && (x.versions == y.versions)
+Base.hash(x::PkgSpec, h::UInt) = hash(x.versions, hash(x.name, h))
+
 @kwdef struct PipPkgSpec
     name::String
     version::String
 end
+
+Base.:(==)(x::PipPkgSpec, y::PipPkgSpec) = (x.name == y.name) && (x.version == y.version)
+Base.hash(x::PipPkgSpec, h::UInt) = hash(x.version, hash(x.name, h))
 
 @kwdef mutable struct Meta
     timestamp::Float64
@@ -176,6 +182,7 @@ function resolve(; force::Bool=false)
                 end
             end
             if !force && skip
+                @debug "CondaPkg already up to date"
                 STATE.resolved = true
                 return
             end
@@ -269,6 +276,7 @@ function resolve(; force::Bool=false)
     if !force && isfile(meta_file) && isdir(conda_env)
         meta = open(read_meta, meta_file)
         if meta !== nothing && meta.packages == specs && meta.pip_packages == pip_specs && stat(conda_env).mtime < meta.timestamp
+            @info "Dependencies already up to date"
             @goto save_meta
         end
     end
