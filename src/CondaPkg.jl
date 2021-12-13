@@ -435,63 +435,47 @@ function status(io::IO=stdout)
 end
 
 """
-    add(deps...)
+    add(pkg; version=nothing, channel=nothing)
 
-Adds the given dependencies to the current environment.
-
-Dependencies are package names, `name => spec` pairs, or iterables of these.
+Adds a dependency to the current environment.
 """
-function add(deps...)
-    toml = read_deps()
-    for dep in deps
-        _add!(toml, dep)
+function add(pkg::AbstractString; version::Union{AbstractString,Nothing}=nothing, channel::Union{AbstractString,AbstractVector{<:AbstractString},Nothing}=nothing)
+    if channel !== nothing
+        rhs = Dict{String,Any}()
+        if channel !== nothing
+            rhs["channel"] = channel
+        end
+        if version !== nothing
+            rhs["version"] = version
+        end
+    elseif version !== nothing
+        rhs = version
+    else
+        rhs = ""
     end
+    toml = read_deps()
+    deps = get!(Dict{String,Any}, toml, "deps")
+    deps[pkg] = rhs
     write_deps(toml)
     STATE.resolved = false
     return
 end
 
-function _add!(toml, dep::String)
-    get!(Dict{String,Any}, toml, "deps")[dep] = ""
-end
-
-function _add!(toml, dep::Pair)
-    push!(get!(Dict{String,Any}, toml, "deps"), dep)
-end
-
-function _add!(toml, deps)
-    for dep in deps
-        _add!(toml, dep)
-    end
-end
-
 """
-    rm(deps...)
+    rm(pkg)
 
-Removes the given depenencies from the current environment.
+Removes a dependency from the current environment.
 
 Dependencies are package names, or iterables of these.
 """
-function rm(deps...)
+function rm(pkg::AbstractString)
     toml = read_deps()
-    for dep in deps
-        _rm!(toml, dep)
-    end
+    deps = get!(Dict{String,Any}, toml, "deps")
+    delete!(deps, pkg)
+    isempty(deps) && delete!(toml, "deps")
     write_deps(toml)
     STATE.resolved = false
     return
-end
-
-function _rm!(toml, dep::String)
-    dict = get!(Dict{String,Any}, toml, "deps")
-    delete!(dict, dep)
-    isempty(dict) && delete!(toml, "deps")
-end
-
-function _rm!(toml, deps)
-    for dep in deps
-        _rm!(toml, dep)
-    end
 end
 
 end # module
