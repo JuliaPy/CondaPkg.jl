@@ -249,11 +249,11 @@ function resolve(; force::Bool=false)
     # remove and recreate any existing conda environment
     mkpath(meta_dir)
     if isdir(conda_env)
-        cmd = MicroMamba.cmd(`remove -y -q -p $conda_env --all`)
+        cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`)
         @info "Removing Conda environment" cmd
         run(cmd)
     end
-    cmd = MicroMamba.cmd(`create -y -q -p $conda_env`)
+    cmd = MicroMamba.cmd(`create -y -p $conda_env`)
     @info "Creating Conda environment" cmd
     run(cmd)
     for (channels, specs) in gspecs
@@ -270,7 +270,7 @@ function resolve(; force::Bool=false)
         for channel in channels
             push!(args, "-c", channel)
         end
-        cmd = MicroMamba.cmd(`install -y -q -p $conda_env $args`)
+        cmd = MicroMamba.cmd(`install -y -p $conda_env $args`)
         @info "Installing Conda packages" cmd
         run(cmd)
     end
