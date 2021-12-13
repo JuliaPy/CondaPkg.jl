@@ -42,6 +42,8 @@ Instead of modifying `CondaPkg.toml` by hand, you can use these convenience func
 - `rm(pkg)` removes a dependency.
 - `add_channel(channel)` adds a channel.
 - `rm_channel(channel)` removes a channel.
+- `add_pip(pkg; version=nothing)` adds/replaces a pip dependency.
+- `rm_pip(pkg)` removes a pip dependency.
 
 ### Access the Conda environment
 

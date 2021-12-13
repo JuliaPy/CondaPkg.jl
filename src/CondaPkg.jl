@@ -25,6 +25,11 @@ const STATE = State()
     versions::Vector{String}
 end
 
+@kwdef struct PipPkgSpec
+    name::String
+    version::String
+end
+
 @kwdef mutable struct Meta
     timestamp::Float64
     load_path::Vector{String}
@@ -32,9 +37,10 @@ end
     version::VersionNumber
     packages::Vector{PkgSpec}
     channels::Vector{String}
+    pip_packages::Vector{PipPkgSpec}
 end
 
-const META_VERSION = 3 # increment whenever the metadata format changes
+const META_VERSION = 4 # increment whenever the metadata format changes
 
 function read_meta(io::IO)
     if read(io, Int) == META_VERSION
@@ -45,6 +51,7 @@ function read_meta(io::IO)
             version = read_meta(io, VersionNumber),
             packages = read_meta(io, Vector{PkgSpec}),
             channels = read_meta(io, Vector{String}),
+            pip_packages = read_meta(io, Vector{PipPkgSpec}),
         )
     end
 end
@@ -77,6 +84,12 @@ function read_meta(io::IO, ::Type{PkgSpec})
         versions = read_meta(io, Vector{String}),
     )
 end
+function read_meta(io::IO, ::Type{PipPkgSpec})
+    PipPkgSpec(
+        name = read_meta(io, String),
+        version = read_meta(io, String),
+    )
+end
 
 function write_meta(io::IO, meta::Meta)
     write(io, META_VERSION)
@@ -86,6 +99,7 @@ function write_meta(io::IO, meta::Meta)
     write_meta(io, meta.version)
     write_meta(io, meta.packages)
     write_meta(io, meta.channels)
+    write_meta(io, meta.pip_packages)
     return
 end
 function write_meta(io::IO, x::Float64)
@@ -107,6 +121,10 @@ end
 function write_meta(io::IO, x::PkgSpec)
     write_meta(io, x.name)
     write_meta(io, x.versions)
+end
+function write_meta(io::IO, x::PipPkgSpec)
+    write_meta(io, x.name)
+    write_meta(io, x.version)
 end
 
 function resolve(; force::Bool=false)
@@ -166,6 +184,7 @@ function resolve(; force::Bool=false)
     # find all dependencies
     packages = Dict{String,Dict{String,PkgSpec}}() # name -> depsfile -> spec
     channels = String[]
+    pip_packages = Dict{String,Dict{String,PipPkgSpec}}() # name -> depsfile -> spec
     extra_path = String[]
     for env in [load_path; [p.source for p in values(Pkg.dependencies())]]
         dir = isfile(env) ? dirname(env) : isdir(env) : env : continue
@@ -180,18 +199,44 @@ function resolve(; force::Bool=false)
             end
             if haskey(toml, "deps")
                 deps = toml["deps"]
-                deps isa Dict || error("deps must be a table")
+                deps isa Dict{String,Any} || error("deps must be a table")
                 for (name, version) in deps
                     name isa String || error("deps key must be a string")
                     version isa String || error("deps value must be a version string")
+                    name = normalise_pkg(name)
                     version = strip(version)
                     versions = version == "" ? String[] : [version]
                     pspec = PkgSpec(name=name, versions=versions)
                     get!(Dict{String,PkgSpec}, packages, name)[fn] = pspec
                 end
             end
+            if haskey(toml, "pip")
+                pip = toml["pip"]
+                pip isa Dict{String,Any} || error("pip must be a table")
+                if haskey(toml, "deps")
+                    deps = pip["deps"]
+                    deps isa Dict{String,Any} || error("pip.deps must be a table")
+                    for (name, version) in deps
+                        name isa String || error("pip.deps key must be a string")
+                        version isa String || error("pip.deps value must be a version string")
+                        name = normalise_pip_pkg(name)
+                        version = strip(version)
+                        pspec = PipPkgSpec(name=name, version=version)
+                        get!(Dict{String,PipPkgSpec}, pip_packages, name)[fn] = pspec
+                    end
+                end
+            end
         end
     end
+    # if there are any pip dependencies, we'd better install pip
+    if !isempty(pip_packages)
+        packages["pip"] = Dict("<internal>" => PkgSpec(name="pip", versions=String[]))
+        if "conda-forge" ∉ channels && "anaconda" ∉ channels
+            push!(channels, "conda-forge")
+        end
+    end
+    # sort channels
+    # (in the future we might prioritise them)
     sort!(unique!(channels))
     # merge dependencies
     specs = PkgSpec[]
@@ -205,10 +250,24 @@ function resolve(; force::Bool=false)
         sort!(unique!(versions))
         push!(specs, PkgSpec(name=name, versions=versions))
     end
+    # merge pip dependencies
+    pip_specs = PipPkgSpec[]
+    for (name, pkgs) in pip_packages
+        @assert length(pkgs) > 0
+        @assert all(pkg.name == name for pkg in values(pkgs))
+        versions = String[]
+        for pkg in values(pkgs)
+            if pkg.version != ""
+                push!(versions, pkg.version)
+            end
+        end
+        sort!(unique!(versions))
+        push!(pip_specs, PipPkgSpec(name=name, version=join(versions, ",")))
+    end
     # skip any conda calls if the dependencies haven't changed
     if !force && isfile(meta_file) && isdir(conda_env)
         meta = open(read_meta, meta_file)
-        if meta !== nothing && meta.packages == specs && stat(conda_env).mtime < meta.timestamp
+        if meta !== nothing && meta.packages == specs && meta.pip_packages == pip_specs && stat(conda_env).mtime < meta.timestamp
             @goto save_meta
         end
     end
@@ -236,6 +295,31 @@ function resolve(; force::Bool=false)
     cmd = MicroMamba.cmd(`create --yes --prefix $conda_env --no-channel-priority $args`)
     @info "Creating Conda environment" cmd.exec
     run(cmd)
+    # install pip packages
+    if !isempty(pip_specs)
+        args = String[]
+        for spec in pip_specs
+            if isempty(spec.version)
+                push!(args, spec.name)
+            else
+                push!(args, "$(spec.name) $(spec.version)")
+            end
+        end
+        old_load_path = STATE.load_path
+        try
+            STATE.resolved = true
+            STATE.load_path = load_path
+            withenv() do
+                pip = which("pip")
+                cmd = `$pip install $args`
+                @info "Installing Pip dependencies" cmd.exec
+                run(cmd)
+            end
+        finally
+            STATE.resolved = false
+            STATE.load_path = old_load_path
+        end
+    end
     # save metadata
     @label save_meta
     meta = Meta(
@@ -245,6 +329,7 @@ function resolve(; force::Bool=false)
         version = VERSION,
         packages = specs,
         channels = channels,
+        pip_packages = pip_specs,
     )
     open(io->write_meta(io, meta), meta_file, "w")
     # all done
@@ -393,6 +478,14 @@ function write_deps(toml; file=cur_deps_file())
     end
 end
 
+function normalise_pkg(name::AbstractString)
+    return lowercase(strip(name))
+end
+
+function normalise_pip_pkg(name::AbstractString)
+    return replace(lowercase(strip(name)), r"[-._]+"=>"-")
+end
+
 """
     status()
 
@@ -420,6 +513,7 @@ end
 Adds a dependency to the current environment.
 """
 function add(pkg::AbstractString; version::Union{AbstractString,Nothing}=nothing)
+    pkg = normalise_pkg(pkg)
     rhs = version === nothing ? "" : version
     toml = read_deps()
     deps = get!(Dict{String,Any}, toml, "deps")
@@ -468,6 +562,45 @@ function rm_channel(channel::AbstractString)
     channels = get!(Dict{String,Any}, toml, "channels")
     filter!(c -> c != channel, channels)
     isempty(channels) && delete!(toml, "channels")
+    write_deps(toml)
+    STATE.resolved = false
+    return
+end
+
+"""
+    add_pip(pkg; version=nothing)
+
+Adds a pip dependency to the current environment.
+
+!!! warning
+
+    Use conda dependencies instead if at all possible. Pip does not handle version
+    conflicts gracefully, so it is possible to get incompatible versions.
+"""
+function add_pip(pkg::AbstractString; version::Union{AbstractString,Nothing}=nothing)
+    pkg = normalise_pip_pkg(pkg)
+    rhs = version === nothing ? "" : version
+    toml = read_deps()
+    pip = get!(Dict{String,Any}, toml, "pip")
+    deps = get!(Dict{String,Any}, pip, "deps")
+    deps[pkg] = rhs
+    write_deps(toml)
+    STATE.resolved = false
+    return
+end
+
+"""
+    rm_pip(pkg)
+
+Removes a pip dependency from the current environment.
+"""
+function rm_pip(pkg::AbstractString)
+    toml = read_deps()
+    pip = get!(Dict{String,Any}, toml, "pip")
+    deps = get!(Dict{String,Any}, pip, "deps")
+    delete!(deps, pkg)
+    isempty(deps) && delete!(pip, "deps")
+    isempty(pip) && delete!(toml, "pip")
     write_deps(toml)
     STATE.resolved = false
     return
