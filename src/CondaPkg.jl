@@ -482,9 +482,16 @@ function read_deps(; file=cur_deps_file())
 end
 
 function write_deps(toml; file=cur_deps_file())
-    open(file, "w") do io
-        TOML.print(io, toml)
+    if isempty(toml)
+        if isfile(file)
+            Base.rm(file)
+        end
+    else
+        open(file, "w") do io
+            TOML.print(io, toml)
+        end
     end
+    return
 end
 
 function normalise_pkg(name::AbstractString)
