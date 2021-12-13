@@ -23,7 +23,6 @@ const STATE = State()
 @kwdef struct PkgSpec
     name::String
     versions::Vector{String}
-    channels::Vector{String}
 end
 
 @kwdef mutable struct Meta
@@ -32,9 +31,10 @@ end
     extra_path::Vector{String}
     version::VersionNumber
     packages::Vector{PkgSpec}
+    channels::Vector{String}
 end
 
-const META_VERSION = 2 # increment whenever the metadata format changes
+const META_VERSION = 3 # increment whenever the metadata format changes
 
 function read_meta(io::IO)
     if read(io, Int) == META_VERSION
@@ -44,6 +44,7 @@ function read_meta(io::IO)
             extra_path = read_meta(io, Vector{String}),
             version = read_meta(io, VersionNumber),
             packages = read_meta(io, Vector{PkgSpec}),
+            channels = read_meta(io, Vector{String}),
         )
     end
 end
@@ -74,7 +75,6 @@ function read_meta(io::IO, ::Type{PkgSpec})
     PkgSpec(
         name = read_meta(io, String),
         versions = read_meta(io, Vector{String}),
-        channels = read_meta(io, Vector{String}),
     )
 end
 
@@ -85,6 +85,7 @@ function write_meta(io::IO, meta::Meta)
     write_meta(io, meta.extra_path)
     write_meta(io, meta.version)
     write_meta(io, meta.packages)
+    write_meta(io, meta.channels)
     return
 end
 function write_meta(io::IO, x::Float64)
@@ -106,7 +107,6 @@ end
 function write_meta(io::IO, x::PkgSpec)
     write_meta(io, x.name)
     write_meta(io, x.versions)
-    write_meta(io, x.channels)
 end
 
 function resolve(; force::Bool=false)
@@ -157,7 +157,7 @@ function resolve(; force::Bool=false)
                     end
                 end
             end
-            if skip
+            if !force && skip
                 STATE.resolved = true
                 return
             end
@@ -165,6 +165,7 @@ function resolve(; force::Bool=false)
     end
     # find all dependencies
     packages = Dict{String,Dict{String,PkgSpec}}() # name -> depsfile -> spec
+    channels = String[]
     extra_path = String[]
     for env in [load_path; [p.source for p in values(Pkg.dependencies())]]
         dir = isfile(env) ? dirname(env) : isdir(env) : env : continue
@@ -172,41 +173,26 @@ function resolve(; force::Bool=false)
         if isfile(fn)
             env in load_path || push!(extra_path, env)
             toml = TOML.parsefile(fn)
-            dflt_channels = ["conda-forge"]
+            if haskey(toml, "channels")
+                append!(channels, toml["channels"])
+            else
+                push!(channels, "conda-forge")
+            end
             if haskey(toml, "deps")
                 deps = toml["deps"]
                 deps isa Dict || error("deps must be a table")
-                for (name, spec) in deps
+                for (name, version) in deps
                     name isa String || error("deps key must be a string")
-                    if spec isa String
-                        version = spec
-                        channel = ""
-                    elseif spec isa AbstractDict
-                        version = get(spec, "version", "")
-                        channel = get(spec, "channel", "")
-                    else
-                        error("deps value must be a string (for now)")
-                    end
-                    if version isa String
-                        version = strip(version)
-                        versions = version == "" ? String[] : [version]
-                    else
-                        error("version must be a string")
-                    end
-                    if channel isa String
-                        channel = strip(channel)
-                        channels = channel == "" ? dflt_channels : [channel]
-                    elseif channel isa AbstractVector
-                        channels = convert(Vector{String}, channel)
-                    else
-                        error("channel must be a string or vector of strings")
-                    end
-                    pspec = PkgSpec(name=name, versions=versions, channels=channels)
+                    version isa String || error("deps value must be a version string")
+                    version = strip(version)
+                    versions = version == "" ? String[] : [version]
+                    pspec = PkgSpec(name=name, versions=versions)
                     get!(Dict{String,PkgSpec}, packages, name)[fn] = pspec
                 end
             end
         end
     end
+    sort!(unique!(channels))
     # merge dependencies
     specs = PkgSpec[]
     for (name, pkgs) in packages
@@ -217,63 +203,39 @@ function resolve(; force::Bool=false)
             append!(versions, pkg.versions)
         end
         sort!(unique!(versions))
-        channels = String[]
-        for pkg in values(pkgs)
-            if isempty(channels)
-                append!(channels, pkg.channels)
-            else
-                intersect!(channels, pkg.channels)
-                if isempty(channels)
-                    lines = ["inconsistent channel specifications:"]
-                    for (fn, pkg) in pkgs
-                        push!(lines, "- $fn: $(join(pkg.channels, ", ", " or "))")
-                    end
-                end
-            end
-        end
-        sort!(unique!(channels))
-        push!(specs, PkgSpec(name=name, versions=versions, channels=channels))
+        push!(specs, PkgSpec(name=name, versions=versions))
     end
     # skip any conda calls if the dependencies haven't changed
-    if isfile(meta_file) && isdir(conda_env)
+    if !force && isfile(meta_file) && isdir(conda_env)
         meta = open(read_meta, meta_file)
         if meta !== nothing && meta.packages == specs && stat(conda_env).mtime < meta.timestamp
             @goto save_meta
         end
     end
-    # group dependencies by channels
-    gspecs = Dict{Vector{String},Vector{PkgSpec}}()
-    for spec in specs
-        push!(get!(Vector{PkgSpec}, gspecs, spec.channels), spec)
-    end
-    # remove and recreate any existing conda environment
+    # remove environment
     mkpath(meta_dir)
     if isdir(conda_env)
-        cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`)
-        @info "Removing Conda environment" env=conda_env cmd=cmd
+        cmd = MicroMamba.cmd(`remove --yes --prefix $conda_env --all`)
+        @info "Removing Conda environment" cmd.exec
         run(cmd)
     end
-    cmd = MicroMamba.cmd(`create -y -p $conda_env`)
-    @info "Creating Conda environment" env=conda_env cmd=cmd
-    run(cmd)
-    for (channels, specs) in gspecs
-        args = String[]
-        for spec in specs
-            if isempty(spec.versions)
-                push!(args, spec.name)
-            else
-                for version in spec.versions
-                    push!(args, "$(spec.name) $(version)")
-                end
+    # create conda environment
+    args = String[]
+    for spec in specs
+        if isempty(spec.versions)
+            push!(args, spec.name)
+        else
+            for version in spec.versions
+                push!(args, "$(spec.name) $(version)")
             end
         end
-        for channel in channels
-            push!(args, "-c", channel)
-        end
-        cmd = MicroMamba.cmd(`install -y -p $conda_env --no-channel-priority $args`)
-        @info "Installing Conda packages" env=conda_env args=args cmd=cmd
-        run(cmd)
     end
+    for channel in channels
+        push!(args, "--channel", channel)
+    end
+    cmd = MicroMamba.cmd(`create --yes --prefix $conda_env --no-channel-priority $args`)
+    @info "Creating Conda environment" cmd.exec
+    run(cmd)
     # save metadata
     @label save_meta
     meta = Meta(
@@ -282,6 +244,7 @@ function resolve(; force::Bool=false)
         extra_path = extra_path,
         version = VERSION,
         packages = specs,
+        channels = channels,
     )
     open(io->write_meta(io, meta), meta_file, "w")
     # all done
@@ -452,24 +415,12 @@ function status(io::IO=stdout)
 end
 
 """
-    add(pkg; version=nothing, channel=nothing)
+    add(pkg; version=nothing)
 
 Adds a dependency to the current environment.
 """
-function add(pkg::AbstractString; version::Union{AbstractString,Nothing}=nothing, channel::Union{AbstractString,AbstractVector{<:AbstractString},Nothing}=nothing)
-    if channel !== nothing
-        rhs = Dict{String,Any}()
-        if channel !== nothing
-            rhs["channel"] = channel
-        end
-        if version !== nothing
-            rhs["version"] = version
-        end
-    elseif version !== nothing
-        rhs = version
-    else
-        rhs = ""
-    end
+function add(pkg::AbstractString; version::Union{AbstractString,Nothing}=nothing)
+    rhs = version === nothing ? "" : version
     toml = read_deps()
     deps = get!(Dict{String,Any}, toml, "deps")
     deps[pkg] = rhs
@@ -482,14 +433,41 @@ end
     rm(pkg)
 
 Removes a dependency from the current environment.
-
-Dependencies are package names, or iterables of these.
 """
 function rm(pkg::AbstractString)
     toml = read_deps()
     deps = get!(Dict{String,Any}, toml, "deps")
     delete!(deps, pkg)
     isempty(deps) && delete!(toml, "deps")
+    write_deps(toml)
+    STATE.resolved = false
+    return
+end
+
+"""
+    add_channel(channel)
+
+Adds a channel to the current environment.
+"""
+function add_channel(channel::AbstractString)
+    toml = read_deps()
+    channels = get!(Vector{Any}, toml, "channels")
+    push!(channels, channel)
+    write_deps(toml)
+    STATE.resolved = false
+    return
+end
+
+"""
+    rm_channel(pkg)
+
+Removes a channel from the current environment.
+"""
+function rm_channel(channel::AbstractString)
+    toml = read_deps()
+    channels = get!(Dict{String,Any}, toml, "channels")
+    filter!(c -> c != channel, channels)
+    isempty(channels) && delete!(toml, "channels")
     write_deps(toml)
     STATE.resolved = false
     return

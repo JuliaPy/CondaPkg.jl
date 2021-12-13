@@ -38,8 +38,10 @@ dependencies should just work.
 Instead of modifying `CondaPkg.toml` by hand, you can use these convenience functions.
 
 - `status()` shows the Conda dependencies of the current project.
-- `add(pkg; version=nothing, channel=nothing)` adds/replaces a dependency.
+- `add(pkg; version=nothing)` adds/replaces a dependency.
 - `rm(pkg)` removes a dependency.
+- `add_channel(channel)` adds a channel.
+- `rm_channel(channel)` removes a channel.
 
 ### Access the Conda environment
 
