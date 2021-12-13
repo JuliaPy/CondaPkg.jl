@@ -1,4 +1,4 @@
-<img src="https://github.com/cjdoris/CondaPkg.jl/raw/main/logo.png">
+<img src="https://github.com/cjdoris/CondaPkg.jl/raw/main/logo.png" alt="CondaPkg.jl logo" style="width: 100px;">
 
 # CondaPkg.jl
 
