@@ -250,11 +250,11 @@ function resolve(; force::Bool=false)
     mkpath(meta_dir)
     if isdir(conda_env)
         cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`)
-        @info "Removing Conda environment" cmd
+        @info "Removing Conda environment" env=conda_env cmd=cmd
         run(cmd)
     end
     cmd = MicroMamba.cmd(`create -y -p $conda_env`)
-    @info "Creating Conda environment" cmd
+    @info "Creating Conda environment" env=conda_env cmd=cmd
     run(cmd)
     for (channels, specs) in gspecs
         args = String[]
@@ -270,8 +270,8 @@ function resolve(; force::Bool=false)
         for channel in channels
             push!(args, "-c", channel)
         end
-        cmd = MicroMamba.cmd(`install -y -p $conda_env $args`)
-        @info "Installing Conda packages" cmd
+        cmd = MicroMamba.cmd(`install -y -p $conda_env --no-channel-priority $args`)
+        @info "Installing Conda packages" env=conda_env args=args cmd=cmd
         run(cmd)
     end
     # save metadata
