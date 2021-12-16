@@ -1,5 +1,11 @@
 module CondaPkg
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@compiler_options"))
+    # Without this, resolve() takes a couple of seconds, with, it takes 0.1 seconds.
+    # Maybe with better structured code or precompilation it's not necessary.
+    Base.Experimental.@compiler_options optimize=0 compile=min infer=false
+end
+
 import Base: @kwdef
 import MicroMamba
 import Pkg
@@ -133,20 +139,7 @@ function write_meta(io::IO, x::PipPkgSpec)
     write_meta(io, x.version)
 end
 
-function resolve(; force::Bool=false)
-    # if frozen, do nothing
-    if STATE.frozen
-        return
-    end
-    # skip resolving if already resolved and LOAD_PATH unchanged
-    # this is a very fast check which avoids touching the file system
-    load_path = Base.load_path()
-    if !force && STATE.resolved && STATE.load_path == load_path
-        return
-    end
-    STATE.resolved = false
-    STATE.load_path = load_path
-    # find the topmost env in the load_path which depends on CondaPkg
+function _resolve_top_env(load_path)
     top_env = ""
     for env in load_path
         proj = Base.env_project_file(env)
@@ -158,37 +151,36 @@ function resolve(; force::Bool=false)
         end
     end
     top_env == "" && error("no environment in the LOAD_PATH depends on CondaPkg")
-    STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-    meta_file = joinpath(meta_dir, "meta")
-    conda_env = joinpath(meta_dir, "env")
-    # skip resolving if nothing has changed since the metadata was updated
-    if isdir(conda_env) && isfile(meta_file)
-        meta = open(read_meta, meta_file)
-        if meta !== nothing && meta.version == VERSION && meta.load_path == load_path
-            timestamp = max(meta.timestamp, stat(meta_file).mtime)
-            skip = true
-            for env in [meta.load_path; meta.extra_path]
-                dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
-                if isdir(dir)
-                    if stat(dir).mtime > timestamp
+    top_env
+end
+
+function _resolve_can_skip_1(load_path, meta_file)
+    meta = open(read_meta, meta_file)
+    if meta !== nothing && meta.version == VERSION && meta.load_path == load_path
+        timestamp = max(meta.timestamp, stat(meta_file).mtime)
+        skip = true
+        for env in [meta.load_path; meta.extra_path]
+            dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
+            if isdir(dir)
+                if stat(dir).mtime > timestamp
+                    skip = false
+                    break
+                else
+                    fn = joinpath(dir, "CondaPkg.toml")
+                    if isfile(fn) && stat(fn).mtime > timestamp
                         skip = false
                         break
-                    else
-                        fn = joinpath(dir, "CondaPkg.toml")
-                        if isfile(fn) && stat(fn).mtime > timestamp
-                            skip = false
-                            break
-                        end
                     end
                 end
             end
-            if !force && skip
-                STATE.resolved = true
-                return
-            end
         end
+        return skip
+    else
+        return false
     end
-    # find all dependencies
+end
+
+function _resolve_find_dependencies(load_path)
     packages = Dict{String,Dict{String,PkgSpec}}() # name -> depsfile -> spec
     channels = String[]
     pip_packages = Dict{String,Dict{String,PipPkgSpec}}() # name -> depsfile -> spec
@@ -199,34 +191,27 @@ function resolve(; force::Bool=false)
         if isfile(fn)
             env in load_path || push!(extra_path, env)
             @info "Found CondaPkg dependencies" file=fn
-            toml = TOML.parsefile(fn)
+            toml = TOML.parsefile(fn)::Dict{String,Any}
             if haskey(toml, "channels")
-                append!(channels, toml["channels"])
+                append!(channels, toml["channels"]::Vector{Any})
             else
                 push!(channels, "conda-forge")
             end
             if haskey(toml, "deps")
-                deps = toml["deps"]
-                deps isa Dict{String,Any} || error("deps must be a table")
-                for (name, version) in deps
-                    name isa String || error("deps key must be a string")
-                    version isa String || error("deps value must be a version string")
+                deps = toml["deps"]::Dict{String,Any}
+                for (name::String, version::String) in deps
                     name = normalise_pkg(name)
                     version = strip(version)
-                    versions = version == "" ? String[] : [version]
+                    versions = version == "" ? String[] : String[version]
                     pspec = PkgSpec(name=name, versions=versions)
                     get!(Dict{String,PkgSpec}, packages, name)[fn] = pspec
                 end
             end
             if haskey(toml, "pip")
-                pip = toml["pip"]
-                pip isa Dict{String,Any} || error("pip must be a table")
-                if haskey(toml, "deps")
-                    deps = pip["deps"]
-                    deps isa Dict{String,Any} || error("pip.deps must be a table")
-                    for (name, version) in deps
-                        name isa String || error("pip.deps key must be a string")
-                        version isa String || error("pip.deps value must be a version string")
+                pip = toml["pip"]::Dict{String,Any}
+                if haskey(pip, "deps")
+                    deps = pip["deps"]::Dict{String,Any}
+                    for (name::String, version::String) in deps
                         name = normalise_pip_pkg(name)
                         version = strip(version)
                         pspec = PipPkgSpec(name=name, version=version)
@@ -236,17 +221,10 @@ function resolve(; force::Bool=false)
             end
         end
     end
-    # if there are any pip dependencies, we'd better install pip
-    if !isempty(pip_packages)
-        packages["pip"] = Dict("<internal>" => PkgSpec(name="pip", versions=String[]))
-        if "conda-forge" ∉ channels && "anaconda" ∉ channels
-            push!(channels, "conda-forge")
-        end
-    end
-    # sort channels
-    # (in the future we might prioritise them)
-    sort!(unique!(channels))
-    # merge dependencies
+    (packages, channels, pip_packages, extra_path)
+end
+
+function _resolve_merge_packages(packages)
     specs = PkgSpec[]
     for (name, pkgs) in packages
         @assert length(pkgs) > 0
@@ -258,7 +236,10 @@ function resolve(; force::Bool=false)
         sort!(unique!(versions))
         push!(specs, PkgSpec(name=name, versions=versions))
     end
-    # merge pip dependencies
+    specs
+end
+
+function _resolve_merge_pip_packages(pip_packages)
     pip_specs = PipPkgSpec[]
     for (name, pkgs) in pip_packages
         @assert length(pkgs) > 0
@@ -272,22 +253,22 @@ function resolve(; force::Bool=false)
         sort!(unique!(versions))
         push!(pip_specs, PipPkgSpec(name=name, version=join(versions, ",")))
     end
-    # skip any conda calls if the dependencies haven't changed
-    if !force && isfile(meta_file) && isdir(conda_env)
-        meta = open(read_meta, meta_file)
-        if meta !== nothing && meta.packages == specs && meta.pip_packages == pip_specs && stat(conda_env).mtime < meta.timestamp
-            @info "Dependencies already up to date"
-            @goto save_meta
-        end
-    end
-    # remove environment
-    mkpath(meta_dir)
-    if isdir(conda_env)
-        cmd = MicroMamba.cmd(`remove --yes --prefix $conda_env --all`)
-        @info "Removing Conda environment" cmd.exec
-        run(cmd)
-    end
-    # create conda environment
+    pip_specs
+end
+
+function _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
+    meta = open(read_meta, meta_file)
+    return meta !== nothing && meta.packages == specs && meta.pip_packages == pip_specs && stat(conda_env).mtime < meta.timestamp
+end
+
+function _resolve_conda_remove(conda_env)
+    cmd = MicroMamba.cmd(`remove --yes --prefix $conda_env --all`)
+    @info "Removing Conda environment" cmd.exec
+    run(cmd)
+    nothing
+end
+
+function _resolve_conda_create(conda_env, specs, channels)
     args = String[]
     for spec in specs
         if isempty(spec.versions)
@@ -304,30 +285,89 @@ function resolve(; force::Bool=false)
     cmd = MicroMamba.cmd(`create --yes --prefix $conda_env --no-channel-priority $args`)
     @info "Creating Conda environment" cmd.exec
     run(cmd)
+    nothing
+end
+
+function _resolve_pip_install(pip_specs, load_path)
+    args = String[]
+    for spec in pip_specs
+        if isempty(spec.version)
+            push!(args, spec.name)
+        else
+            push!(args, "$(spec.name) $(spec.version)")
+        end
+    end
+    old_load_path = STATE.load_path
+    try
+        STATE.resolved = true
+        STATE.load_path = load_path
+        withenv() do
+            pip = which("pip")
+            cmd = `$pip install $args`
+            @info "Installing Pip dependencies" cmd.exec
+            run(cmd)
+        end
+    finally
+        STATE.resolved = false
+        STATE.load_path = old_load_path
+    end
+    nothing
+end
+
+function resolve(; force::Bool=false)
+    # if frozen, do nothing
+    if STATE.frozen
+        return
+    end
+    # skip resolving if already resolved and LOAD_PATH unchanged
+    # this is a very fast check which avoids touching the file system
+    load_path = Base.load_path()
+    if !force && STATE.resolved && STATE.load_path == load_path
+        return
+    end
+    STATE.resolved = false
+    STATE.load_path = load_path
+    # find the topmost env in the load_path which depends on CondaPkg
+    top_env = _resolve_top_env(load_path)
+    STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
+    meta_file = joinpath(meta_dir, "meta")
+    conda_env = joinpath(meta_dir, "env")
+    # skip resolving if nothing has changed since the metadata was updated
+    if !force && isdir(conda_env) && isfile(meta_file) && _resolve_can_skip_1(load_path, meta_file)
+        STATE.resolved = true
+        return
+    end
+    # find all dependencies
+    (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(load_path)
+    # if there are any pip dependencies, we'd better install pip
+    if !isempty(pip_packages)
+        packages["pip"] = Dict("<internal>" => PkgSpec(name="pip", versions=String[]))
+        if "conda-forge" ∉ channels && "anaconda" ∉ channels
+            push!(channels, "conda-forge")
+        end
+    end
+    # sort channels
+    # (in the future we might prioritise them)
+    sort!(unique!(channels))
+    # merge dependencies
+    specs = _resolve_merge_packages(packages)
+    # merge pip dependencies
+    pip_specs = _resolve_merge_pip_packages(pip_packages)
+    # skip any conda calls if the dependencies haven't changed
+    if !force && isfile(meta_file) && isdir(conda_env) && _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
+        @info "Dependencies already up to date"
+        @goto save_meta
+    end
+    # remove environment
+    mkpath(meta_dir)
+    if isdir(conda_env)
+        _resolve_conda_remove(conda_env)
+    end
+    # create conda environment
+    _resolve_conda_create(conda_env, specs, channels)
     # install pip packages
     if !isempty(pip_specs)
-        args = String[]
-        for spec in pip_specs
-            if isempty(spec.version)
-                push!(args, spec.name)
-            else
-                push!(args, "$(spec.name) $(spec.version)")
-            end
-        end
-        old_load_path = STATE.load_path
-        try
-            STATE.resolved = true
-            STATE.load_path = load_path
-            withenv() do
-                pip = which("pip")
-                cmd = `$pip install $args`
-                @info "Installing Pip dependencies" cmd.exec
-                run(cmd)
-            end
-        finally
-            STATE.resolved = false
-            STATE.load_path = old_load_path
-        end
+        _resolve_pip_install(pip_specs, load_path)
     end
     # save metadata
     @label save_meta
