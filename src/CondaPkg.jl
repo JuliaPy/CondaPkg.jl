@@ -157,6 +157,7 @@ function resolve(; force::Bool=false)
             break
         end
     end
+    top_env == "" && error("no environment in the LOAD_PATH depends on CondaPkg")
     STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
     meta_file = joinpath(meta_dir, "meta")
     conda_env = joinpath(meta_dir, "env")
@@ -167,7 +168,7 @@ function resolve(; force::Bool=false)
             timestamp = max(meta.timestamp, stat(meta_file).mtime)
             skip = true
             for env in [meta.load_path; meta.extra_path]
-                dir = isfile(env) ? dirname(env) : isdir(env) : env : continue
+                dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
                 if isdir(dir)
                     if stat(dir).mtime > timestamp
                         skip = false
@@ -182,7 +183,6 @@ function resolve(; force::Bool=false)
                 end
             end
             if !force && skip
-                @debug "CondaPkg already up to date"
                 STATE.resolved = true
                 return
             end
@@ -194,7 +194,7 @@ function resolve(; force::Bool=false)
     pip_packages = Dict{String,Dict{String,PipPkgSpec}}() # name -> depsfile -> spec
     extra_path = String[]
     for env in [load_path; [p.source for p in values(Pkg.dependencies())]]
-        dir = isfile(env) ? dirname(env) : isdir(env) : env : continue
+        dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
         fn = joinpath(dir, "CondaPkg.toml")
         if isfile(fn)
             env in load_path || push!(extra_path, env)
