@@ -1,7 +1,7 @@
 name = "CondaPkg"
 uuid = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
 authors = ["Christopher Doris <github.com/cjdoris>"]
-version = "0.2.2"
+version = "0.2.3"
 
 [deps]
 MicroMamba = "0b3b1443-0f03-428d-bdfb-f27f9c1191ea"
