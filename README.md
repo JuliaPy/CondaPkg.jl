@@ -47,6 +47,9 @@ Instead of modifying `CondaPkg.toml` by hand, you can use these convenience func
 - `add_pip(pkg; version=nothing)` adds/replaces a pip dependency.
 - `rm_pip(pkg)` removes a pip dependency.
 
+**Note.** Do not use pip dependencies unless necessary. Pip does not handle version
+conflicts gracefully, so it is possible to get incompatible versions.
+
 ### Access the Conda environment
 
 - `envdir()` returns the root directory of the Conda environment.
