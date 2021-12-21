@@ -180,6 +180,8 @@ function _resolve_can_skip_1(load_path, meta_file)
     end
 end
 
+_convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
+
 function _resolve_find_dependencies(load_path)
     packages = Dict{String,Dict{String,PkgSpec}}() # name -> depsfile -> spec
     channels = String[]
@@ -191,15 +193,15 @@ function _resolve_find_dependencies(load_path)
         if isfile(fn)
             env in load_path || push!(extra_path, env)
             @info "Found CondaPkg dependencies" file=fn
-            toml = TOML.parsefile(fn)::Dict{String,Any}
+            toml = _convert(Dict{String,Any}, TOML.parsefile(fn))
             if haskey(toml, "channels")
-                append!(channels, toml["channels"]::Vector{Any})
+                append!(channels, _convert(Vector{String}, toml["channels"]))
             else
                 push!(channels, "conda-forge")
             end
             if haskey(toml, "deps")
-                deps = toml["deps"]::Dict{String,Any}
-                for (name::String, version::String) in deps
+                deps = _convert(Dict{String,String}, toml["deps"])
+                for (name, version) in deps
                     name = normalise_pkg(name)
                     version = strip(version)
                     versions = version == "" ? String[] : String[version]
@@ -208,10 +210,10 @@ function _resolve_find_dependencies(load_path)
                 end
             end
             if haskey(toml, "pip")
-                pip = toml["pip"]::Dict{String,Any}
+                pip = _convert(Dict{String,Any}, toml["pip"])
                 if haskey(pip, "deps")
-                    deps = pip["deps"]::Dict{String,Any}
-                    for (name::String, version::String) in deps
+                    deps = _convert(Dict{String,String}, pip["deps"])
+                    for (name, version) in deps
                         name = normalise_pip_pkg(name)
                         version = strip(version)
                         pspec = PipPkgSpec(name=name, version=version)
