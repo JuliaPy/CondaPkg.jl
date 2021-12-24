@@ -4,6 +4,7 @@ using Test
 
 @testset "Install Python" begin
     CondaPkg.add("python")
+    CondaPkg.resolve()
     CondaPkg.withenv() do
         pythonpath = joinpath(CondaPkg.envdir(), Sys.iswindows() ? "python.exe" : "bin/python")
         @test isfile(pythonpath)
