@@ -2,7 +2,9 @@
 
 # CondaPkg.jl
 
-[![CI](https://github.com/cjdoris/CondaPkg.jl/actions/workflows/tests.yml/badge.svg)](https://github.com/cjdoris/CondaPkg.jl/actions/workflows/tests.yml)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![Test Status](https://github.com/cjdoris/CondaPkg.jl/actions/workflows/tests.yml/badge.svg)](https://github.com/cjdoris/CondaPkg.jl/actions/workflows/tests.yml)
+[![Codecov](https://codecov.io/gh/cjdoris/CondaPkg.jl/branch/main/graph/badge.svg?token=1flP5128hZ)](https://codecov.io/gh/cjdoris/CondaPkg.jl)
 
 Add [Conda](https://docs.conda.io/en/latest/) dependencies to your Julia project.
 
