@@ -663,4 +663,39 @@ function rm_pip(pkg::AbstractString)
     return
 end
 
+"""
+    clean(;
+        clean_all=true, index=false, packages=false, tarballs=false, 
+        tempfiles=false, force=false, debug=true, dry_run=false, quiet=false
+    )
+Remove unused packages and caches.
+"""
+function clean(;
+    clean_all=true, index=false, packages=false, tarballs=false, 
+    tempfiles=false, force=false, debug=true, dry_run=false, quiet=false
+)
+    kwargs = [clean_all, index, packages, tarballs, tempfiles, force, 
+            debug, dry_run, quiet]
+    if !clean_all & !any(kwargs[2:5])
+        @warn(
+            "Please specify 1 or more of the conda artifacts to clean up (e.g., `index=true`)."
+        )
+    end
+    flags = [
+        "--all",
+        "--index-cache",
+        "--packages",
+        "--tarballs",
+        "--tempfiles",
+        "--force-pkgs-dirs",
+        "--debug",
+        "--dry-run",
+        "--quiet"
+    ][kwargs]
+    cmd = MicroMamba.cmd(`clean -y $flags`)
+    @info "Remove unused packages and caches " cmd.exec 
+    run(cmd)
+    nothing
+end
+
 end # module
