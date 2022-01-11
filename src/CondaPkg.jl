@@ -277,7 +277,7 @@ function _resolve_conda_create(conda_env, specs, channels)
         end
     end
     for channel in channels
-        push!(args, "--channel", channel)
+        push!(args, "-c", channel)
     end
     cmd = MicroMamba.cmd(`create -y -p $conda_env --no-channel-priority $args`)
     @info "Creating Conda environment: $cmd"
