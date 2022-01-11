@@ -32,16 +32,10 @@ const STATE = State()
     versions::Vector{String}
 end
 
-Base.:(==)(x::PkgSpec, y::PkgSpec) = (x.name == y.name) && (x.versions == y.versions)
-Base.hash(x::PkgSpec, h::UInt) = hash(x.versions, hash(x.name, h))
-
 @kwdef struct PipPkgSpec
     name::String
     version::String
 end
-
-Base.:(==)(x::PipPkgSpec, y::PipPkgSpec) = (x.name == y.name) && (x.version == y.version)
-Base.hash(x::PipPkgSpec, h::UInt) = hash(x.version, hash(x.name, h))
 
 @kwdef mutable struct Meta
     timestamp::Float64
@@ -193,7 +187,7 @@ function _resolve_find_dependencies(load_path)
         fn = joinpath(dir, "CondaPkg.toml")
         if isfile(fn)
             env in load_path || push!(extra_path, env)
-            @info "Found CondaPkg dependencies" file=fn
+            @info "Found CondaPkg dependencies: $fn"
             toml = _convert(Dict{String,Any}, TOML.parsefile(fn))
             if haskey(toml, "channels")
                 append!(channels, _convert(Vector{String}, toml["channels"]))
@@ -265,8 +259,8 @@ function _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
 end
 
 function _resolve_conda_remove(conda_env)
-    cmd = MicroMamba.cmd(`remove --yes --prefix $conda_env --all`)
-    @info "Removing Conda environment" cmd.exec
+    cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`)
+    @info "Removing Conda environment: $cmd"
     run(cmd)
     nothing
 end
@@ -285,8 +279,8 @@ function _resolve_conda_create(conda_env, specs, channels)
     for channel in channels
         push!(args, "--channel", channel)
     end
-    cmd = MicroMamba.cmd(`create --yes --prefix $conda_env --no-channel-priority $args`)
-    @info "Creating Conda environment" cmd.exec
+    cmd = MicroMamba.cmd(`create -y -p $conda_env --no-channel-priority $args`)
+    @info "Creating Conda environment: $cmd"
     run(cmd)
     nothing
 end
@@ -307,7 +301,7 @@ function _resolve_pip_install(pip_specs, load_path)
         withenv() do
             pip = which("pip")
             cmd = `$pip install $args`
-            @info "Installing Pip dependencies" cmd.exec
+            @info "Installing Pip dependencies: $cmd"
             run(cmd)
         end
     finally
@@ -389,32 +383,33 @@ function resolve(; force::Bool=false)
     return
 end
 
-function shell(cmd)
-    @static if Sys.iswindows()
-        shell = "powershell"
-        exportvarregex = r"^\$Env:([^ =]+) *= *\"(.*)\"$"
-        setvarregex = exportvarregex
-        unsetvarregex = r"^(Remove-Item +\$Env:/|Remove-Variable +)([^ =]+)$"
-        runscriptregex = r"^\. +\"(.*)\"$"
-    else
-        shell = "posix"
-        exportvarregex = r"^\\?export ([^ =]+)='(.*)'$"
-        setvarregex = r"^([^ =]+)='(.*)'"
-        unsetvarregex = r"^\\?unset +([^ ]+)$"
-        runscriptregex = r"^\\?\. +\"(.*)\"$"
-    end
-    for line in eachline(MicroMamba.cmd(`shell -s $shell $cmd -p $(envdir())`))
-        if (m = match(exportvarregex, line)) !== nothing
-            @debug "Setting environment" key=m.captures[1] value=m.captures[2]
-            ENV[m.captures[1]] = m.captures[2]
-        elseif (m = match(unsetvarregex, line)) !== nothing
-            @debug "Deleting environment" key=m.captures[1]
-            delete!(ENV, m.captures[1])
-        else
-            @debug "Ignoring shell $cmd line" line
-        end
-    end
-end
+# This used to be used by activate!().
+# function shell(cmd)
+#     if Sys.iswindows()
+#         shell = "powershell"
+#         exportvarregex = r"^\$Env:([^ =]+) *= *\"(.*)\"$"
+#         setvarregex = exportvarregex
+#         unsetvarregex = r"^(Remove-Item +\$Env:/|Remove-Variable +)([^ =]+)$"
+#         runscriptregex = r"^\. +\"(.*)\"$"
+#     else
+#         shell = "posix"
+#         exportvarregex = r"^\\?export ([^ =]+)='(.*)'$"
+#         setvarregex = r"^([^ =]+)='(.*)'"
+#         unsetvarregex = r"^\\?unset +([^ ]+)$"
+#         runscriptregex = r"^\\?\. +\"(.*)\"$"
+#     end
+#     for line in eachline(MicroMamba.cmd(`shell -s $shell $cmd -p $(envdir())`))
+#         if (m = match(exportvarregex, line)) !== nothing
+#             @debug "Setting environment" key=m.captures[1] value=m.captures[2]
+#             ENV[m.captures[1]] = m.captures[2]
+#         elseif (m = match(unsetvarregex, line)) !== nothing
+#             @debug "Deleting environment" key=m.captures[1]
+#             delete!(ENV, m.captures[1])
+#         else
+#             @debug "Ignoring shell $cmd line" line
+#         end
+#     end
+# end
 
 """
     activate!(env)
@@ -484,7 +479,7 @@ The directories containing binaries in the Conda environment.
 """
 function bindirs()
     e = envdir()
-    @static if Sys.iswindows()
+    if Sys.iswindows()
         ("$e", "$e\\Library\\mingw-w64\\bin", "$e\\Library\\usr\\bin", "$e\\Library\\bin", "$e\\Scripts", "$e\\bin")
     else
         ("$e/bin", #="$(micromamba_root_prefix)/condabin"=#)
