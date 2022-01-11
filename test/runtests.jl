@@ -73,4 +73,10 @@ using Test
         @test !isfile(curl_path)
     end
 
+    
+    @testset "clean()" begin
+        # verify that clean runs without errors
+        CondaPkg.clean()
+    end
+
 end
