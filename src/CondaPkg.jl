@@ -668,7 +668,7 @@ end
 Remove unused packages and caches.
 """
 function gc()
-    cmd = MicroMamba.cmd(`clean -y -all`)
+    cmd = MicroMamba.cmd(`clean -y --all`)
     @info "Remove unused packages and caches " cmd.exec 
     run(cmd)
     nothing
