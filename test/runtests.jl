@@ -74,9 +74,9 @@ using Test
     end
 
     
-    @testset "clean()" begin
-        # verify that clean runs without errors
-        CondaPkg.clean()
+    @testset "gc()" begin
+        # verify that micromamba clean runs without errors
+        CondaPkg.gc()
     end
 
 end

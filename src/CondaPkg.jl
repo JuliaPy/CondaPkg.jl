@@ -664,19 +664,19 @@ function rm_pip(pkg::AbstractString)
 end
 
 """
-    clean(;
-        clean_all=true, index=false, packages=false, tarballs=false, 
+    gc(;
+        all=true, index=false, packages=false, tarballs=false, 
         tempfiles=false, force=false, debug=true, dry_run=false, quiet=false
     )
 Remove unused packages and caches.
 """
-function clean(;
-    clean_all=true, index=false, packages=false, tarballs=false, 
+function gc(;
+    all=true, index=false, packages=false, tarballs=false, 
     tempfiles=false, force=false, debug=true, dry_run=false, quiet=false
 )
-    kwargs = [clean_all, index, packages, tarballs, tempfiles, force, 
+    kwargs = [all, index, packages, tarballs, tempfiles, force, 
             debug, dry_run, quiet]
-    if !clean_all & !any(kwargs[2:5])
+    if all & !any(kwargs[2:5])
         @warn(
             "Please specify 1 or more of the conda artifacts to clean up (e.g., `index=true`)."
         )
