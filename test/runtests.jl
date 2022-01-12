@@ -73,4 +73,10 @@ using Test
         @test !isfile(curl_path)
     end
 
+    
+    @testset "gc()" begin
+        # verify that micromamba clean runs without errors
+        CondaPkg.gc()
+    end
+
 end
