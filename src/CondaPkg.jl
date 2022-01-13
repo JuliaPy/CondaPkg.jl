@@ -674,4 +674,15 @@ function rm_pip(pkg::AbstractString)
     return
 end
 
+"""
+    gc()
+Remove unused packages and caches.
+"""
+function gc()
+    cmd = MicroMamba.cmd(`clean -y --all`)
+    @info "Remove unused packages and caches " cmd.exec 
+    run(cmd)
+    nothing
+end
+
 end # module
