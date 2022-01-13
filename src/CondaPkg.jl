@@ -676,12 +676,12 @@ end
 
 """
     gc()
+
 Remove unused packages and caches.
 """
-function gc()
+function gc(; io::IO=stdout)
     cmd = MicroMamba.cmd(`clean -y --all`)
-    @info "Remove unused packages and caches " cmd.exec 
-    run(cmd)
+    _run(io, cmd, "Removing unused caches")
     nothing
 end
 
