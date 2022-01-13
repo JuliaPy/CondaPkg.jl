@@ -177,7 +177,7 @@ end
 
 _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 
-function _resolve_find_dependencies(load_path)
+function _resolve_find_dependencies(io, load_path)
     packages = Dict{String,Dict{String,PkgSpec}}() # name -> depsfile -> spec
     channels = String[]
     pip_packages = Dict{String,Dict{String,PipPkgSpec}}() # name -> depsfile -> spec
@@ -187,7 +187,7 @@ function _resolve_find_dependencies(load_path)
         fn = joinpath(dir, "CondaPkg.toml")
         if isfile(fn)
             env in load_path || push!(extra_path, env)
-            @info "Found CondaPkg dependencies: $fn"
+            _log(io, "Found dependencies: $fn")
             toml = _convert(Dict{String,Any}, TOML.parsefile(fn))
             if haskey(toml, "channels")
                 append!(channels, _convert(Vector{String}, toml["channels"]))
@@ -258,14 +258,13 @@ function _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
     return meta !== nothing && meta.packages == specs && meta.pip_packages == pip_specs && stat(conda_env).mtime < meta.timestamp
 end
 
-function _resolve_conda_remove(conda_env)
+function _resolve_conda_remove(io, conda_env)
     cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`)
-    @info "Removing Conda environment: $cmd"
-    run(cmd)
+    _run(io, cmd, "Removing environment")
     nothing
 end
 
-function _resolve_conda_create(conda_env, specs, channels)
+function _resolve_conda_create(io, conda_env, specs, channels)
     args = String[]
     for spec in specs
         if isempty(spec.versions)
@@ -280,12 +279,11 @@ function _resolve_conda_create(conda_env, specs, channels)
         push!(args, "-c", channel)
     end
     cmd = MicroMamba.cmd(`create -y -p $conda_env --no-channel-priority $args`)
-    @info "Creating Conda environment: $cmd"
-    run(cmd)
+    _run(io, cmd, "Creating environment")
     nothing
 end
 
-function _resolve_pip_install(pip_specs, load_path)
+function _resolve_pip_install(io, pip_specs, load_path)
     args = String[]
     for spec in pip_specs
         if isempty(spec.version)
@@ -301,8 +299,7 @@ function _resolve_pip_install(pip_specs, load_path)
         withenv() do
             pip = which("pip")
             cmd = `$pip install $args`
-            @info "Installing Pip dependencies: $cmd"
-            run(cmd)
+            _run(io, cmd, "Installing Pip dependencies")
         end
     finally
         STATE.resolved = false
@@ -311,7 +308,21 @@ function _resolve_pip_install(pip_specs, load_path)
     nothing
 end
 
-function resolve(; force::Bool=false)
+function _log(io::IO, args...)
+    printstyled(io, "    CondaPkg ", color=:light_green)
+    println(io, args...)
+    flush(io)
+end
+
+function _run(io::IO, cmd::Cmd, args...)
+    _log(io, args...)
+    for x in cmd.exec
+        println(io, "             ", x)
+    end
+    run(cmd)
+end
+
+function resolve(; force::Bool=false, io::IO=stdout)
     # if frozen, do nothing
     if STATE.frozen
         return
@@ -335,7 +346,7 @@ function resolve(; force::Bool=false)
         return
     end
     # find all dependencies
-    (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(load_path)
+    (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(io, load_path)
     # if there are any pip dependencies, we'd better install pip
     if !isempty(pip_packages)
         packages["pip"] = Dict("<internal>" => PkgSpec(name="pip", versions=String[]))
@@ -352,19 +363,19 @@ function resolve(; force::Bool=false)
     pip_specs = _resolve_merge_pip_packages(pip_packages)
     # skip any conda calls if the dependencies haven't changed
     if !force && isfile(meta_file) && isdir(conda_env) && _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
-        @info "Dependencies already up to date"
+        _log(io, "Dependencies already up to date")
         @goto save_meta
     end
     # remove environment
     mkpath(meta_dir)
     if isdir(conda_env)
-        _resolve_conda_remove(conda_env)
+        _resolve_conda_remove(io, conda_env)
     end
     # create conda environment
-    _resolve_conda_create(conda_env, specs, channels)
+    _resolve_conda_create(io, conda_env, specs, channels)
     # install pip packages
     if !isempty(pip_specs)
-        _resolve_pip_install(pip_specs, load_path)
+        _resolve_pip_install(io, pip_specs, load_path)
     end
     # save metadata
     @label save_meta
@@ -547,7 +558,7 @@ Show the status of the current environment.
 
 This does not include dependencies from nested environments.
 """
-function status(io::IO=stdout)
+function status(; io::IO=stdout)
     dfile = cur_deps_file()
     printstyled(io, "Status", color=:light_green)
     print(io, " ")

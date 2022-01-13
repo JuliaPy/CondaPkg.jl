@@ -1,25 +1,27 @@
 using CondaPkg
 using Test
 
+status() = sprint(io -> CondaPkg.status(io=io))
+
 @testset "CondaPkg" begin
 
     @testset "add/remove channel" begin
-        @test !occursin("conda-forge", sprint(CondaPkg.status))
+        @test !occursin("conda-forge", status())
         CondaPkg.add_channel("conda-forge")
-        @test occursin("conda-forge", sprint(CondaPkg.status))
+        @test occursin("conda-forge", status())
         CondaPkg.rm_channel("conda-forge")
-        @test !occursin("conda-forge", sprint(CondaPkg.status))
+        @test !occursin("conda-forge", status())
     end
 
     @testset "install python" begin
-        @test !occursin("python", sprint(CondaPkg.status))
+        @test !occursin("python", status())
         CondaPkg.add("python")
         CondaPkg.resolve()
         CondaPkg.withenv() do
             pythonpath = joinpath(CondaPkg.envdir(), Sys.iswindows() ? "python.exe" : "bin/python")
             @test isfile(pythonpath)
         end
-        @test occursin("python", sprint(CondaPkg.status))
+        @test occursin("python", status())
     end
 
     @testset "install/remove python package" begin
