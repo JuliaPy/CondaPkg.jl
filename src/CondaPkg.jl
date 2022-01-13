@@ -259,7 +259,7 @@ function _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
 end
 
 function _resolve_conda_remove(io, conda_env)
-    cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`)
+    cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`, io=io)
     _run(io, cmd, "Removing environment")
     nothing
 end
@@ -278,7 +278,7 @@ function _resolve_conda_create(io, conda_env, specs, channels)
     for channel in channels
         push!(args, "-c", channel)
     end
-    cmd = MicroMamba.cmd(`create -y -p $conda_env --no-channel-priority $args`)
+    cmd = MicroMamba.cmd(`create -y -p $conda_env --no-channel-priority $args`, io=io)
     _run(io, cmd, "Creating environment")
     nothing
 end
@@ -309,7 +309,7 @@ function _resolve_pip_install(io, pip_specs, load_path)
 end
 
 function _log(io::IO, args...)
-    printstyled(io, "    CondaPkg ", color=:light_green)
+    printstyled(io, "    CondaPkg ", color=:light_green, bold=true)
     println(io, args...)
     flush(io)
 end
@@ -680,7 +680,7 @@ end
 Remove unused packages and caches.
 """
 function gc(; io::IO=stdout)
-    cmd = MicroMamba.cmd(`clean -y --all`)
+    cmd = MicroMamba.cmd(`clean -y --all`, io=io)
     _run(io, cmd, "Removing unused caches")
     nothing
 end
