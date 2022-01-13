@@ -309,7 +309,7 @@ function _resolve_pip_install(io, pip_specs, load_path)
 end
 
 function _log(io::IO, args...)
-    printstyled(io, "    CondaPkg ", color=:light_green, bold=true)
+    printstyled(io, "    CondaPkg ", color=:green, bold=true)
     println(io, args...)
     flush(io)
 end
