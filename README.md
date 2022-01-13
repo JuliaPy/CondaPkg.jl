@@ -50,6 +50,7 @@ Instead of modifying `CondaPkg.toml` by hand, you can use these convenience func
 - `rm_channel(channel)` removes a channel.
 - `add_pip(pkg; version=nothing)` adds/replaces a pip dependency.
 - `rm_pip(pkg)` removes a pip dependency.
+- `gc()` remove unused caches to save disk space.
 
 **Note.** Do not use pip dependencies unless necessary. Pip does not handle version
 conflicts gracefully, so it is possible to get incompatible versions.
