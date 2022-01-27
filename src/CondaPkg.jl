@@ -704,4 +704,6 @@ function gc(; io::IO=stderr)
     nothing
 end
 
+include("PkgREPL.jl")
+
 end # module
