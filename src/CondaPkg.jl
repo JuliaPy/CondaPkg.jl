@@ -260,7 +260,7 @@ end
 
 function _resolve_conda_remove(io, conda_env)
     cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`, io=io)
-    _run(io, cmd, "Removing environment")
+    _run(io, cmd, "Removing environment", flags=["-y", "--all"])
     nothing
 end
 
@@ -279,7 +279,7 @@ function _resolve_conda_create(io, conda_env, specs, channels)
         push!(args, "-c", channel)
     end
     cmd = MicroMamba.cmd(`create -y -p $conda_env --no-channel-priority $args`, io=io)
-    _run(io, cmd, "Creating environment")
+    _run(io, cmd, "Creating environment", flags=["-y", "--no-channel-priority"])
     nothing
 end
 
@@ -314,10 +314,21 @@ function _log(io::IO, args...)
     flush(io)
 end
 
-function _run(io::IO, cmd::Cmd, args...)
+function _run(io::IO, cmd::Cmd, args...; flags=String[])
     _log(io, args...)
-    for x in cmd.exec
-        println(io, "             ", x)
+    i = 1
+    while i ≤ length(cmd.exec)
+        x = cmd.exec[i]
+        print(io, "             ")
+        printstyled(io, x, color=:light_black)
+        i += 1
+        if 2 < i ≤ length(cmd.exec) && startswith(x, "-") && x ∉ flags
+            x = cmd.exec[i]
+            print(io, " ")
+            printstyled(io, x, color=:light_black)
+            i += 1
+        end
+        println(io)
     end
     run(cmd)
 end
