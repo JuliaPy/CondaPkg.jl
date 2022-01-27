@@ -472,6 +472,7 @@ function activate!(e)
     d = envdir()
     path_sep = Sys.iswindows() ? ';' : ':'
     new_path = join(bindirs(), path_sep)
+    new_path = "$(new_path)$(path_sep)$(dirname(MicroMamba.executable()))"
     if old_path != ""
         new_path = "$(new_path)$(path_sep)$(old_path)"
     end
@@ -480,6 +481,7 @@ function activate!(e)
     e["CONDA_DEFAULT_ENV"] = d
     e["CONDA_SHLVL"] = "1"
     e["CONDA_PROMPT_MODIFIER"] = "($d) "
+    e["MAMBA_ROOT_PREFIX"] = MicroMamba.root_dir()
     e
 end
 
