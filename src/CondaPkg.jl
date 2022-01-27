@@ -322,7 +322,7 @@ function _run(io::IO, cmd::Cmd, args...)
     run(cmd)
 end
 
-function resolve(; force::Bool=false, io::IO=stdout)
+function resolve(; force::Bool=false, io::IO=stderr)
     # if frozen, do nothing
     if STATE.frozen
         return
@@ -558,7 +558,7 @@ Show the status of the current environment.
 
 This does not include dependencies from nested environments.
 """
-function status(; io::IO=stdout)
+function status(; io::IO=stderr)
     dfile = cur_deps_file()
     printstyled(io, "Status", color=:light_green)
     print(io, " ")
@@ -679,7 +679,7 @@ end
 
 Remove unused packages and caches.
 """
-function gc(; io::IO=stdout)
+function gc(; io::IO=stderr)
     cmd = MicroMamba.cmd(`clean -y --all`, io=io)
     _run(io, cmd, "Removing unused caches")
     nothing
