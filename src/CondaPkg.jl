@@ -314,20 +314,28 @@ function _log(io::IO, args...)
     flush(io)
 end
 
+function _cmdlines(cmd, flags)
+    lines = String[]
+    isarg = false
+    for x in cmd.exec
+        if isarg
+            lines[end] *= " $x"
+            isarg = false
+        else
+            push!(lines, x)
+            isarg = length(lines) > 1 && startswith(x, "-") && x ∉ flags
+        end
+    end
+    lines
+end
+
 function _run(io::IO, cmd::Cmd, args...; flags=String[])
     _log(io, args...)
-    i = 1
-    while i ≤ length(cmd.exec)
-        x = cmd.exec[i]
-        print(io, "             ")
-        printstyled(io, x, color=:light_black)
-        i += 1
-        if 2 < i ≤ length(cmd.exec) && startswith(x, "-") && x ∉ flags
-            x = cmd.exec[i]
-            print(io, " ")
-            printstyled(io, x, color=:light_black)
-            i += 1
-        end
+    lines = _cmdlines(cmd, flags)
+    for (i, line) in enumerate(lines)
+        pre = i==length(lines) ? "└ " : "│ "
+        print(io, "             ", pre)
+        printstyled(io, line, color=:light_black)
         println(io)
     end
     run(cmd)
