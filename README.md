@@ -55,6 +55,20 @@ Instead of modifying `CondaPkg.toml` by hand, you can use these convenience func
 **Note.** Do not use pip dependencies unless necessary. Pip does not handle version
 conflicts gracefully, so it is possible to get incompatible versions.
 
+### Specify dependencies in the Pkg REPL
+
+You can also use the Pkg REPL to modify your Conda dependencies. Find out more by typing
+`?conda` into the Pkg REPL.
+
+```
+pkg> conda status
+pkg> conda add [-c|--channel] [--pip] [-r|--resolve] pkg ...
+pkg> conda rm [-c|--channel] [--pip] [-r|--resolve] pkg ...
+pkg> conda gc
+pkg> conda run cmd ...
+pkg> conda [-f|--force] resolve
+```
+
 ### Access the Conda environment
 
 - `envdir()` returns the root directory of the Conda environment.
