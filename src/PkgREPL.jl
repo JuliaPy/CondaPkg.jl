@@ -4,6 +4,59 @@ import ..CondaPkg
 import Pkg
 import Markdown
 
+### parsing
+
+function parse_pkg(x::String)
+    m = match(r"^\s*([_a-zA-Z][-_A-Za-z0-9]+)\s*([<>=0-9].*)?$", x)
+    m === nothing && error("invalid conda package: $x")
+    name = m.captures[1]
+    version = m.captures[2]
+    if version === nothing
+        version = ""
+    end
+    CondaPkg.PkgSpec(name=name, version=version)
+end
+
+function parse_pip_pkg(x::String)
+    m = match(r"^\s*([_a-zA-Z][-_A-Za-z0-9]+)\s*([~!<>=@].*)?$", x)
+    m === nothing && error("invalid conda package: $x")
+    name = m.captures[1]
+    version = m.captures[2]
+    if version === nothing
+        version = ""
+    end
+    CondaPkg.PipPkgSpec(name=name, version=version)
+end
+
+function parse_channel(x::String)
+    CondaPkg.ChannelSpec(name=x)
+end
+
+### options
+
+const channel_opt = Pkg.REPLMode.OptionDeclaration([
+    :name => "channel",
+    :short_name => "c",
+    :api => :mode => :channel,
+])
+
+const pip_opt = Pkg.REPLMode.OptionDeclaration([
+    :name => "pip",
+    :api => :mode => :pip,
+])
+
+const resolve_opt = Pkg.REPLMode.OptionDeclaration([
+    :name => "resolve",
+    :short_name => "r",
+    :api => :resolve => true,
+])
+
+const force_opt = Pkg.REPLMode.OptionDeclaration([
+    :name => "force",
+    :short_name => "f",
+    :api => :force => true,
+])
+
 ### status
 
 function status()
@@ -12,7 +65,7 @@ end
 
 const status_help = Markdown.parse("""
 ```
-conda [st|status]
+conda st|status
 ```
 
 Display information about the Conda environment.
@@ -28,13 +81,13 @@ const status_spec = Pkg.REPLMode.CommandSpec(
 
 ### resolve
 
-function resolve()
-    CondaPkg.resolve()
+function resolve(; force=false)
+    CondaPkg.resolve(force=force)
 end
 
 const resolve_help = Markdown.parse("""
 ```
-conda resolve
+conda [-f|--force] resolve
 ```
 
 Ensure all Conda dependencies are installed into the environment.
@@ -45,6 +98,7 @@ const resolve_spec = Pkg.REPLMode.CommandSpec(
     api = resolve,
     help = resolve_help,
     description = "ensure all Conda dependencies are installed",
+    option_spec = [force_opt],
 )
 
 ### add
@@ -52,15 +106,15 @@ const resolve_spec = Pkg.REPLMode.CommandSpec(
 function add(args; mode=:package, resolve=false)
     if mode == :package
         for arg in args
-            CondaPkg.add(arg)
+            CondaPkg.add(parse_pkg(arg))
         end
     elseif mode == :channel
         for arg in args
-            CondaPkg.add_channel(arg)
+            CondaPkg.add(parse_channel(arg))
         end
     elseif mode == :pip
         for arg in args
-            CondaPkg.add_pip(arg)
+            CondaPkg.add(parse_pip_pkg(arg))
         end
     end
     if resolve
@@ -81,35 +135,15 @@ This adds Conda packages by default. Use `--channel` or `-c` to add channels ins
 The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
 flag to force resolve.
 
-!!! note
-
-    Currently there is no syntax to specify the version of a package.
-    You can use `CondaPkg.add()` instead.
-
 **Examples**
 ```
 pkg> conda add python
+pkg> conda add python>=3.5,<4
 pkg> conda add --channel anaconda
 pkg> conda add --pip build
+pkg> conda add --pip build~=0.7.0
 ```
 """)
-
-const channel_opt = Pkg.REPLMode.OptionDeclaration([
-    :name => "channel",
-    :short_name => "c",
-    :api => :mode => :channel,
-])
-
-const pip_opt = Pkg.REPLMode.OptionDeclaration([
-    :name => "pip",
-    :api => :mode => :pip,
-])
-
-const resolve_opt = Pkg.REPLMode.OptionDeclaration([
-    :name => "resolve",
-    :short_name => "r",
-    :api => :resolve => true,
-])
 
 const add_spec = Pkg.REPLMode.CommandSpec(
     name = "add",
@@ -126,15 +160,15 @@ const add_spec = Pkg.REPLMode.CommandSpec(
 function rm(args; mode=:package, resolve=false)
     if mode == :package
         for arg in args
-            CondaPkg.rm(arg)
+            CondaPkg.rm(parse_pkg(arg))
         end
     elseif mode == :channel
         for arg in args
-            CondaPkg.rm_channel(arg)
+            CondaPkg.rm(parse_channel(arg))
         end
     elseif mode == :pip
         for arg in args
-            CondaPkg.rm_pip(arg)
+            CondaPkg.rm(parse_pip_pkg(arg))
         end
     end
     if resolve
@@ -144,7 +178,7 @@ end
 
 const rm_help = Markdown.parse("""
 ```
-conda rm [-c|--channel] [--pip] [-r|--resolve] pkg ...
+conda rm|remove [-c|--channel] [--pip] [-r|--resolve] pkg ...
 ```
 
 Remove packages or channels from the environment.
@@ -154,11 +188,6 @@ or `--pip` to remove Pip packages.
 
 The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
 flag to force resolve.
-
-!!! note
-
-    Currently there is no syntax to specify the version of a package.
-    You can use `CondaPkg.rm()` instead.
 
 **Examples**
 ```

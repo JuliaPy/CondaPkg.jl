@@ -27,14 +27,36 @@ end
 
 const STATE = State()
 
-@kwdef struct PkgSpec
+struct PkgSpec
     name::String
     versions::Vector{String}
 end
+function PkgSpec(; name, versions=String[], version="")
+    name = normalise_pkg(convert(String, name))
+    versions = convert(Vector{String}, versions)
+    version = convert(String, version)
+    if strip(version) != ""
+        push!(versions, version)
+    end
+    PkgSpec(name, versions)
+end
 
-@kwdef struct PipPkgSpec
+struct ChannelSpec
+    name::String
+end
+function ChannelSpec(; name)
+    name = convert(String, name)
+    ChannelSpec(name)
+end
+
+struct PipPkgSpec
     name::String
     version::String
+end
+function PipPkgSpec(; name, version="")
+    name = normalise_pip_pkg(convert(String, name))
+    version = convert(String, version)
+    PipPkgSpec(name, version)
 end
 
 @kwdef mutable struct Meta
@@ -199,8 +221,7 @@ function _resolve_find_dependencies(io, load_path)
                 for (name, version) in deps
                     name = normalise_pkg(name)
                     version = strip(version)
-                    versions = version == "" ? String[] : String[version]
-                    pspec = PkgSpec(name=name, versions=versions)
+                    pspec = PkgSpec(name=name, version=version)
                     get!(Dict{String,PkgSpec}, packages, name)[fn] = pspec
                 end
             end
@@ -607,6 +628,11 @@ function add(pkg::AbstractString; version::Union{AbstractString,Nothing}=nothing
     return
 end
 
+add(pkg::PkgSpec) = add(pkg.name, version=join(pkg.versions,","))
+add(pkg::PipPkgSpec) = add_pip(pkg.name, version=pkg.version)
+add(pkg::ChannelSpec) = add_channel(pkg.name)
+add(pkgs::AbstractVector) = for pkg in pkgs; add(pkg); end
+
 """
     rm(pkg)
 
@@ -623,6 +649,11 @@ function rm(pkg::AbstractString)
     STATE.resolved = false
     return
 end
+
+rm(pkg::PkgSpec) = rm(pkg.name)
+rm(pkg::PipPkgSpec) = rm_pip(pkg.name)
+rm(pkg::ChannelSpec) = rm_channel(pkg.name)
+rm(pkgs::AbstractVector) = for pkg in pkgs; rm(pkg); end
 
 """
     add_channel(channel)
