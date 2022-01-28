@@ -34,7 +34,7 @@ dependencies. For example:
 julia> using CondaPkg
 julia> # now press ] to enter the Pkg REPL
 pkg> conda add python perl       # adds conda packages
-pkg> conda add --pip bulid       # adds pip packages
+pkg> conda add --pip build       # adds pip packages
 pkg> conda rm perl               # removes conda packages
 pkg> conda run python --version  # runs the given command in the conda environment
 ```
@@ -43,8 +43,8 @@ For more information do `?` or `?conda` from the Pkg REPL.
 
 **Note:** Adding and removing dependencies only edits the `CondaPkg.toml` file, it does
 not immediately modify the Conda environment. The dependencies are installed when required,
-such as by the `conda run` command above. You can do `conda resolve` to resolve
-dependencies.
+such as by the `conda run` command above. In the above example, `perl` was never installed.
+You can do `conda resolve` to resolve dependencies.
 
 **Note:** We recommend against adding Pip packages unless necessary - if there is a
 corresponding Conda package then use that. Pip does not handle version conflicts
@@ -65,7 +65,7 @@ These functions are intended to be used interactively when the Pkg REPL is not a
 
 ### CondaPkg.toml
 
-Finally, you may edit the CondaPkg.toml file directly. Here is a complete example:
+Finally, you may edit the `CondaPkg.toml` file directly. Here is a complete example:
 ```toml
 channels = ["anaconda", "conda-forge"]
 
