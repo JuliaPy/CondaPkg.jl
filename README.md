@@ -8,9 +8,15 @@
 
 Add [Conda](https://docs.conda.io/en/latest/) dependencies to your Julia project.
 
-You declare Conda dependencies in a `CondaPkg.toml` file, and CondaPkg will install those
-dependencies into a Conda environment. This environment is specific to the current Julia
-project, so there are no cross-project version conflicts.
+## Overview
+
+This package is a lot like Pkg from the Julia standard library, except that it is for
+managing Conda packages.
+- Conda dependencies are defined in `CondaPkg.toml`, which is analogous to `Project.toml`.
+- CondaPkg will install these dependencies into a Conda environment specific to the current
+  Julia project. Hence dependencies are isolated from other projects or environments.
+- Functions like `add`, `rm`, `status` exist to edit the dependencies programatically.
+- Or you can do `pkg> conda add some_package` to edit the dependencies from the Pkg REPL.
 
 ## Install
 
@@ -18,30 +24,36 @@ project, so there are no cross-project version conflicts.
 pkg> add CondaPkg
 ```
 
-## Usage
+## Specifying dependencies
 
-### CondaPkg.toml
+### Pkg REPL
 
-To specify Conda dependencies, create a file called `CondaPkg.toml` in your Julia
-project.
-
-For example:
-```toml
-[deps]
-python = ">=3.5,<4"
-perl = ">=5,<6"
+The simplest way to specify Conda dependencies is through the Pkg REPL, just like for Julia
+dependencies. For example:
+```
+julia> using CondaPkg
+julia> # now press ] to enter the Pkg REPL
+pkg> conda add python perl       # adds conda packages
+pkg> conda add --pip bulid       # adds pip packages
+pkg> conda rm perl               # removes conda packages
+pkg> conda run python --version  # runs the given command in the conda environment
 ```
 
-The next time dependencies are resolved, a Conda environment specific to your current Julia
-project is created with these dependencies.
+For more information do `?` or `?conda` from the Pkg REPL.
 
-Dependencies from `CondaPkg.toml` files in any packages installed in the current project are
-also included. This means that package authors can write a `CondaPkg.toml` file and
-dependencies should just work.
+**Note:** Adding and removing dependencies only edits the `CondaPkg.toml` file, it does
+not immediately modify the Conda environment. The dependencies are installed when required,
+such as by the `conda run` command above. You can do `conda resolve` to resolve
+dependencies.
 
-### Specify dependencies interactively
+**Note:** We recommend against adding Pip packages unless necessary - if there is a
+corresponding Conda package then use that. Pip does not handle version conflicts
+gracefully, so it is possible to get incompatible versions.
 
-Instead of modifying `CondaPkg.toml` by hand, you can use these convenience functions.
+### Functions
+
+These functions are intended to be used interactively when the Pkg REPL is not available
+(e.g. if you are in a notebook):
 
 - `status()` shows the Conda dependencies of the current project.
 - `add(pkg; version=nothing)` adds/replaces a dependency.
@@ -50,26 +62,27 @@ Instead of modifying `CondaPkg.toml` by hand, you can use these convenience func
 - `rm_channel(channel)` removes a channel.
 - `add_pip(pkg; version=nothing)` adds/replaces a pip dependency.
 - `rm_pip(pkg)` removes a pip dependency.
-- `gc()` remove unused caches to save disk space.
 
-**Note.** Do not use pip dependencies unless necessary. Pip does not handle version
-conflicts gracefully, so it is possible to get incompatible versions.
+### CondaPkg.toml
 
-### Specify dependencies in the Pkg REPL
+Finally, you may edit the CondaPkg.toml file directly. Here is a complete example:
+```toml
+channels = ["anaconda", "conda-forge"]
 
-You can also use the Pkg REPL to modify your Conda dependencies. Find out more by typing
-`?conda` into the Pkg REPL.
+[deps]
+# Conda package names and versions
+python = ">=3.5,<4"
+perl = ""
 
+[pip.deps]
+# Pip package names and versions
+build = "~=0.7.0"
+six = ""
+some-remote-package = "@ https://example.com/foo.zip"
+some-local-package = "@ ./foo.zip"
 ```
-pkg> conda status
-pkg> conda add [-c|--channel] [--pip] [-r|--resolve] pkg ...
-pkg> conda rm [-c|--channel] [--pip] [-r|--resolve] pkg ...
-pkg> conda gc
-pkg> conda run cmd ...
-pkg> conda [-f|--force] resolve
-```
 
-### Access the Conda environment
+## Access the Conda environment
 
 - `envdir()` returns the root directory of the Conda environment.
 - `withenv(f)` returns `f()` evaluated in the Conda environment.
@@ -77,6 +90,7 @@ pkg> conda [-f|--force] resolve
 - `resolve(; force=false)` resolves dependencies. You don't normally need to call this
   because the other API functions will automatically resolve first. Pass `force=true` if
   you change a `CondaPkg.toml` file mid-session.
+- `gc()` removes unused caches to save disk space.
 
 ### Examples
 
@@ -99,11 +113,24 @@ CondaPkg.withenv() do
 end
 ```
 
-### FAQs
+## Details
 
-#### Conda channels?
+### Conda packages
 
-By default, packages are installed from the `conda-forge` channel.
+These are identified by a name and version.
 
-You can instead specify a list of channels to use under the `channels` key, or use the
-`add_channel` function. If `channels` is not specified, it defaults to `["conda-forge"]`.
+The version must be a Conda version specifier, or be blank.
+
+### Conda channels
+
+If not specified in `CondaPkg.toml`, packages are installed from the `conda-forge` channel.
+
+### Pip packages
+
+These are identified by a name and version.
+
+The version must be a Pip version specifier, or be blank.
+
+Direct references such as `foo @ http://example.com/foo.zip` are allowed. As a special case
+if the URL starts with `.` then it is interpreted as a path relative to the directory
+containing the `CondaPkg.toml` file.
