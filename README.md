@@ -33,6 +33,7 @@ dependencies. For example:
 ```
 julia> using CondaPkg
 julia> # now press ] to enter the Pkg REPL
+pkg> conda status                # see what we have installed
 pkg> conda add python perl       # adds conda packages
 pkg> conda add --pip build       # adds pip packages
 pkg> conda rm perl               # removes conda packages

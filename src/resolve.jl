@@ -56,31 +56,17 @@ function _resolve_find_dependencies(io, load_path)
         if isfile(fn)
             env in load_path || push!(extra_path, env)
             _log(io, "Found dependencies: $fn")
-            toml = _convert(Dict{String,Any}, TOML.parsefile(fn))
-            if haskey(toml, "channels")
-                chans = _convert(Vector{String}, toml["channels"])
-                for name in chans
-                    push!(channels, ChannelSpec(name))
-                end
-            else
+            pkgs, chans, pippkgs = parse_deps(TOML.parsefile(fn))
+            for pkg in pkgs
+                get!(Dict{String,PkgSpec}, packages, pkg.name)[fn] = pkg
+            end
+            if isempty(chans)
                 push!(channels, ChannelSpec("conda-forge"))
+            else
+                append!(channels, chans)
             end
-            if haskey(toml, "deps")
-                deps = _convert(Dict{String,String}, toml["deps"])
-                for (name, version) in deps
-                    pspec = PkgSpec(name, version=version)
-                    get!(Dict{String,PkgSpec}, packages, pspec.name)[fn] = pspec
-                end
-            end
-            if haskey(toml, "pip")
-                pip = _convert(Dict{String,Any}, toml["pip"])
-                if haskey(pip, "deps")
-                    deps = _convert(Dict{String,String}, pip["deps"])
-                    for (name, version) in deps
-                        pspec = PipPkgSpec(name, version=version)
-                        get!(Dict{String,PipPkgSpec}, pip_packages, pspec.name)[fn] = pspec
-                    end
-                end
+            for pkg in pippkgs
+                get!(Dict{String,PipPkgSpec}, pip_packages, pkg.name)[fn] = pkg
             end
         end
     end
@@ -218,7 +204,7 @@ function _run(io::IO, cmd::Cmd, args...; flags=String[])
     run(cmd)
 end
 
-function resolve(; force::Bool=false, io::IO=stderr)
+function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dry_run::Bool=false)
     # if frozen, do nothing
     if STATE.frozen
         return
@@ -227,6 +213,7 @@ function resolve(; force::Bool=false, io::IO=stderr)
     # this is a very fast check which avoids touching the file system
     load_path = Base.load_path()
     if !force && STATE.resolved && STATE.load_path == load_path
+        interactive && _log(io, "Dependencies already up to date")
         return
     end
     STATE.resolved = false
@@ -239,6 +226,7 @@ function resolve(; force::Bool=false, io::IO=stderr)
     # skip resolving if nothing has changed since the metadata was updated
     if !force && isdir(conda_env) && isfile(meta_file) && _resolve_can_skip_1(load_path, meta_file)
         STATE.resolved = true
+        interactive && _log(io, "Dependencies already up to date")
         return
     end
     # find all dependencies
@@ -262,6 +250,8 @@ function resolve(; force::Bool=false, io::IO=stderr)
         _log(io, "Dependencies already up to date")
         @goto save_meta
     end
+    # dry run bails out before touching the environment
+    dry_run && return
     # remove environment
     mkpath(meta_dir)
     if isdir(conda_env)
@@ -288,4 +278,9 @@ function resolve(; force::Bool=false, io::IO=stderr)
     # all done
     STATE.resolved = true
     return
+end
+
+function is_resolved()
+    resolve(io=devnull, dry_run=true)
+    STATE.resolved
 end

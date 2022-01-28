@@ -82,7 +82,7 @@ const status_spec = Pkg.REPLMode.CommandSpec(
 ### resolve
 
 function resolve(; force=false)
-    CondaPkg.resolve(force=force)
+    CondaPkg.resolve(force=force, interactive=true)
 end
 
 const resolve_help = Markdown.parse("""

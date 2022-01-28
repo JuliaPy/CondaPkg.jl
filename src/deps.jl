@@ -30,6 +30,57 @@ function write_deps(toml; file=cur_deps_file())
     return
 end
 
+function parse_deps(toml)
+    # packages
+    packages = PkgSpec[]
+    if haskey(toml, "deps")
+        deps = _convert(Dict{String,String}, toml["deps"])
+        for (name, version) in deps
+            pkg = PkgSpec(name, version=version)
+            push!(packages, pkg)
+        end
+    end
+
+    # channels
+    channels = ChannelSpec[]
+    if haskey(toml, "channels")
+        chan_names = _convert(Vector{String}, toml["channels"])
+        for name in chan_names
+            push!(channels, ChannelSpec(name))
+        end
+    end
+
+    # pip packages
+    pip_packages = PipPkgSpec[]
+    if haskey(toml, "pip")
+        pip = _convert(Dict{String,Any}, toml["pip"])
+        if haskey(pip, "deps")
+            pip_deps = _convert(Dict{String,String}, pip["deps"])
+            for (name, version) in pip_deps
+                pkg = PipPkgSpec(name, version=version)
+                push!(pip_packages, pkg)
+            end
+        end
+    end
+
+    # done
+    return (packages=packages, channels=channels, pip_packages=pip_packages)
+end
+
+function current_packages()
+    cmd = MicroMamba.cmd(`-p $(envdir()) list --json`)
+    pkglist = JSON3.read(cmd)
+    Dict(normalise_pkg(pkg.name) => pkg for pkg in pkglist)
+end
+
+function current_pip_packages()
+    pkglist = withenv() do
+        cmd = `$(which("pip")) list --format=json`
+        JSON3.read(cmd)
+    end
+    Dict(normalise_pip_pkg(pkg.name) => pkg for pkg in pkglist)
+end
+
 """
     status()
 
@@ -38,16 +89,71 @@ Show the status of the current environment.
 This does not include dependencies from nested environments.
 """
 function status(; io::IO=stderr)
+    # collect information
     dfile = cur_deps_file()
-    printstyled(io, "Status", color=:light_green)
-    print(io, " ")
-    printstyled(io, dfile, bold=true)
-    dstr = isfile(dfile) ? rstrip(read(dfile, String)) : ""
-    if dstr == ""
-        println(io, " (no dependencies)")
-    else
+    resolved = is_resolved()
+    pkgs, channels, pippkgs = parse_deps(read_deps(file=dfile))
+    curpkgs = resolved && !isempty(pkgs) ? current_packages() : nothing
+    curpippkgs = resolved && !isempty(pippkgs) ? current_pip_packages() : nothing
+    blank = isempty(pkgs) && isempty(channels) && isempty(pippkgs)
+
+    # print status
+    printstyled(io, "CondaPkg Status", color=:light_green)
+    printstyled(io, " ", dfile, bold=true)
+    if blank
+        print(io, " (empty)")
+    end
+    println(io)
+    if !resolved
+        printstyled(io, "Not Resolved", color=:yellow)
+        println(io, " (resolve first for more information)")
+    end
+    if !isempty(pkgs)
+        printstyled(io, "Packages", bold=true, color=:cyan)
         println(io)
-        println(io, dstr)
+        for pkg in pkgs
+            print(io, "  ", pkg.name)
+            if resolved
+                @assert curpkgs !== nothing
+                curpkg = get(curpkgs, pkg.name, nothing)
+                if curpkg === nothing
+                    printstyled(io, " uninstalled", color=:red)
+                else
+                    print(io, " v", curpkg.version)
+                end
+            end
+            if !isempty(pkg.version)
+                printstyled(io, " (", pkg.version, ")", color=:light_black)
+            end
+            println(io)
+        end
+    end
+    if !isempty(channels)
+        printstyled(io, "Channels", bold=true, color=:cyan)
+        println(io)
+        for chan in channels
+            println(io, "  ", chan.name)
+        end
+    end
+    if !isempty(pippkgs)
+        printstyled(io, "Pip packages", bold=true, color=:cyan)
+        println(io)
+        for pkg in pippkgs
+            print(io, "  ", pkg.name)
+            if resolved
+                @assert curpippkgs !== nothing
+                curpkg = get(curpippkgs, pkg.name, nothing)
+                if curpkg === nothing
+                    printstyled(io, " uninstalled", color=:red)
+                else
+                    print(io, " v", curpkg.version)
+                end
+            end
+            if !isempty(pkg.version)
+                printstyled(io, " (", pkg.version, ")", color=:light_black)
+            end
+            println(io)
+        end
     end
 end
 
