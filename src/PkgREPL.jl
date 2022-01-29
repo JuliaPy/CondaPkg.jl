@@ -105,21 +105,13 @@ const resolve_spec = Pkg.REPLMode.CommandSpec(
 
 function add(args; mode=:package, resolve=false)
     if mode == :package
-        for arg in args
-            CondaPkg.add(parse_pkg(arg))
-        end
+        CondaPkg.add(parse_pkg.(args))
     elseif mode == :channel
-        for arg in args
-            CondaPkg.add(parse_channel(arg))
-        end
+        CondaPkg.add(parse_channel.(args))
     elseif mode == :pip
-        for arg in args
-            CondaPkg.add(parse_pip_pkg(arg))
-        end
+        CondaPkg.add(parse_pip_pkg.(args))
     end
-    if resolve
-        CondaPkg.resolve()
-    end
+    resolve && CondaPkg.resolve()
 end
 
 const add_help = Markdown.parse("""
@@ -159,21 +151,13 @@ const add_spec = Pkg.REPLMode.CommandSpec(
 
 function rm(args; mode=:package, resolve=false)
     if mode == :package
-        for arg in args
-            CondaPkg.rm(parse_pkg(arg))
-        end
+        CondaPkg.rm(parse_pkg.(args))
     elseif mode == :channel
-        for arg in args
-            CondaPkg.rm(parse_channel(arg))
-        end
+        CondaPkg.rm(parse_channel.(args))
     elseif mode == :pip
-        for arg in args
-            CondaPkg.rm(parse_pip_pkg(arg))
-        end
+        CondaPkg.rm(parse_pip_pkg.(args))
     end
-    if resolve
-        CondaPkg.resolve()
-    end
+    resolve && CondaPkg.resolve()
 end
 
 const rm_help = Markdown.parse("""
