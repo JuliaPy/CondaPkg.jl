@@ -18,7 +18,7 @@ status() = sprint(io -> CondaPkg.status(io=io))
 
     @testset "install python" begin
         @test !occursin("python", status())
-        CondaPkg.add("python", version="3.10.2")
+        CondaPkg.add("python", version="==3.10.2")
         CondaPkg.resolve()
         CondaPkg.withenv() do
             pythonpath = joinpath(CondaPkg.envdir(), Sys.iswindows() ? "python.exe" : "bin/python")
@@ -29,18 +29,23 @@ status() = sprint(io -> CondaPkg.status(io=io))
 
     @testset "install/remove python package" begin
         # verify package isn't already installed
+        @test !occursin("six", status())
         CondaPkg.withenv() do
             @test_throws Exception run(`python -c "import six"`)
         end
 
         # install package
-        CondaPkg.add("six")
+        CondaPkg.add("six", version="==1.16.0")
+        @test occursin("six", status())
+        @test occursin("(==1.16.0)", status())
         CondaPkg.withenv() do
             run(`python -c "import six"`)
         end
+        @test occursin("v1.16.0", status())
 
         # remove package
         CondaPkg.rm("six")
+        @test !occursin("six", status())
         CondaPkg.withenv() do
             @test_throws Exception run(`python -c "import six"`)
         end
@@ -48,18 +53,23 @@ status() = sprint(io -> CondaPkg.status(io=io))
 
     @testset "pip install/remove python package" begin
         # verify package isn't already installed
+        @test !occursin("six", status())
         CondaPkg.withenv() do
             @test_throws Exception run(`python -c "import six"`)
         end
 
         # install package
-        CondaPkg.add_pip("six")
+        CondaPkg.add_pip("six", version="==1.16.0")
+        @test occursin("six", status())
+        @test occursin("(==1.16.0)", status())
         CondaPkg.withenv() do
             run(`python -c "import six"`)
         end
+        @test occursin("v1.16.0", status())
 
         # remove package
         CondaPkg.rm_pip("six")
+        @test !occursin("six", status())
         CondaPkg.withenv() do
             @test_throws Exception run(`python -c "import six"`)
         end
@@ -83,6 +93,15 @@ status() = sprint(io -> CondaPkg.status(io=io))
             # verify that micromamba clean runs without errors
             CondaPkg.gc()
         end
+    end
+
+    @testset "validation" begin
+        @test_throws Exception CondaPkg.add("!invalid!package!")
+        @test_throws Exception CondaPkg.add_pip("!invalid!package!")
+        @test_throws Exception CondaPkg.add("valid-package", version="*invalid*version*")
+        @test_throws Exception CondaPkg.add_pip("valid-package", version="*invalid*version*")
+        @test_throws Exception CondaPkg.add_channel("")
+        @test !occursin("valid", status())
     end
 
     @testset "PkgREPL" begin
