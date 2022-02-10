@@ -135,3 +135,22 @@ The version must be a Pip version specifier, or be blank.
 Direct references such as `foo @ http://example.com/foo.zip` are allowed. As a special case
 if the URL starts with `.` then it is interpreted as a path relative to the directory
 containing the `CondaPkg.toml` file.
+
+### Backends
+
+This package has a number of different "backends" which control exactly which implementation
+of Conda is used to manage the Conda environments. You can explicitly select a backend
+by setting the environment variable `JULIA_CONDAPKG_BACKEND` to one of the following values:
+- `MicroMamba`: Uses MicroMamba from the package
+  [MicroMamba.jl](https://github.com/cjdoris/MicroMamba.jl).
+- `SystemConda`: Uses a pre-installed `conda` executable.
+- `SystemMamba`: Uses a pre-installed `mamba` executable.
+- `SystemMicroMamba`: Uses a pre-installed `micromamba` executable.
+- `System`: This meta-backend automatically selects between the other `System*` backends
+  depending on which of `conda`, `mamba` or `micromamba` is installed.
+
+Currently the default backend is `MicroMamba`.
+
+You can specify the executable used by the `System*` backends with the environment
+variable `JULIA_CONDAPKG_EXE`, otherwise they look for `conda`, `mamba` or `micromamba` in
+your PATH. If you set this variable but not the backend, then the `System` backend is used.

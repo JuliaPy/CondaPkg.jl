@@ -124,7 +124,7 @@ function _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
 end
 
 function _resolve_conda_remove(io, conda_env)
-    cmd = MicroMamba.cmd(`remove -y -p $conda_env --all`, io=io)
+    cmd = conda_cmd(`remove -y -p $conda_env --all`, io=io)
     _run(io, cmd, "Removing environment", flags=["-y", "--all"])
     nothing
 end
@@ -141,8 +141,8 @@ function _resolve_conda_create(io, conda_env, specs, channels)
     for channel in channels
         push!(args, "-c", channel.name)
     end
-    cmd = MicroMamba.cmd(`create -y -p $conda_env --no-channel-priority $args`, io=io)
-    _run(io, cmd, "Creating environment", flags=["-y", "--no-channel-priority"])
+    cmd = conda_cmd(`create -y -p $conda_env --override-channels --no-channel-priority $args`, io=io)
+    _run(io, cmd, "Creating environment", flags=["-y", "--override-channels", "--no-channel-priority"])
     nothing
 end
 

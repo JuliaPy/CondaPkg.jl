@@ -20,6 +20,10 @@ let toml = TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
 end
 
 @kwdef mutable struct State
+    # backend
+    backend::Symbol = :NotSet
+    condaexe::String = ""
+    # resolve
     resolved::Bool = false
     load_path::Vector{String} = String[]
     meta_dir::String = ""
@@ -28,6 +32,7 @@ end
 
 const STATE = State()
 
+include("backend.jl")
 include("spec.jl")
 include("meta.jl")
 include("resolve.jl")

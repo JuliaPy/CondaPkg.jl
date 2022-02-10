@@ -13,7 +13,8 @@ function activate!(e)
     d = envdir()
     path_sep = Sys.iswindows() ? ';' : ':'
     new_path = join(bindirs(), path_sep)
-    new_path = "$(new_path)$(path_sep)$(dirname(MicroMamba.executable()))"
+    exe = STATE.backend == :MicroMamba ? MicroMamba.executable() : STATE.condaexe
+    new_path = "$(new_path)$(path_sep)$(dirname(exe))"
     if old_path != ""
         new_path = "$(new_path)$(path_sep)$(old_path)"
     end
@@ -22,7 +23,9 @@ function activate!(e)
     e["CONDA_DEFAULT_ENV"] = d
     e["CONDA_SHLVL"] = "1"
     e["CONDA_PROMPT_MODIFIER"] = "($d) "
-    e["MAMBA_ROOT_PREFIX"] = MicroMamba.root_dir()
+    if STATE.backend == :MicroMamba
+        e["MAMBA_ROOT_PREFIX"] = MicroMamba.root_dir()
+    end
     e
 end
 
@@ -76,7 +79,7 @@ function bindirs()
     if Sys.iswindows()
         ("$e", "$e\\Library\\mingw-w64\\bin", "$e\\Library\\usr\\bin", "$e\\Library\\bin", "$e\\Scripts", "$e\\bin")
     else
-        ("$e/bin", #="$(micromamba_root_prefix)/condabin"=#)
+        ("$e/bin", "$e/condabin")
     end
 end
 
@@ -107,7 +110,7 @@ Remove unused packages and caches.
 """
 function gc(; io::IO=stderr)
     resolve()
-    cmd = MicroMamba.cmd(`clean -y --all`, io=io)
+    cmd = conda_cmd(`clean -y --all`, io=io)
     _run(io, cmd, "Removing unused caches")
     nothing
 end

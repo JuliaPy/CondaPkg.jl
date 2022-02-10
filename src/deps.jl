@@ -68,7 +68,7 @@ function parse_deps(toml)
 end
 
 function current_packages()
-    cmd = MicroMamba.cmd(`-p $(envdir()) list --json`)
+    cmd = conda_cmd(`list -p $(envdir()) --json`)
     pkglist = JSON3.read(cmd)
     Dict(normalise_pkg(pkg.name) => pkg for pkg in pkglist)
 end
