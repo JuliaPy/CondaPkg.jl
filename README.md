@@ -143,14 +143,10 @@ of Conda is used to manage the Conda environments. You can explicitly select a b
 by setting the environment variable `JULIA_CONDAPKG_BACKEND` to one of the following values:
 - `MicroMamba`: Uses MicroMamba from the package
   [MicroMamba.jl](https://github.com/cjdoris/MicroMamba.jl).
-- `SystemConda`: Uses a pre-installed `conda` executable.
-- `SystemMamba`: Uses a pre-installed `mamba` executable.
-- `SystemMicroMamba`: Uses a pre-installed `micromamba` executable.
-- `System`: This meta-backend automatically selects between the other `System*` backends
-  depending on which of `conda`, `mamba` or `micromamba` is installed.
+- `System`: Use a pre-installed Conda. If `JULIA_CONDAPKG_EXE` is set, that is used.
+  Otherwise we look for `conda`, `mamba` or `micromamba` in your `PATH`.
 
-Currently the default backend is `MicroMamba`.
+The default backend is an implementation detail, but is currently `MicroMamba`.
 
-You can specify the executable used by the `System*` backends with the environment
-variable `JULIA_CONDAPKG_EXE`, otherwise they look for `conda`, `mamba` or `micromamba` in
-your PATH. If you set this variable but not the backend, then the `System` backend is used.
+If you set `JULIA_CONDAPKG_EXE` but not `JULIA_CONDAPKG_BACKEND` then the `System` backend
+is used.

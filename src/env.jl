@@ -44,7 +44,6 @@ function withenv(f::Function)
         return f()
     finally
         STATE.frozen = frozen
-        # shell("deactivate")
         # copy!(ENV, old_env) does not work (empty!(ENV) not implemented)
         for k in collect(keys(ENV))
             if !haskey(old_env, k)
