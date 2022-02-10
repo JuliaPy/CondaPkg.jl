@@ -3,7 +3,7 @@ function backend()
         backend = get(ENV, "JULIA_CONDAPKG_BACKEND", "")
         exe = get(ENV, "JULIA_CONDAPKG_EXE", "")
         if backend == ""
-            backend = exe == "" ? "System" : "MicroMamba"
+            backend = exe == "" ? "MicroMamba" : "System"
         end
         if backend == "MicroMamba"
             STATE.backend = :MicroMamba
