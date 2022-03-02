@@ -42,14 +42,13 @@ validate_version(ver) =
         error("invalid version: $(repr(ver))")
     end
 
-function specsuffix(pkg::PkgSpec)
+function specstr(x::PkgSpec)
     parts = String[]
-    pkg.version == "" || push!(parts, "version='$(pkg.version)'")
-    pkg.channel == "" || push!(parts, "channel='$(pkg.channel)'")
-    isempty(parts) ? "" : string("[", join(parts, ", "), "]")
+    x.version == "" || push!(parts, "version='$(x.version)'")
+    x.channel == "" || push!(parts, "channel='$(x.channel)'")
+    suffix = isempty(parts) ? "" : string("[", join(parts, ", "), "]")
+    string(x.name, suffix)
 end
-
-specstr(pkg::PkgSpec) = string(pkg.name, specsuffix(pkg))
 
 struct ChannelSpec
     name::String
@@ -72,6 +71,8 @@ validate_channel(name; opts...) =
     else
         error("invalid channel: $(repr(name))")
     end
+
+specstr(x::ChannelSpec) = x.name
 
 struct PipPkgSpec
     name::String
@@ -107,3 +108,5 @@ validate_pip_version(ver) =
     else
         error("invalid pip version: $(repr(ver))")
     end
+
+specstr(x::PipPkgSpec) = x.version == "" ? x.name : string(x.name, " ", x.version)

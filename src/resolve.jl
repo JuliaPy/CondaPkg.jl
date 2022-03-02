@@ -135,7 +135,7 @@ function _resolve_conda_create(io, conda_env, specs, channels)
         push!(args, specstr(spec))
     end
     for channel in channels
-        push!(args, "-c", channel.name)
+        push!(args, "-c", specstr(channel))
     end
     cmd = conda_cmd(`create -y -p $conda_env --override-channels --no-channel-priority $args`, io=io)
     _run(io, cmd, "Creating environment", flags=["-y", "--override-channels", "--no-channel-priority"])
@@ -145,11 +145,7 @@ end
 function _resolve_pip_install(io, pip_specs, load_path)
     args = String[]
     for spec in pip_specs
-        if isempty(spec.version)
-            push!(args, spec.name)
-        else
-            push!(args, "$(spec.name) $(spec.version)")
-        end
+        push!(args, specstr(spec))
     end
     old_load_path = STATE.load_path
     try

@@ -139,8 +139,10 @@ function status(; io::IO=stderr)
                     print(io, " v", curpkg.version)
                 end
             end
-            sfx = specsuffix(pkg)
-            sfx == "" || printstyled(io, " ", sfx, color=:light_black)
+            specparts = String[]
+            pkg.version == "" || push!(specparts, pkg.version)
+            pkg.channel == "" || push!(specparts, "channel=$(pkg.channel)")
+            isempty(specparts) || printstyled(io, " (", join(specparts, ", "), ")", color=:light_black)
             println(io)
         end
     end
