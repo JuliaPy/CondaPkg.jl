@@ -57,11 +57,11 @@ These functions are intended to be used interactively when the Pkg REPL is not a
 (e.g. if you are in a notebook):
 
 - `status()` shows the Conda dependencies of the current project.
-- `add(pkg; version=nothing)` adds/replaces a dependency.
+- `add(pkg; version="", channel="")` adds/replaces a dependency.
 - `rm(pkg)` removes a dependency.
 - `add_channel(channel)` adds a channel.
 - `rm_channel(channel)` removes a channel.
-- `add_pip(pkg; version=nothing)` adds/replaces a pip dependency.
+- `add_pip(pkg; version="")` adds/replaces a pip dependency.
 - `rm_pip(pkg)` removes a pip dependency.
 
 ### CondaPkg.toml
@@ -74,6 +74,11 @@ channels = ["anaconda", "conda-forge"]
 # Conda package names and versions
 python = ">=3.5,<4"
 perl = ""
+
+[deps.llvmlite]
+# Long syntax to specify other fields, such as the channel
+version = ">=0.38,<0.39"
+channel = "numba"
 
 [pip.deps]
 # Pip package names and versions
