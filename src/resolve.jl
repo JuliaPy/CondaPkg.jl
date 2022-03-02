@@ -132,11 +132,7 @@ end
 function _resolve_conda_create(io, conda_env, specs, channels)
     args = String[]
     for spec in specs
-        if spec.version == ""
-            push!(args, spec.name)
-        else
-            push!(args, "$(spec.name) $(spec.version)")
-        end
+        push!(args, specstr(spec))
     end
     for channel in channels
         push!(args, "-c", channel.name)

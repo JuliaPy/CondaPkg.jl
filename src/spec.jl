@@ -3,20 +3,24 @@ This file defines the types `PkgSpec`, `ChannelSpec` and `PipPkgSpec`, plus rela
 validation and normalisation functions.
 """
 
+is_valid_string(name; allow_regex=false, allow_glob=false) = ('\'' ∉ name) && ('"' ∉ name) && (allow_regex || !(startswith(name, "^") && endswith(name, "\$"))) && (allow_glob || '*' ∉ name)
+
 struct PkgSpec
     name::String
     version::String
-    function PkgSpec(name; version="")
+    channel::String
+    function PkgSpec(name; version="", channel="")
         name = validate_pkg(name)
         version = validate_version(version)
-        new(name, version)
+        channel = validate_channel(channel, allow_empty=true)
+        new(name, version, channel)
     end
 end
 
-Base.:(==)(x::PkgSpec, y::PkgSpec) = (x.name == y.name) && (x.version == y.version)
-Base.hash(x::PkgSpec, h::UInt) = hash(x.version, hash(x.name, h))
+Base.:(==)(x::PkgSpec, y::PkgSpec) = (x.name == y.name) && (x.version == y.version) && (x.channel == y.channel)
+Base.hash(x::PkgSpec, h::UInt) = hash(x.channel, hash(x.version, hash(x.name, h)))
 
-is_valid_pkg(name) = occursin(r"^\s*[-_.a-zA-Z0-9]+\s*$", name)
+is_valid_pkg(name) = occursin(r"^\s*[-_.a-zA-Z0-9]+\s*$", name) && is_valid_string(name)
 
 normalise_pkg(name) = lowercase(strip(name))
 
@@ -27,7 +31,7 @@ validate_pkg(name) =
         error("invalid package: $(repr(name))")
     end
 
-is_valid_version(ver) = occursin(r"^\s*($|[!<>=0-9])", ver)
+is_valid_version(ver) = occursin(r"^\s*($|[!<>=0-9])", ver) && is_valid_string(ver)
 
 normalise_version(ver) = strip(ver)
 
@@ -37,6 +41,15 @@ validate_version(ver) =
     else
         error("invalid version: $(repr(ver))")
     end
+
+function specsuffix(pkg::PkgSpec)
+    parts = String[]
+    pkg.version == "" || push!(parts, "version='$(pkg.version)'")
+    pkg.channel == "" || push!(parts, "channel='$(pkg.channel)'")
+    isempty(parts) ? "" : string("[", join(parts, ", "), "]")
+end
+
+specstr(pkg::PkgSpec) = string(pkg.name, specsuffix(pkg))
 
 struct ChannelSpec
     name::String
@@ -49,12 +62,12 @@ end
 Base.:(==)(x::ChannelSpec, y::ChannelSpec) = (x.name == y.name)
 Base.hash(x::ChannelSpec, h::UInt) = hash(x.name, h)
 
-is_valid_channel(name) = strip(name) != ""
+is_valid_channel(name; allow_empty=false) = (allow_empty || !isempty(strip(name))) && is_valid_string(name)
 
 normalise_channel(name) = strip(name)
 
-validate_channel(name) =
-    if is_valid_channel(name)
+validate_channel(name; opts...) =
+    if is_valid_channel(name; opts...)
         normalise_channel(name)
     else
         error("invalid channel: $(repr(name))")

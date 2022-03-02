@@ -7,14 +7,18 @@ import Markdown
 ### parsing
 
 function parse_pkg(x::String)
-    m = match(r"^\s*([-_.A-Za-z0-9]+)\s*([<>=!0-9].*)?$", x)
+    m = match(r"^\s*(([^:]+)::)?([-_.A-Za-z0-9]+)\s*([<>=!0-9].*)?$", x)
     m === nothing && error("invalid conda package: $x")
-    name = m.captures[1]
-    version = m.captures[2]
+    channel = m.captures[2]
+    name = m.captures[3]
+    version = m.captures[4]
     if version === nothing
         version = ""
     end
-    CondaPkg.PkgSpec(name, version=version)
+    if channel === nothing
+        channel = ""
+    end
+    CondaPkg.PkgSpec(name, version=version, channel=channel)
 end
 
 function parse_pip_pkg(x::String)
@@ -131,6 +135,7 @@ flag to force resolve.
 ```
 pkg> conda add python
 pkg> conda add python>=3.5,<4
+pkg> conda add conda-forge::numpy
 pkg> conda add --channel anaconda
 pkg> conda add --pip build
 pkg> conda add --pip build~=0.7.0

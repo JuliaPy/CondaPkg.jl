@@ -34,9 +34,26 @@ function parse_deps(toml)
     # packages
     packages = PkgSpec[]
     if haskey(toml, "deps")
-        deps = _convert(Dict{String,String}, toml["deps"])
-        for (name, version) in deps
-            pkg = PkgSpec(name, version=version)
+        deps = _convert(Dict{String,Any}, toml["deps"])
+        for (name, dep) in deps
+            version = ""
+            channel = ""
+            if dep isa AbstractString
+                version = _convert(String, dep)
+            elseif dep isa AbstractDict
+                for (k, v) in _convert(Dict{String,Any}, dep)
+                    if k == "version"
+                        version = _convert(String, v)
+                    elseif k == "channel"
+                        channel = _convert(String, v)
+                    else
+                        error("deps keys must be 'version' or 'channel', got '$k'")
+                    end
+                end
+            else
+                error("deps must be String or Dict, got $(typeof(dep))")
+            end
+            pkg = PkgSpec(name, version=version, channel=channel)
             push!(packages, pkg)
         end
     end
@@ -122,9 +139,8 @@ function status(; io::IO=stderr)
                     print(io, " v", curpkg.version)
                 end
             end
-            if !isempty(pkg.version)
-                printstyled(io, " (", pkg.version, ")", color=:light_black)
-            end
+            sfx = specsuffix(pkg)
+            sfx == "" || printstyled(io, " ", sfx, color=:light_black)
             println(io)
         end
     end
@@ -172,7 +188,18 @@ add(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}) = add([pkg])
 function add!(toml, pkg::PkgSpec)
     deps = get!(Dict{String,Any}, toml, "deps")
     filter!(kv -> normalise_pkg(kv[1]) != pkg.name, deps)
-    deps[pkg.name] = pkg.version
+    dep = Dict{String,Any}()
+    if pkg.version != ""
+        dep["version"] = pkg.version
+    end
+    if pkg.channel != ""
+        dep["channel"] = pkg.channel
+    end
+    if issubset(keys(dep), ["version"])
+        deps[pkg.name] = pkg.version
+    else
+        deps[pkg.name] = dep
+    end
 end
 
 function add!(toml, channel::ChannelSpec)
@@ -226,11 +253,11 @@ function rm!(toml, pkg::PipPkgSpec)
 end
 
 """
-    add(pkg; version="")
+    add(pkg; version="", channel="")
 
 Adds a dependency to the current environment.
 """
-add(pkg::AbstractString; version="") = add(PkgSpec(pkg, version=version))
+add(pkg::AbstractString; version="", channel="") = add(PkgSpec(pkg, version=version, channel=channel))
 
 """
     rm(pkg)
