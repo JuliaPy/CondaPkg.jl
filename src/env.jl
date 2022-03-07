@@ -9,6 +9,7 @@ This file defines functions for interacting with the environment, such as `withe
 "Activate" the Conda environment by modifying the given dict of environment variables.
 """
 function activate!(e)
+    backend() == :Null && return e
     old_path = get(e, "PATH", "")
     d = envdir()
     path_sep = Sys.iswindows() ? ';' : ':'
