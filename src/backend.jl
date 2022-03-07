@@ -7,7 +7,7 @@ function backend()
         end
         if backend == "MicroMamba"
             STATE.backend = :MicroMamba
-        elseif backend = "Null"
+        elseif backend == "Null"
             STATE.backend = :Null
         elseif backend == "System"
             ok = false
