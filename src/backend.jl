@@ -39,7 +39,7 @@ function conda_cmd(args=``; io::IO=stderr)
     if b == :MicroMamba
         MicroMamba.cmd(args, io=io)
     elseif b == :Null
-        @error "Backend is 'Null' - no action taken"
+        error("Can not run conda command when backend is 'Null'. Manage conda actions outside of julia.")
         return nothing
     elseif b == :System
         `$(STATE.condaexe) $args`

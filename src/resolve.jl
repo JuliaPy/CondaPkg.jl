@@ -197,8 +197,8 @@ function _run(io::IO, cmd::Cmd, args...; flags=String[])
 end
 
 function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dry_run::Bool=false)
-    # if frozen, do nothing
-    if STATE.frozen
+    # if frozen or if backend is null, do nothing
+    if STATE.frozen || backend() == :Null
         return
     end
     # skip resolving if already resolved and LOAD_PATH unchanged
