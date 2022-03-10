@@ -26,6 +26,7 @@ jobs:
           - x64
         backend:
           - MicroMamba
+          - 'Null'
         include:
           - version: 1
             os: ubuntu-latest
