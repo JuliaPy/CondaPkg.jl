@@ -108,6 +108,7 @@ This does not include dependencies from nested environments.
 function status(; io::IO=stderr)
     if backend() == :Null
         println(io, "Backend is 'Null', so CondaPkg is not managing this environment. Use `conda list` from the terminal instead.")
+        return nothing
     end
     # collect information
     dfile = cur_deps_file()

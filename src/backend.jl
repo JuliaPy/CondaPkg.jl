@@ -9,6 +9,7 @@ function backend()
             STATE.backend = :MicroMamba
         elseif backend == "Null"
             STATE.backend = :Null
+            STATE.resolved = true
         elseif backend == "System"
             ok = false
             for exe in (exe == "" ? ["micromamba", "mamba", "conda"] : [exe])

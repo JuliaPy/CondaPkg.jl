@@ -35,7 +35,6 @@ end
 Call `f()` while the Conda environment is active.
 """
 function withenv(f::Function)
-    backend() == :Null && return f()
     old_env = copy(ENV)
     # shell("activate")
     activate!(ENV)
