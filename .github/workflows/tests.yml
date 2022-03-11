@@ -26,12 +26,15 @@ jobs:
           - x64
         backend:
           - MicroMamba
-          - 'Null'
         include:
           - version: 1
             os: ubuntu-latest
             arch: x64
             backend: System
+          - version: 1
+            os: ubuntu-latest
+            arch: x64
+            backend: 'Null'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1

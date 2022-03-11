@@ -62,10 +62,11 @@ end
 The root directory of the Conda environment.
 
 Any additional arguments are joined to the path.
-Throws an error if backend is "Null".
+
+Throws an error if backend is Null.
 """
 function envdir(args...)
-    backend() == :Null && throw(ErrorException("Can not get envdir when backed is 'Null'."))
+    backend() == :Null && throw(ErrorException("Can not get envdir when backend is Null."))
     resolve()
     joinpath(STATE.meta_dir, "env", args...)
 end
@@ -95,7 +96,7 @@ function which(progname)
     old_path = get(ENV, "PATH", nothing)
     ENV["PATH"] = join(bindirs(), Sys.iswindows() ? ';' : ':')
     try
-        Sys.which(progname)
+        return Sys.which(progname)
     finally
         if old_path === nothing
             delete!(ENV, "PATH")
@@ -111,9 +112,9 @@ end
 Remove unused packages and caches.
 """
 function gc(; io::IO=stderr)
-    backend() == :Null && return nothing
+    backend() == :Null && return
     resolve()
     cmd = conda_cmd(`clean -y --all`, io=io)
     _run(io, cmd, "Removing unused caches")
-    return nothing
+    return
 end

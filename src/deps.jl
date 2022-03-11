@@ -106,16 +106,13 @@ Show the status of the current environment.
 This does not include dependencies from nested environments.
 """
 function status(; io::IO=stderr)
-    if backend() == :Null
-        println(io, "Backend is 'Null', so CondaPkg is not managing this environment. Use `conda list` from the terminal instead.")
-        return nothing
-    end
     # collect information
     dfile = cur_deps_file()
     resolved = is_resolved()
+    isnull = backend() == :Null
     pkgs, channels, pippkgs = parse_deps(read_deps(file=dfile))
-    curpkgs = resolved && !isempty(pkgs) ? current_packages() : nothing
-    curpippkgs = resolved && !isempty(pippkgs) ? current_pip_packages() : nothing
+    curpkgs = resolved && !isnull && !isempty(pkgs) ? current_packages() : nothing
+    curpippkgs = resolved && !isnull && !isempty(pippkgs) ? current_pip_packages() : nothing
     blank = isempty(pkgs) && isempty(channels) && isempty(pippkgs)
 
     # print status
@@ -129,13 +126,16 @@ function status(; io::IO=stderr)
         printstyled(io, "Not Resolved", color=:yellow)
         println(io, " (resolve first for more information)")
     end
+    if isnull
+        printstyled(io, "Using the Null backend", color=:yellow)
+        println(io, " (dependencies shown here are not being managed)")
+    end
     if !isempty(pkgs)
         printstyled(io, "Packages", bold=true, color=:cyan)
         println(io)
         for pkg in pkgs
             print(io, "  ", pkg.name)
-            if resolved
-                @assert curpkgs !== nothing
+            if curpkgs !== nothing
                 curpkg = get(curpkgs, pkg.name, nothing)
                 if curpkg === nothing
                     printstyled(io, " uninstalled", color=:red)
@@ -162,8 +162,7 @@ function status(; io::IO=stderr)
         println(io)
         for pkg in pippkgs
             print(io, "  ", pkg.name)
-            if resolved
-                @assert curpippkgs !== nothing
+            if curpippkgs !== nothing
                 curpkg = get(curpippkgs, pkg.name, nothing)
                 if curpkg === nothing
                     printstyled(io, " uninstalled", color=:red)
