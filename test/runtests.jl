@@ -43,7 +43,7 @@ const isnull = backend == "Null"
         # verify package isn't already installed
         @test !occursin("six", status())
         CondaPkg.withenv() do
-            @test_throws Exception run(`python -c "import six"`)
+            isnull || @test_throws Exception run(`python -c "import six"`)
         end
 
         # install package
@@ -59,7 +59,7 @@ const isnull = backend == "Null"
         CondaPkg.rm("six")
         @test !occursin("six", status())
         CondaPkg.withenv() do
-            @test_throws Exception run(`python -c "import six"`)
+            isnull || @test_throws Exception run(`python -c "import six"`)
         end
     end
 
@@ -67,7 +67,7 @@ const isnull = backend == "Null"
         # verify package isn't already installed
         @test !occursin("six", status())
         CondaPkg.withenv() do
-            @test_throws Exception run(`python -c "import six"`)
+            isnull || @test_throws Exception run(`python -c "import six"`)
         end
 
         # install package
@@ -83,7 +83,7 @@ const isnull = backend == "Null"
         CondaPkg.rm_pip("six")
         @test !occursin("six", status())
         CondaPkg.withenv() do
-            @test_throws Exception run(`python -c "import six"`)
+            isnull || @test_throws Exception run(`python -c "import six"`)
         end
     end
 
