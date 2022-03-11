@@ -131,20 +131,20 @@ const isnull = backend == "Null"
         @test !occursin("foo", status())
 
         # add channel
-        CondaPkg.PkgREPL.add([" foo-channel "], mode=:channel)
+        CondaPkg.PkgREPL.channel_add([" foo-channel "])
         @test occursin("foo-channel", status())
 
         # rm channel
-        CondaPkg.PkgREPL.rm([" foo-channel "], mode=:channel)
+        CondaPkg.PkgREPL.channel_rm([" foo-channel "])
         @test !occursin("foo-channel", status())
 
         # add pip
-        CondaPkg.PkgREPL.add([" foo ~=1.3 "], mode=:pip)
+        CondaPkg.PkgREPL.pip_add([" foo ~=1.3 "])
         @test occursin("foo", status())
         @test occursin("(~=1.3)", status())
 
         # rm pip
-        CondaPkg.PkgREPL.rm([" foo "], mode=:pip)
+        CondaPkg.PkgREPL.pip_rm([" foo "])
         @test !occursin("foo", status())
 
         # status

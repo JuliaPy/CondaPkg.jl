@@ -38,17 +38,6 @@ end
 
 ### options
 
-const channel_opt = Pkg.REPLMode.OptionDeclaration([
-    :name => "channel",
-    :short_name => "c",
-    :api => :mode => :channel,
-])
-
-const pip_opt = Pkg.REPLMode.OptionDeclaration([
-    :name => "pip",
-    :api => :mode => :pip,
-])
-
 const resolve_opt = Pkg.REPLMode.OptionDeclaration([
     :name => "resolve",
     :short_name => "r",
@@ -107,38 +96,27 @@ const resolve_spec = Pkg.REPLMode.CommandSpec(
 
 ### add
 
-function add(args; mode=:package, resolve=false)
-    if mode == :package
-        CondaPkg.add(parse_pkg.(args))
-    elseif mode == :channel
-        CondaPkg.add(parse_channel.(args))
-    elseif mode == :pip
-        CondaPkg.add(parse_pip_pkg.(args))
-    end
+function add(args; resolve=false)
+    CondaPkg.add(parse_pkg.(args))
     resolve && CondaPkg.resolve()
 end
 
 const add_help = Markdown.parse("""
 ```
-conda add [-c|--channel] [--pip] [-r|--resolve] pkg ...
+conda add [-r|--resolve] pkg ...
 ```
 
-Add packages or channels to the environment.
-
-This adds Conda packages by default. Use `--channel` or `-c` to add channels instead, or
-`--pip` to add Pip packages.
+Add packages to the environment.
 
 The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
 flag to force resolve.
 
 **Examples**
+
 ```
 pkg> conda add python
 pkg> conda add python>=3.5,<4
 pkg> conda add conda-forge::numpy
-pkg> conda add --channel anaconda
-pkg> conda add --pip build
-pkg> conda add --pip build~=0.7.0
 ```
 """)
 
@@ -147,42 +125,100 @@ const add_spec = Pkg.REPLMode.CommandSpec(
     api = add,
     should_splat = false,
     help = add_help,
-    description = "add Conda packages or channels",
+    description = "add Conda packages",
     arg_count = 0 => Inf,
-    option_spec = [channel_opt, pip_opt, resolve_opt],
+    option_spec = [resolve_opt],
 )
 
-### rm
+### channel_add
 
-function rm(args; mode=:package, resolve=false)
-    if mode == :package
-        CondaPkg.rm(parse_pkg.(args))
-    elseif mode == :channel
-        CondaPkg.rm(parse_channel.(args))
-    elseif mode == :pip
-        CondaPkg.rm(parse_pip_pkg.(args))
-    end
+function channel_add(args; resolve=false)
+    CondaPkg.add(parse_channel.(args))
     resolve && CondaPkg.resolve()
 end
 
-const rm_help = Markdown.parse("""
+const channel_add_help = Markdown.parse("""
 ```
-conda rm|remove [-c|--channel] [--pip] [-r|--resolve] pkg ...
+conda channel_add [-r|--resolve] channel ...
 ```
 
-Remove packages or channels from the environment.
-
-This removes Conda packages by default. Use `--channel` or `-c` to remove channels instead,
-or `--pip` to remove Pip packages.
+Add channels to the environment.
 
 The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
 flag to force resolve.
 
 **Examples**
+
+```
+pkg> conda channel_add conda-forge
+```
+""")
+
+const channel_add_spec = Pkg.REPLMode.CommandSpec(
+    name = "channel_add",
+    api = channel_add,
+    should_splat = false,
+    help = channel_add_help,
+    description = "add Conda channels",
+    arg_count = 0 => Inf,
+    option_spec = [resolve_opt],
+)
+
+### pip_add
+
+function pip_add(args; resolve=false)
+    CondaPkg.add(parse_pip_pkg.(args))
+    resolve && CondaPkg.resolve()
+end
+
+const pip_add_help = Markdown.parse("""
+```
+conda pip_add [-r|--resolve] pkg ...
+```
+
+Add Pip packages to the environment.
+
+The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
+flag to force resolve.
+
+**Examples**
+
+```
+pkg> conda pip_add build~=0.7
+```
+""")
+
+const pip_add_spec = Pkg.REPLMode.CommandSpec(
+    name = "pip add",
+    api = pip_add,
+    should_splat = false,
+    help = pip_add_help,
+    description = "add Pip packages",
+    arg_count = 0 => Inf,
+    option_spec = [resolve_opt],
+)
+
+### rm
+
+function rm(args; resolve=false)
+    CondaPkg.rm(parse_pkg.(args))
+    resolve && CondaPkg.resolve()
+end
+
+const rm_help = Markdown.parse("""
+```
+conda rm|remove [-r|--resolve] pkg ...
+```
+
+Remove packages from the environment.
+
+The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
+flag to force resolve.
+
+**Examples**
+
 ```
 pkg> conda rm python
-pkg> conda rm --channel anaconda
-pkg> conda rm --pip build
 ```
 """)
 
@@ -192,9 +228,79 @@ const rm_spec = Pkg.REPLMode.CommandSpec(
     api = rm,
     should_splat = false,
     help = rm_help,
-    description = "remove Conda packages or channels",
+    description = "remove Conda packages",
     arg_count = 0 => Inf,
-    option_spec = [channel_opt, pip_opt, resolve_opt],
+    option_spec = [resolve_opt],
+)
+
+### channel_rm
+
+function channel_rm(args; resolve=false)
+    CondaPkg.rm(parse_channel.(args))
+    resolve && CondaPkg.resolve()
+end
+
+const channel_rm_help = Markdown.parse("""
+```
+conda channel_rm|channel_remove [-r|--resolve] channel ...
+```
+
+Remove channels from the environment.
+
+The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
+flag to force resolve.
+
+**Examples**
+
+```
+pkg> conda channel_rm conda-forge
+```
+""")
+
+const channel_rm_spec = Pkg.REPLMode.CommandSpec(
+    name = "channel_remove",
+    short_name = "channel_rm",
+    api = channel_rm,
+    should_splat = false,
+    help = channel_rm_help,
+    description = "remove Conda channels",
+    arg_count = 0 => Inf,
+    option_spec = [resolve_opt],
+)
+
+### pip_rm
+
+function pip_rm(args; resolve=false)
+    CondaPkg.rm(parse_pip_pkg.(args))
+    resolve && CondaPkg.resolve()
+end
+
+const pip_rm_help = Markdown.parse("""
+```
+conda pip_rm|pip_remove [-r|--resolve] pkg ...
+```
+
+Remove Pip packages from the environment.
+
+The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
+flag to force resolve.
+
+**Examples**
+
+```
+pkg> conda pip_rm build
+```
+""")
+
+const pip_rm_spec = Pkg.REPLMode.CommandSpec(
+    name = "pip_remove",
+    short_name = "pip_rm",
+    api = pip_rm,
+    should_splat = false,
+    help = pip_rm_help,
+    description = "remove Pip packages",
+    arg_count = 0 => Inf,
+    option_spec = [resolve_opt],
 )
 
 ### gc
@@ -252,6 +358,12 @@ const SPECS = Dict(
     "add" => add_spec,
     "remove" => rm_spec,
     "rm" => rm_spec,
+    "channel_add" => channel_add_spec,
+    "channel_remove" => channel_rm_spec,
+    "channel_rm" => channel_rm_spec,
+    "pip add" => pip_add_spec,
+    "pip_remove" => pip_rm_spec,
+    "pip_rm" => pip_rm_spec,
     "gc" => gc_spec,
     "run" => run_spec,
 )
