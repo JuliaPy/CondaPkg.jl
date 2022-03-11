@@ -9,6 +9,7 @@ This file defines functions for interacting with the environment, such as `withe
 "Activate" the Conda environment by modifying the given dict of environment variables.
 """
 function activate!(e)
+    backend() == :Null && return e
     old_path = get(e, "PATH", "")
     d = envdir()
     path_sep = Sys.iswindows() ? ';' : ':'
@@ -61,8 +62,10 @@ end
 The root directory of the Conda environment.
 
 Any additional arguments are joined to the path.
+Throws an error if backend is "Null".
 """
 function envdir(args...)
+    backend() == :Null && throw(ErrorException("Can not get envdir when backed is 'Null'."))
     resolve()
     joinpath(STATE.meta_dir, "env", args...)
 end
@@ -87,6 +90,7 @@ end
 Find the binary called `progname` in the Conda environment.
 """
 function which(progname)
+    backend() == :Null && return Sys.which(progname)
     # Set the PATH to dirs in the environment, then use Sys.which().
     old_path = get(ENV, "PATH", nothing)
     ENV["PATH"] = join(bindirs(), Sys.iswindows() ? ';' : ':')
@@ -107,8 +111,9 @@ end
 Remove unused packages and caches.
 """
 function gc(; io::IO=stderr)
+    backend() == :Null && return nothing
     resolve()
     cmd = conda_cmd(`clean -y --all`, io=io)
     _run(io, cmd, "Removing unused caches")
-    nothing
+    return nothing
 end
