@@ -15,29 +15,43 @@ const isnull = backend == "Null"
 
 @testset "CondaPkg" begin
 
-    @testset "PkgSpec" begin
-        @test_throws Exception CondaPkg.PkgSpec("")
-        @test_throws Exception CondaPkg.PkgSpec("foo!")
-        @test_throws Exception CondaPkg.PkgSpec("foo", version="foo")
-        spec = CondaPkg.PkgSpec("  F...OO_-0  ", version="  =1.2.3  ", channel="  SOME_chaNNEL  ")
-        @test spec.name == "f...oo_-0"
-        @test spec.version == "=1.2.3"
-        @test spec.channel == "SOME_chaNNEL"
-    end
+    @testset "internals" begin
 
-    @testset "ChannelSpec" begin
-        @test_throws Exception CondaPkg.ChannelSpec("")
-        spec = CondaPkg.ChannelSpec("  SOME_chaNNEL  ")
-        @test spec.name == "SOME_chaNNEL"
-    end
+        @testset "PkgSpec" begin
+            @test_throws Exception CondaPkg.PkgSpec("")
+            @test_throws Exception CondaPkg.PkgSpec("foo!")
+            @test_throws Exception CondaPkg.PkgSpec("foo", version="foo")
+            spec = CondaPkg.PkgSpec("  F...OO_-0  ", version="  =1.2.3  ", channel="  SOME_chaNNEL  ")
+            @test spec.name == "f...oo_-0"
+            @test spec.version == "=1.2.3"
+            @test spec.channel == "SOME_chaNNEL"
+        end
 
-    @testset "PipPkgSpec" begin
-        @test_throws Exception CondaPkg.PipPkgSpec("")
-        @test_throws Exception CondaPkg.PipPkgSpec("foo!")
-        @test_throws Exception CondaPkg.PipPkgSpec("foo", version="1.2")
-        spec = CondaPkg.PipPkgSpec("  F...OO_-0  ", version="  @./SOME/Path  ")
-        @test spec.name == "f-oo-0"
-        @test spec.version == "@./SOME/Path"
+        @testset "ChannelSpec" begin
+            @test_throws Exception CondaPkg.ChannelSpec("")
+            spec = CondaPkg.ChannelSpec("  SOME_chaNNEL  ")
+            @test spec.name == "SOME_chaNNEL"
+        end
+
+        @testset "PipPkgSpec" begin
+            @test_throws Exception CondaPkg.PipPkgSpec("")
+            @test_throws Exception CondaPkg.PipPkgSpec("foo!")
+            @test_throws Exception CondaPkg.PipPkgSpec("foo", version="1.2")
+            spec = CondaPkg.PipPkgSpec("  F...OO_-0  ", version="  @./SOME/Path  ")
+            @test spec.name == "f-oo-0"
+            @test spec.version == "@./SOME/Path"
+        end
+
+        @testset "abspathurl" begin
+            @test startswith(CondaPkg.abspathurl("foo"), "file://")
+            @test endswith(CondaPkg.abspathurl("foo"), "/foo")
+            if Sys.iswindows()
+                @test CondaPkg.abspathurl("D:\\Foo\\bar.TXT") == "file:///D:/Foo/bar.TXT"
+            else
+                @test CondaPkg.abspathurl("/Foo/bar.TXT") == "file:///Foo/bar.TXT"
+            end
+        end
+
     end
 
     isnull && @testset "Null backend" begin

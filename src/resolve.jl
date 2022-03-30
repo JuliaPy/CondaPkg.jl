@@ -85,6 +85,18 @@ function _resolve_merge_packages(packages)
     sort!(unique!(specs), by=x->x.name)
 end
 
+function abspathurl(args...)
+    path = abspath(args...)
+    if Sys.iswindows()
+        path = replace(path, '\\' => '/')
+        @assert !startswith(path, "/") # TODO: handle \\machine\... paths
+        path = "/$path"
+    else
+        @assert startswith(path, "/")
+    end
+    return "file://$path"
+end
+
 function _resolve_merge_pip_packages(packages)
     specs = PipPkgSpec[]
     for (name, pkgs) in packages
@@ -96,7 +108,7 @@ function _resolve_merge_pip_packages(packages)
             if startswith(pkg.version, "@")
                 url = strip(pkg.version[2:end])
                 if startswith(url, ".")
-                    url = abspath(dirname(fn), url)
+                    url = abspathurl(dirname(fn), url)
                 end
                 push!(urls, url)
             elseif pkg.version != ""
