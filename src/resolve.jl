@@ -98,6 +98,10 @@ function _resolve_merge_pip_packages(packages)
                 if startswith(url, ".")
                     url = abspath(dirname(fn), url)
                 end
+                if startswith(url, "/")
+                    # https://peps.python.org/pep-0440/#direct-references
+                    url = "file://"*url
+                end
                 push!(urls, url)
             elseif pkg.version != ""
                 push!(versions, pkg.version)
