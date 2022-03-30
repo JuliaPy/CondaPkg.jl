@@ -133,6 +133,7 @@ function status(; io::IO=stderr)
     if !isempty(pkgs)
         printstyled(io, "Packages", bold=true, color=:cyan)
         println(io)
+        sort!(pkgs, by=x->x.name)
         for pkg in pkgs
             print(io, "  ", pkg.name)
             if curpkgs !== nothing
@@ -153,6 +154,7 @@ function status(; io::IO=stderr)
     if !isempty(channels)
         printstyled(io, "Channels", bold=true, color=:cyan)
         println(io)
+        sort!(channels, by=x->x.name)
         for chan in channels
             println(io, "  ", chan.name)
         end
@@ -160,6 +162,7 @@ function status(; io::IO=stderr)
     if !isempty(pippkgs)
         printstyled(io, "Pip packages", bold=true, color=:cyan)
         println(io)
+        sort!(pippkgs, by=x->x.name)
         for pkg in pippkgs
             print(io, "  ", pkg.name)
             if curpippkgs !== nothing
