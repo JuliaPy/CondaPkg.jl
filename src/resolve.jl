@@ -140,24 +140,24 @@ function _resolve_diff(old_specs, new_specs)
     for spec in new_specs
         push!(get!(Set{PkgSpec}, new_dict, spec.name), spec)
     end
-    # find packages which have been removed
-    removed = String[k for k in keys(old_dict) if !haskey(new_dict, k)]
-    # find packages which are new or have changed
-    added = PkgSpec[x for (k, v) in new_dict if get(old_dict, k, nothing) != v for x in v]
+    # find changes
+    removed = collect(String, setdiff(keys(old_dict), keys(new_dict)))
+    added = collect(String, setdiff(keys(new_dict), keys(old_dict)))
+    changed = String[k for k in intersect(keys(old_dict), keys(new_dict)) if old_dict[k] != new_dict[k]]
     # don't remove pip, this avoids some flip-flopping when removing pip packages
     filter!(x->x!="pip", removed)
-    return (removed, added)
+    return (removed, changed, added)
 end
 
 function _resolve_pip_diff(old_specs, new_specs)
     # make dicts
     old_dict = Dict{String,PipPkgSpec}(spec.name => spec for spec in old_specs)
     new_dict = Dict{String,PipPkgSpec}(spec.name => spec for spec in new_specs)
-    # find packages which have been removed
-    removed = String[k for k in keys(old_dict) if !haskey(new_dict, k)]
-    # find packages which are new or have changed
-    added = PipPkgSpec[v for (k, v) in new_dict if get(old_dict, k, nothing) != v]
-    return (removed, added)
+    # find changes
+    removed = collect(String, setdiff(keys(old_dict), keys(new_dict)))
+    added = collect(String, setdiff(keys(new_dict), keys(old_dict)))
+    changed = String[k for k in intersect(keys(old_dict), keys(new_dict)) if old_dict[k] != new_dict[k]]
+    return (removed, changed, added)
 end
 
 function _verbosity()
@@ -242,10 +242,15 @@ function _resolve_pip_remove(io, pkgs, load_path)
     nothing
 end
 
-function _log(io::IO, args...)
-    printstyled(io, "    CondaPkg ", color=:green, bold=true)
-    println(io, args...)
+function _log(printfunc::Function, io::IO, args...; label="CondaPkg", opts...)
+    printstyled(io, lpad(label, 12), " ", color=:green, bold=true)
+    printfunc(io, args...; opts...)
+    println(io)
     flush(io)
+end
+
+function _log(io::IO, args...; opts...)
+    _log(printstyled, io, args...; opts...)
 end
 
 function _cmdlines(cmd, flags)
@@ -269,9 +274,10 @@ function _run(io::IO, cmd::Cmd, args...; flags=String[])
         lines = _cmdlines(cmd, flags)
         for (i, line) in enumerate(lines)
             pre = i==length(lines) ? "└ " : "│ "
-            print(io, "             ", pre)
-            printstyled(io, line, color=:light_black)
-            println(io)
+            _log(io) do io
+                print(io, pre)
+                printstyled(io, line, color=:light_black)
+            end
         end
     end
     run(cmd)
@@ -324,55 +330,75 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     specs = _resolve_merge_packages(packages)
     # merge pip dependencies
     pip_specs = _resolve_merge_pip_packages(pip_packages)
-    # skip any conda calls if the dependencies haven't changed
-    if !force && isfile(meta_file)
-        meta = open(read_meta, meta_file)
-        @assert meta !== nothing
-        if stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages)))
-            removed_pkgs, added_specs = _resolve_diff(meta.packages, specs)
-            removed_pip_pkgs, added_pip_specs = _resolve_pip_diff(meta.pip_packages, pip_specs)
-            changed = false
-            if !isempty(removed_pip_pkgs)
-                dry_run && return
-                changed = true
-                _resolve_pip_remove(io, removed_pip_pkgs, load_path)
-            end
-            if !isempty(removed_pkgs)
-                dry_run && return
-                changed = true
-                _resolve_conda_remove(io, conda_env, removed_pkgs)
-            end
-            if !isempty(specs) && (!isempty(added_specs) || changed)
-                dry_run && return
-                changed = true
-                _resolve_conda_install(io, conda_env, specs, channels)
-            end
-            if !isempty(pip_specs) && (!isempty(added_pip_specs) || changed)
-                dry_run && return
-                changed = true
-                _resolve_pip_install(io, pip_specs, load_path)
-            end
-            if !changed
-                _log(io, "Dependencies already up to date")
-            end
-            @goto save_meta
+    # find what has changed
+    meta = isfile(meta_file) ? open(read_meta, meta_file) : nothing
+    if meta === nothing
+        removed_pkgs = String[]
+        changed_pkgs = String[]
+        added_pkgs = specs
+        removed_pip_pkgs = String[]
+        changed_pip_pkgs = String[]
+        added_pip_pkgs = pip_specs
+    else
+        removed_pkgs, changed_pkgs, added_pkgs = _resolve_diff(meta.packages, specs)
+        removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)
+    end
+    changes = sort([
+        (mod1(i,3), i>3 ? "$pkg (pip)" : pkg)
+        for (i, pkgs) in enumerate([added_pkgs, changed_pkgs, removed_pkgs, added_pip_pkgs, changed_pip_pkgs, removed_pip_pkgs])
+        for pkg in pkgs
+    ])
+    if !dry_run && !isempty(changes)
+        _log(io, "Resolving changes")
+        for (i, pkg) in changes
+            char = i==1 ? "+" : i==2 ? "~" : "-"
+            color = i==1 ? :green : i==2 ? :yellow : :red
+            _log(io, char, " ", pkg, label="", color=color)
         end
     end
-    # dry run bails out before touching the environment
-    dry_run && return
-    # remove environment
-    mkpath(meta_dir)
-    if isdir(conda_env)
-        _resolve_conda_remove_all(io, conda_env)
-    end
-    # create conda environment
-    _resolve_conda_install(io, conda_env, specs, channels; create=true)
-    # install pip packages
-    if !isempty(pip_specs)
-        _resolve_pip_install(io, pip_specs, load_path)
+    # install/uninstall packages
+    if !force && meta !== nothing && stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages)))
+        # the state is sufficiently clean that we can modify the existing conda environment
+        changed = false
+        if !isempty(removed_pip_pkgs)
+            dry_run && return
+            changed = true
+            _resolve_pip_remove(io, removed_pip_pkgs, load_path)
+        end
+        if !isempty(removed_pkgs)
+            dry_run && return
+            changed = true
+            _resolve_conda_remove(io, conda_env, removed_pkgs)
+        end
+        if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || changed)
+            dry_run && return
+            changed = true
+            _resolve_conda_install(io, conda_env, specs, channels)
+        end
+        if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
+            dry_run && return
+            changed = true
+            _resolve_pip_install(io, pip_specs, load_path)
+        end
+        if !changed
+            _log(io, "Dependencies already up to date")
+        end
+    else
+        # the state is too dirty, recreate the conda environment from scratch
+        dry_run && return
+        # remove environment
+        mkpath(meta_dir)
+        if isdir(conda_env)
+            _resolve_conda_remove_all(io, conda_env)
+        end
+        # create conda environment
+        _resolve_conda_install(io, conda_env, specs, channels; create=true)
+        # install pip packages
+        if !isempty(pip_specs)
+            _resolve_pip_install(io, pip_specs, load_path)
+        end
     end
     # save metadata
-    @label save_meta
     meta = Meta(
         timestamp = time(),
         load_path = load_path,
