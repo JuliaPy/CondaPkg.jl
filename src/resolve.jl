@@ -148,8 +148,12 @@ function _resolve_pip_diff(old_specs, new_specs)
     return (removed, added)
 end
 
+function _verbosity()
+    parse(Int, get(ENV, "JULIA_CONDAPKG_VERBOSITY", "-1"))
+end
+
 function _verbosity_flags()
-    n = parse(Int, get(ENV, "JULIA_CONDAPKG_VERBOSITY", "-1"))
+    n = _verbosity()
     n < 0 ? ["-"*"q"^(-n)] : n > 0 ? ["-"*"v"^n] : String[]
 end
 
@@ -172,7 +176,7 @@ function _resolve_conda_install(io, conda_env, specs, channels; create=false)
     vrb = _verbosity_flags()
     cmd = conda_cmd(`$(create ? "create" : "install") $vrb -y -p $conda_env --override-channels --no-channel-priority $args`, io=io)
     flags = append!(["-y", "--override-channels", "--no-channel-priority"], vrb)
-    _run(io, cmd, create ? "Creating environment" : "Installing packages", flags=flags)
+    _run(io, cmd, "Installing packages", flags=flags)
     nothing
 end
 
@@ -249,12 +253,14 @@ end
 
 function _run(io::IO, cmd::Cmd, args...; flags=String[])
     _log(io, args...)
-    lines = _cmdlines(cmd, flags)
-    for (i, line) in enumerate(lines)
-        pre = i==length(lines) ? "└ " : "│ "
-        print(io, "             ", pre)
-        printstyled(io, line, color=:light_black)
-        println(io)
+    if _verbosity() ≥ 0
+        lines = _cmdlines(cmd, flags)
+        for (i, line) in enumerate(lines)
+            pre = i==length(lines) ? "└ " : "│ "
+            print(io, "             ", pre)
+            printstyled(io, line, color=:light_black)
+            println(io)
+        end
     end
     run(cmd)
 end
@@ -307,28 +313,34 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     # merge pip dependencies
     pip_specs = _resolve_merge_pip_packages(pip_packages)
     # skip any conda calls if the dependencies haven't changed
-    if !force && isfile(meta_file) && isdir(conda_env)
+    if !force && isfile(meta_file)
         meta = open(read_meta, meta_file)
-        if meta !== nothing && stat(conda_env).mtime < meta.timestamp
+        @assert meta !== nothing
+        if stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages)))
             removed_pkgs, added_specs = _resolve_diff(meta.packages, specs)
             removed_pip_pkgs, added_pip_specs = _resolve_pip_diff(meta.pip_packages, pip_specs)
+            changed = false
             if !isempty(removed_pip_pkgs)
                 dry_run && return
+                changed = true
                 _resolve_pip_remove(io, removed_pip_pkgs, load_path)
             end
             if !isempty(removed_pkgs)
                 dry_run && return
+                changed = true
                 _resolve_conda_remove(io, conda_env, removed_pkgs)
             end
-            if !isempty(specs) && (!isempty(added_specs) || !isempty(removed_pkgs) || !isempty(removed_pip_pkgs))
+            if !isempty(specs) && (!isempty(added_specs) || changed)
                 dry_run && return
+                changed = true
                 _resolve_conda_install(io, conda_env, specs, channels)
             end
-            if !isempty(pip_specs) && (!isempty(added_pip_specs) || !isempty(removed_pkgs) || !isempty(removed_pip_pkgs))
+            if !isempty(pip_specs) && (!isempty(added_pip_specs) || changed)
                 dry_run && return
+                changed = true
                 _resolve_pip_install(io, pip_specs, load_path)
             end
-            if isempty(removed_pip_pkgs) && isempty(removed_pkgs) && isempty(added_specs) && isempty(added_pip_specs)
+            if !changed
                 _log(io, "Dependencies already up to date")
             end
             @goto save_meta

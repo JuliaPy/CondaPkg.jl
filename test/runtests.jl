@@ -4,6 +4,8 @@ using Test
 # Only run the gc tests on CI (because it's annoying to do it locally)
 const testgc = get(ENV, "CI", "") == "true"
 
+# output more than usual when testing
+ENV["JULIA_CONDAPKG_VERBOSITY"] = "0"
 
 status() = sprint(io -> CondaPkg.status(io=io))
 
