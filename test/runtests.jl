@@ -33,7 +33,6 @@ const isnull = backend == "Null"
     @testset "install python" begin
         @test !occursin("python", status())
         CondaPkg.add("python", version="==3.10.2")
-        CondaPkg.resolve()
         isnull || CondaPkg.withenv() do
             pythonpath = joinpath(CondaPkg.envdir(), Sys.iswindows() ? "python.exe" : "bin/python")
             @test isfile(pythonpath)
