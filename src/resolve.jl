@@ -335,10 +335,10 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     if meta === nothing
         removed_pkgs = String[]
         changed_pkgs = String[]
-        added_pkgs = specs
+        added_pkgs = unique!(String[x.name for x in specs])
         removed_pip_pkgs = String[]
         changed_pip_pkgs = String[]
-        added_pip_pkgs = pip_specs
+        added_pip_pkgs = unique!(String[x.name for x in pip_specs])
     else
         removed_pkgs, changed_pkgs, added_pkgs = _resolve_diff(meta.packages, specs)
         removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)

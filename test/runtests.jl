@@ -42,6 +42,24 @@ const isnull = backend == "Null"
             @test spec.version == "@./SOME/Path"
         end
 
+        @testset "meta IO" begin
+            specs = Any[
+                CondaPkg.PkgSpec("foo", version="=1.2.3", channel="bar"),
+                CondaPkg.ChannelSpec("fooo"),
+                CondaPkg.PipPkgSpec("foooo", version="==2.3.4")
+            ]
+            for spec in specs
+                io = IOBuffer()
+                CondaPkg.write_meta(io, spec)
+                seekstart(io)
+                spec2 = CondaPkg.read_meta(io, typeof(spec))
+                @test spec == spec2
+                for k in propertynames(spec)
+                    @test getproperty(spec, k) == getproperty(spec2, k)
+                end
+            end
+        end
+
         @testset "abspathurl" begin
             @test startswith(CondaPkg.abspathurl("foo"), "file://")
             @test endswith(CondaPkg.abspathurl("foo"), "/foo")

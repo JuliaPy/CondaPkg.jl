@@ -3,7 +3,7 @@ This file defines functions to interact with the `.CondaPkg/meta` file which rec
 information about the most recent resolve.
 """
 
-const META_VERSION = 5 # increment whenever the metadata format changes
+const META_VERSION = 6 # increment whenever the metadata format changes
 
 @kwdef mutable struct Meta
     timestamp::Float64
@@ -52,13 +52,19 @@ function read_meta(io::IO, ::Type{VersionNumber})
     VersionNumber(read_meta(io, String))
 end
 function read_meta(io::IO, ::Type{PkgSpec})
-    PkgSpec(read_meta(io, String), version = read_meta(io, String))
+    name = read_meta(io, String)
+    version = read_meta(io, String)
+    channel = read_meta(io, String)
+    PkgSpec(name, version=version, channel=channel)
 end
 function read_meta(io::IO, ::Type{ChannelSpec})
-    ChannelSpec(read_meta(io, String))
+    name = read_meta(io, String)
+    ChannelSpec(name)
 end
 function read_meta(io::IO, ::Type{PipPkgSpec})
-    PipPkgSpec(read_meta(io, String), version = read_meta(io, String))
+    name = read_meta(io, String)
+    version = read_meta(io, String)
+    PipPkgSpec(name, version=version)
 end
 
 function write_meta(io::IO, meta::Meta)
@@ -91,6 +97,7 @@ end
 function write_meta(io::IO, x::PkgSpec)
     write_meta(io, x.name)
     write_meta(io, x.version)
+    write_meta(io, x.channel)
 end
 function write_meta(io::IO, x::ChannelSpec)
     write_meta(io, x.name)
