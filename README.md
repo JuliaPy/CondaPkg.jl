@@ -35,17 +35,12 @@ julia> using CondaPkg
 julia> # now press ] to enter the Pkg REPL
 pkg> conda status                # see what we have installed
 pkg> conda add python perl       # adds conda packages
-pkg> conda add --pip build       # adds pip packages
+pkg> conda pip_add build         # adds pip packages
 pkg> conda rm perl               # removes conda packages
 pkg> conda run python --version  # runs the given command in the conda environment
 ```
 
 For more information do `?` or `?conda` from the Pkg REPL.
-
-**Note:** Adding and removing dependencies only edits the `CondaPkg.toml` file, it does
-not immediately modify the Conda environment. The dependencies are installed when required,
-such as by the `conda run` command above. In the above example, `perl` was never installed.
-You can do `conda resolve` to resolve dependencies.
 
 **Note:** We recommend against adding Pip packages unless necessary - if there is a
 corresponding Conda package then use that. Pip does not handle version conflicts
@@ -158,3 +153,11 @@ The default backend is an implementation detail, but is currently `MicroMamba`.
 
 If you set `JULIA_CONDAPKG_EXE` but not `JULIA_CONDAPKG_BACKEND` then the `System` backend
 is used.
+
+### Verbosity
+
+You can control the verbosity of any `conda` or `pip` commands executed by setting the
+environment variable `JULIA_CONDAPKG_VERBOSITY` to a number:
+- `-1` is quiet mode (the default).
+- `0` is normal mode.
+- `1`, `2`, etc. are verbose modes, useful for debugging.

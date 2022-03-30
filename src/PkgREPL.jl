@@ -38,12 +38,6 @@ end
 
 ### options
 
-const resolve_opt = Pkg.REPLMode.OptionDeclaration([
-    :name => "resolve",
-    :short_name => "r",
-    :api => :resolve => true,
-])
-
 const force_opt = Pkg.REPLMode.OptionDeclaration([
     :name => "force",
     :short_name => "f",
@@ -96,20 +90,16 @@ const resolve_spec = Pkg.REPLMode.CommandSpec(
 
 ### add
 
-function add(args; resolve=false)
+function add(args)
     CondaPkg.add(parse_pkg.(args))
-    resolve && CondaPkg.resolve()
 end
 
 const add_help = Markdown.parse("""
 ```
-conda add [-r|--resolve] pkg ...
+conda add pkg ...
 ```
 
 Add packages to the environment.
-
-The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
-flag to force resolve.
 
 **Examples**
 
@@ -127,25 +117,20 @@ const add_spec = Pkg.REPLMode.CommandSpec(
     help = add_help,
     description = "add Conda packages",
     arg_count = 0 => Inf,
-    option_spec = [resolve_opt],
 )
 
 ### channel_add
 
-function channel_add(args; resolve=false)
+function channel_add(args)
     CondaPkg.add(parse_channel.(args))
-    resolve && CondaPkg.resolve()
 end
 
 const channel_add_help = Markdown.parse("""
 ```
-conda channel_add [-r|--resolve] channel ...
+conda channel_add channel ...
 ```
 
 Add channels to the environment.
-
-The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
-flag to force resolve.
 
 **Examples**
 
@@ -161,25 +146,20 @@ const channel_add_spec = Pkg.REPLMode.CommandSpec(
     help = channel_add_help,
     description = "add Conda channels",
     arg_count = 0 => Inf,
-    option_spec = [resolve_opt],
 )
 
 ### pip_add
 
-function pip_add(args; resolve=false)
+function pip_add(args)
     CondaPkg.add(parse_pip_pkg.(args))
-    resolve && CondaPkg.resolve()
 end
 
 const pip_add_help = Markdown.parse("""
 ```
-conda pip_add [-r|--resolve] pkg ...
+conda pip_add pkg ...
 ```
 
 Add Pip packages to the environment.
-
-The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
-flag to force resolve.
 
 **Examples**
 
@@ -195,25 +175,20 @@ const pip_add_spec = Pkg.REPLMode.CommandSpec(
     help = pip_add_help,
     description = "add Pip packages",
     arg_count = 0 => Inf,
-    option_spec = [resolve_opt],
 )
 
 ### rm
 
-function rm(args; resolve=false)
+function rm(args)
     CondaPkg.rm(parse_pkg.(args))
-    resolve && CondaPkg.resolve()
 end
 
 const rm_help = Markdown.parse("""
 ```
-conda rm|remove [-r|--resolve] pkg ...
+conda rm|remove pkg ...
 ```
 
 Remove packages from the environment.
-
-The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
-flag to force resolve.
 
 **Examples**
 
@@ -230,25 +205,20 @@ const rm_spec = Pkg.REPLMode.CommandSpec(
     help = rm_help,
     description = "remove Conda packages",
     arg_count = 0 => Inf,
-    option_spec = [resolve_opt],
 )
 
 ### channel_rm
 
-function channel_rm(args; resolve=false)
+function channel_rm(args)
     CondaPkg.rm(parse_channel.(args))
-    resolve && CondaPkg.resolve()
 end
 
 const channel_rm_help = Markdown.parse("""
 ```
-conda channel_rm|channel_remove [-r|--resolve] channel ...
+conda channel_rm|channel_remove channel ...
 ```
 
 Remove channels from the environment.
-
-The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
-flag to force resolve.
 
 **Examples**
 
@@ -265,25 +235,20 @@ const channel_rm_spec = Pkg.REPLMode.CommandSpec(
     help = channel_rm_help,
     description = "remove Conda channels",
     arg_count = 0 => Inf,
-    option_spec = [resolve_opt],
 )
 
 ### pip_rm
 
-function pip_rm(args; resolve=false)
+function pip_rm(args)
     CondaPkg.rm(parse_pip_pkg.(args))
-    resolve && CondaPkg.resolve()
 end
 
 const pip_rm_help = Markdown.parse("""
 ```
-conda pip_rm|pip_remove [-r|--resolve] pkg ...
+conda pip_rm|pip_remove pkg ...
 ```
 
 Remove Pip packages from the environment.
-
-The Conda environment is not immediately resolved. Use the `--resolve` or `-r`
-flag to force resolve.
 
 **Examples**
 
@@ -300,7 +265,6 @@ const pip_rm_spec = Pkg.REPLMode.CommandSpec(
     help = pip_rm_help,
     description = "remove Pip packages",
     arg_count = 0 => Inf,
-    option_spec = [resolve_opt],
 )
 
 ### gc
@@ -361,7 +325,7 @@ const SPECS = Dict(
     "channel_add" => channel_add_spec,
     "channel_remove" => channel_rm_spec,
     "channel_rm" => channel_rm_spec,
-    "pip add" => pip_add_spec,
+    "pip_add" => pip_add_spec,
     "pip_remove" => pip_rm_spec,
     "pip_rm" => pip_rm_spec,
     "gc" => gc_spec,

@@ -118,18 +118,50 @@ function _resolve_merge_pip_packages(packages)
     sort!(specs, by=x->x.name)
 end
 
-function _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
-    meta = open(read_meta, meta_file)
-    return meta !== nothing && meta.packages == specs && meta.pip_packages == pip_specs && stat(conda_env).mtime < meta.timestamp
+function _resolve_diff(old_specs, new_specs)
+    # group by package name
+    old_dict = Dict{String,Set{PkgSpec}}()
+    for spec in old_specs
+        push!(get!(Set{PkgSpec}, old_dict, spec.name), spec)
+    end
+    new_dict = Dict{String,Set{PkgSpec}}()
+    for spec in new_specs
+        push!(get!(Set{PkgSpec}, new_dict, spec.name), spec)
+    end
+    # find packages which have been removed
+    removed = String[k for k in keys(old_dict) if !haskey(new_dict, k)]
+    # find packages which are new or have changed
+    added = PkgSpec[x for (k, v) in new_dict if get(old_dict, k, nothing) != v for x in v]
+    # don't remove pip, this avoids some flip-flopping when removing pip packages
+    filter!(x->x!="pip", removed)
+    return (removed, added)
 end
 
-function _resolve_conda_remove(io, conda_env)
-    cmd = conda_cmd(`remove -y -p $conda_env --all`, io=io)
-    _run(io, cmd, "Removing environment", flags=["-y", "--all"])
+function _resolve_pip_diff(old_specs, new_specs)
+    # make dicts
+    old_dict = Dict{String,PipPkgSpec}(spec.name => spec for spec in old_specs)
+    new_dict = Dict{String,PipPkgSpec}(spec.name => spec for spec in new_specs)
+    # find packages which have been removed
+    removed = String[k for k in keys(old_dict) if !haskey(new_dict, k)]
+    # find packages which are new or have changed
+    added = PipPkgSpec[v for (k, v) in new_dict if get(old_dict, k, nothing) != v]
+    return (removed, added)
+end
+
+function _verbosity_flags()
+    n = parse(Int, get(ENV, "JULIA_CONDAPKG_VERBOSITY", "-1"))
+    n < 0 ? ["-"*"q"^(-n)] : n > 0 ? ["-"*"v"^n] : String[]
+end
+
+function _resolve_conda_remove_all(io, conda_env)
+    vrb = _verbosity_flags()
+    cmd = conda_cmd(`remove $vrb -y -p $conda_env --all`, io=io)
+    flags = append!(["-y", "--all"], vrb)
+    _run(io, cmd, "Removing environment", flags=flags)
     nothing
 end
 
-function _resolve_conda_create(io, conda_env, specs, channels)
+function _resolve_conda_install(io, conda_env, specs, channels; create=false)
     args = String[]
     for spec in specs
         push!(args, specstr(spec))
@@ -137,8 +169,18 @@ function _resolve_conda_create(io, conda_env, specs, channels)
     for channel in channels
         push!(args, "-c", specstr(channel))
     end
-    cmd = conda_cmd(`create -y -p $conda_env --override-channels --no-channel-priority $args`, io=io)
-    _run(io, cmd, "Creating environment", flags=["-y", "--override-channels", "--no-channel-priority"])
+    vrb = _verbosity_flags()
+    cmd = conda_cmd(`$(create ? "create" : "install") $vrb -y -p $conda_env --override-channels --no-channel-priority $args`, io=io)
+    flags = append!(["-y", "--override-channels", "--no-channel-priority"], vrb)
+    _run(io, cmd, create ? "Creating environment" : "Installing packages", flags=flags)
+    nothing
+end
+
+function _resolve_conda_remove(io, conda_env, pkgs)
+    vrb = _verbosity_flags()
+    cmd = conda_cmd(`remove $vrb -y -p $conda_env $pkgs`, io=io)
+    flags = append!(["-y"], vrb)
+    _run(io, cmd, "Removing packages", flags=flags)
     nothing
 end
 
@@ -147,14 +189,35 @@ function _resolve_pip_install(io, pip_specs, load_path)
     for spec in pip_specs
         push!(args, specstr(spec))
     end
+    vrb = _verbosity_flags()
+    flags = vrb
     old_load_path = STATE.load_path
     try
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
             pip = which("pip")
-            cmd = `$pip install $args`
-            _run(io, cmd, "Installing Pip dependencies")
+            cmd = `$pip install $vrb $args`
+            _run(io, cmd, "Installing Pip packages", flags=flags)
+        end
+    finally
+        STATE.resolved = false
+        STATE.load_path = old_load_path
+    end
+    nothing
+end
+
+function _resolve_pip_remove(io, pkgs, load_path)
+    vrb = _verbosity_flags()
+    flags = append!(["-y"], vrb)
+    old_load_path = STATE.load_path
+    try
+        STATE.resolved = true
+        STATE.load_path = load_path
+        withenv() do
+            pip = which("pip")
+            cmd = `$pip uninstall $vrb -y $pkgs`
+            _run(io, cmd, "Removing Pip packages", flags=flags)
         end
     finally
         STATE.resolved = false
@@ -229,8 +292,8 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     end
     # find all dependencies
     (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(io, load_path)
-    # if there are any pip dependencies, we'd better install pip
-    if !isempty(pip_packages)
+    # install pip if there are pip packages to install
+    if !isempty(pip_packages) && !haskey(packages, "pip")
         get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] = PkgSpec("pip")
         if !any(c.name in ("conda-forge", "anaconda") for c in channels)
             push!(channels, ChannelSpec("conda-forge"))
@@ -244,19 +307,42 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     # merge pip dependencies
     pip_specs = _resolve_merge_pip_packages(pip_packages)
     # skip any conda calls if the dependencies haven't changed
-    if !force && isfile(meta_file) && isdir(conda_env) && _resolve_can_skip_2(meta_file, specs, pip_specs, conda_env)
-        _log(io, "Dependencies already up to date")
-        @goto save_meta
+    if !force && isfile(meta_file) && isdir(conda_env)
+        meta = open(read_meta, meta_file)
+        if meta !== nothing && stat(conda_env).mtime < meta.timestamp
+            removed_pkgs, added_specs = _resolve_diff(meta.packages, specs)
+            removed_pip_pkgs, added_pip_specs = _resolve_pip_diff(meta.pip_packages, pip_specs)
+            if !isempty(removed_pip_pkgs)
+                dry_run && return
+                _resolve_pip_remove(io, removed_pip_pkgs, load_path)
+            end
+            if !isempty(removed_pkgs)
+                dry_run && return
+                _resolve_conda_remove(io, conda_env, removed_pkgs)
+            end
+            if !isempty(specs) && (!isempty(added_specs) || !isempty(removed_pkgs) || !isempty(removed_pip_pkgs))
+                dry_run && return
+                _resolve_conda_install(io, conda_env, specs, channels)
+            end
+            if !isempty(pip_specs) && (!isempty(added_pip_specs) || !isempty(removed_pkgs) || !isempty(removed_pip_pkgs))
+                dry_run && return
+                _resolve_pip_install(io, pip_specs, load_path)
+            end
+            if isempty(removed_pip_pkgs) && isempty(removed_pkgs) && isempty(added_specs) && isempty(added_pip_specs)
+                _log(io, "Dependencies already up to date")
+            end
+            @goto save_meta
+        end
     end
     # dry run bails out before touching the environment
     dry_run && return
     # remove environment
     mkpath(meta_dir)
     if isdir(conda_env)
-        _resolve_conda_remove(io, conda_env)
+        _resolve_conda_remove_all(io, conda_env)
     end
     # create conda environment
-    _resolve_conda_create(io, conda_env, specs, channels)
+    _resolve_conda_install(io, conda_env, specs, channels; create=true)
     # install pip packages
     if !isempty(pip_specs)
         _resolve_pip_install(io, pip_specs, load_path)

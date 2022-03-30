@@ -178,17 +178,18 @@ function status(; io::IO=stderr)
     end
 end
 
-function add(pkgs::AbstractVector)
+function add(pkgs::AbstractVector; resolve=true)
     toml = read_deps()
     for pkg in pkgs
         add!(toml, pkg)
     end
     write_deps(toml)
     STATE.resolved = false
+    resolve && CondaPkg.resolve()
     return
 end
 
-add(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}) = add([pkg])
+add(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; resolve=true) = add([pkg], resolve=resolve)
 
 function add!(toml, pkg::PkgSpec)
     deps = get!(Dict{String,Any}, toml, "deps")
@@ -219,17 +220,18 @@ function add!(toml, pkg::PipPkgSpec)
     deps[pkg.name] = pkg.version
 end
 
-function rm(pkgs::AbstractVector)
+function rm(pkgs::AbstractVector; resolve=true)
     toml = read_deps()
     for pkg in pkgs
         rm!(toml, pkg)
     end
     write_deps(toml)
     STATE.resolved = false
+    resolve && CondaPkg.resolve()
     return
 end
 
-rm(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}) = rm([pkg])
+rm(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; resolve=true) = rm([pkg], resolve=resolve)
 
 function rm!(toml, pkg::PkgSpec)
     deps = get!(Dict{String,Any}, toml, "deps")
@@ -258,35 +260,35 @@ function rm!(toml, pkg::PipPkgSpec)
 end
 
 """
-    add(pkg; version="", channel="")
+    add(pkg; version="", channel="", resolve=true)
 
 Adds a dependency to the current environment.
 """
-add(pkg::AbstractString; version="", channel="") = add(PkgSpec(pkg, version=version, channel=channel))
+add(pkg::AbstractString; version="", channel="", resolve=true) = add(PkgSpec(pkg, version=version, channel=channel), resolve=resolve)
 
 """
-    rm(pkg)
+    rm(pkg; resolve=true)
 
 Removes a dependency from the current environment.
 """
-rm(pkg::AbstractString) = rm(PkgSpec(pkg))
+rm(pkg::AbstractString; resolve=true) = rm(PkgSpec(pkg); resolve=resolve)
 
 """
-    add_channel(channel)
+    add_channel(channel; resolve=true)
 
 Adds a channel to the current environment.
 """
-add_channel(channel::AbstractString) = add(ChannelSpec(channel))
+add_channel(channel::AbstractString; resolve=true) = add(ChannelSpec(channel), resolve=resolve)
 
 """
-    rm_channel(channel)
+    rm_channel(channel; resolve=true)
 
 Removes a channel from the current environment.
 """
-rm_channel(channel::AbstractString) = rm(ChannelSpec(channel))
+rm_channel(channel::AbstractString; resolve=true) = rm(ChannelSpec(channel), resolve=resolve)
 
 """
-    add_pip(pkg; version="")
+    add_pip(pkg; version="", resolve=true)
 
 Adds a pip dependency to the current environment.
 
@@ -295,11 +297,11 @@ Adds a pip dependency to the current environment.
     Use conda dependencies instead if at all possible. Pip does not handle version
     conflicts gracefully, so it is possible to get incompatible versions.
 """
-add_pip(pkg::AbstractString; version="") = add(PipPkgSpec(pkg, version=version))
+add_pip(pkg::AbstractString; version="", resolve=true) = add(PipPkgSpec(pkg, version=version), resolve=resolve)
 
 """
-    rm_pip(pkg)
+    rm_pip(pkg; resolve=true)
 
 Removes a pip dependency from the current environment.
 """
-rm_pip(pkg::AbstractString) = rm(PipPkgSpec(pkg))
+rm_pip(pkg::AbstractString; resolve=true) = rm(PipPkgSpec(pkg), resolve=resolve)

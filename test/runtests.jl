@@ -122,30 +122,30 @@ const isnull = backend == "Null"
         # the Pkg REPL.
 
         # add
-        CondaPkg.PkgREPL.add([" foo >=1.2 "])
-        @test occursin("foo", status())
-        @test occursin("(>=1.2)", status())
+        CondaPkg.PkgREPL.add(["  six ==1.16.0 "])
+        @test occursin("six", status())
+        @test occursin("(==1.16.0)", status())
 
         # rm
-        CondaPkg.PkgREPL.rm([" foo "])
-        @test !occursin("foo", status())
+        CondaPkg.PkgREPL.rm([" six "])
+        @test !occursin("six", status())
 
         # add channel
-        CondaPkg.PkgREPL.channel_add([" foo-channel "])
-        @test occursin("foo-channel", status())
+        CondaPkg.PkgREPL.channel_add([" numba "])
+        @test occursin("numba", status())
 
         # rm channel
-        CondaPkg.PkgREPL.channel_rm([" foo-channel "])
-        @test !occursin("foo-channel", status())
+        CondaPkg.PkgREPL.channel_rm([" numba "])
+        @test !occursin("numba", status())
 
         # add pip
-        CondaPkg.PkgREPL.pip_add([" foo ~=1.3 "])
-        @test occursin("foo", status())
-        @test occursin("(~=1.3)", status())
+        CondaPkg.PkgREPL.pip_add([" six ==1.16.0 "])
+        @test occursin("six", status())
+        @test occursin("(==1.16.0)", status())
 
         # rm pip
-        CondaPkg.PkgREPL.pip_rm([" foo "])
-        @test !occursin("foo", status())
+        CondaPkg.PkgREPL.pip_rm([" six "])
+        @test !occursin("six", status())
 
         # status
         # TODO: capture the output and check it equals status()
