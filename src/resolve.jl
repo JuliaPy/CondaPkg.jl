@@ -274,7 +274,7 @@ function _run(io::IO, cmd::Cmd, args...; flags=String[])
         lines = _cmdlines(cmd, flags)
         for (i, line) in enumerate(lines)
             pre = i==length(lines) ? "└ " : "│ "
-            _log(io) do io
+            _log(io, label="") do io
                 print(io, pre)
                 printstyled(io, line, color=:light_black)
             end
@@ -370,7 +370,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             changed = true
             _resolve_conda_remove(io, conda_env, removed_pkgs)
         end
-        if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || changed)
+        if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed)
             dry_run && return
             changed = true
             _resolve_conda_install(io, conda_env, specs, channels)
