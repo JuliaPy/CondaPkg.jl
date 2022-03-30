@@ -100,7 +100,7 @@ validate_pip_pkg(name) =
 
 is_valid_pip_version(ver) = occursin(r"^\s*($|[~!<>=@])", ver) && !occursin(";", ver)
 
-normalise_pip_version(ver) = lowercase(strip(ver))
+normalise_pip_version(ver) = strip(ver)
 
 validate_pip_version(ver) =
     if is_valid_pip_version(ver)
