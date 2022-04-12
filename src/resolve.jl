@@ -13,7 +13,7 @@ function _resolve_top_env(load_path)
             break
         end
     end
-    top_env == "" && error("no environment in the LOAD_PATH depends on CondaPkg")
+    top_env == "" && error("no environment in the LOAD_PATH ($load_path) depends on CondaPkg")
     top_env
 end
 
