@@ -93,15 +93,17 @@ specstr(x::ChannelSpec) = x.name
 struct PipPkgSpec
     name::String
     version::String
-    function PipPkgSpec(name; version="")
+    binary::String
+    function PipPkgSpec(name; version="", binary="")
         name = validate_pip_pkg(name)
         version = validate_pip_version(version)
-        new(name, version)
+        binary = validate_pip_binary(binary)
+        new(name, version, binary)
     end
 end
 
-Base.:(==)(x::PipPkgSpec, y::PipPkgSpec) = (x.name == y.name) && (x.version == y.version)
-Base.hash(x::PipPkgSpec, h::UInt) = hash(x.version, hash(x.name, h))
+Base.:(==)(x::PipPkgSpec, y::PipPkgSpec) = (x.name == y.name) && (x.version == y.version) && (x.binary == y.binary)
+Base.hash(x::PipPkgSpec, h::UInt) = hash(x.binary, hash(x.version, hash(x.name, h)))
 
 is_valid_pip_pkg(name) = occursin(r"^\s*[-_.A-Za-z0-9]+\s*$", name)
 
@@ -123,6 +125,17 @@ validate_pip_version(ver) =
         normalise_pip_version(ver)
     else
         error("invalid pip version: $(repr(ver))")
+    end
+
+is_valid_pip_binary(x) = x in ("only", "no", "")
+
+normalise_pip_binary(x) = x
+
+validate_pip_binary(x) =
+    if is_valid_pip_binary(x)
+        return normalise_pip_binary(x)
+    else
+        error("invalid pip binary: $(repr(x)) (expecting \"only\" or \"no\")")
     end
 
 specstr(x::PipPkgSpec) = x.version == "" ? x.name : string(x.name, " ", x.version)

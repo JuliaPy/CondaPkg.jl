@@ -4,7 +4,7 @@ information about the most recent resolve.
 """
 
 # increment whenever the metadata format changes
-const META_VERSION = 7
+const META_VERSION = 8
 
 @kwdef mutable struct Meta
     timestamp::Float64
@@ -67,7 +67,8 @@ end
 function read_meta(io::IO, ::Type{PipPkgSpec})
     name = read_meta(io, String)
     version = read_meta(io, String)
-    PipPkgSpec(name, version=version)
+    binary = read_meta(io, String)
+    PipPkgSpec(name, version=version, binary=binary)
 end
 
 function write_meta(io::IO, meta::Meta)
@@ -109,4 +110,5 @@ end
 function write_meta(io::IO, x::PipPkgSpec)
     write_meta(io, x.name)
     write_meta(io, x.version)
+    write_meta(io, x.binary)
 end

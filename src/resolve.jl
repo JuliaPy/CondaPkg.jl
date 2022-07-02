@@ -103,6 +103,7 @@ function _resolve_merge_pip_packages(packages)
         @assert length(pkgs) > 0
         versions = String[]
         urls = String[]
+        binary = ""
         for (fn, pkg) in pkgs
             @assert pkg.name == name
             if startswith(pkg.version, "@")
@@ -113,6 +114,13 @@ function _resolve_merge_pip_packages(packages)
                 push!(urls, url)
             elseif pkg.version != ""
                 push!(versions, pkg.version)
+            end
+            if pkg.binary != ""
+                if binary in ("", pkg.binary)
+                    binary = pkg.binary
+                else
+                    error("$(binary)-binary and $(pkg.binary)-binary both specified for pip package '$name'")
+                end
             end
         end
         sort!(unique!(urls))
@@ -125,7 +133,7 @@ function _resolve_merge_pip_packages(packages)
         else
             error("direct references ('@ ...') and version specifiers both given for pip package '$name'")
         end
-        push!(specs, PipPkgSpec(name, version=version))
+        push!(specs, PipPkgSpec(name, version=version, binary=binary))
     end
     sort!(specs, by=x->x.name)
 end
@@ -202,6 +210,13 @@ end
 
 function _resolve_pip_install(io, pip_specs, load_path)
     args = String[]
+    for spec in pip_specs
+        if spec.binary == "only"
+            push!(args, "--only-binary", spec.name)
+        elseif spec.binary == "no"
+            push!(args, "--no-binary", spec.name)
+        end
+    end
     for spec in pip_specs
         push!(args, specstr(spec))
     end
@@ -344,13 +359,13 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)
     end
     changes = sort([
-        (mod1(i,3), i>3 ? "$pkg (pip)" : pkg)
+        (i>3 ? "$pkg (pip)" : pkg, mod1(i,3))
         for (i, pkgs) in enumerate([added_pkgs, changed_pkgs, removed_pkgs, added_pip_pkgs, changed_pip_pkgs, removed_pip_pkgs])
         for pkg in pkgs
     ])
     if !dry_run && !isempty(changes)
         _log(io, "Resolving changes")
-        for (i, pkg) in changes
+        for (pkg, i) in changes
             char = i==1 ? "+" : i==2 ? "~" : "-"
             color = i==1 ? :green : i==2 ? :yellow : :red
             _log(io, char, " ", pkg, label="", color=color)

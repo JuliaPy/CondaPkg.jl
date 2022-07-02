@@ -25,7 +25,7 @@ function parse_pkg(x::String)
     CondaPkg.PkgSpec(name, version=version, channel=channel, build=build)
 end
 
-function parse_pip_pkg(x::String)
+function parse_pip_pkg(x::String; binary::String="")
     m = match(r"^\s*([-_.A-Za-z0-9]+)\s*([~!<>=@].*)?$", x)
     m === nothing && error("invalid pip package: $x")
     name = m.captures[1]
@@ -33,7 +33,7 @@ function parse_pip_pkg(x::String)
     if version === nothing
         version = ""
     end
-    CondaPkg.PipPkgSpec(name, version=version)
+    CondaPkg.PipPkgSpec(name, version=version, binary=binary)
 end
 
 function parse_channel(x::String)
@@ -46,6 +46,16 @@ const force_opt = Pkg.REPLMode.OptionDeclaration([
     :name => "force",
     :short_name => "f",
     :api => :force => true,
+])
+
+const only_binary_opt = Pkg.REPLMode.OptionDeclaration([
+    :name => "onlybinary",
+    :api => :only_binary => true,
+])
+
+const no_binary_opt = Pkg.REPLMode.OptionDeclaration([
+    :name => "nobinary",
+    :api => :no_binary => true,
 ])
 
 ### status
@@ -154,13 +164,23 @@ const channel_add_spec = Pkg.REPLMode.CommandSpec(
 
 ### pip_add
 
-function pip_add(args)
-    CondaPkg.add(parse_pip_pkg.(args))
+function pip_add(args; only_binary=false, no_binary=false)
+    binary = ""
+    for (v, b) in [(only_binary, "only"), (no_binary, "no")]
+        if v
+            if binary == ""
+                binary = b
+            else
+                error("--$(binary)binary and --$(b)binary are mutually exclusive")
+            end
+        end
+    end
+    CondaPkg.add([parse_pip_pkg(arg, binary=binary) for arg in args])
 end
 
 const pip_add_help = Markdown.parse("""
 ```
-conda pip_add pkg ...
+conda pip_add [--nobinary|--onlybinary] pkg ...
 ```
 
 Add Pip packages to the environment.
@@ -169,6 +189,7 @@ Add Pip packages to the environment.
 
 ```
 pkg> conda pip_add build~=0.7
+pkg> conda pip_add --nobinary nmslib
 ```
 """)
 
@@ -179,6 +200,7 @@ const pip_add_spec = Pkg.REPLMode.CommandSpec(
     help = pip_add_help,
     description = "add Pip packages",
     arg_count = 0 => Inf,
+    option_spec = [no_binary_opt, only_binary_opt],
 )
 
 ### rm

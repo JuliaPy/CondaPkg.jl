@@ -50,7 +50,7 @@ function parse_deps(toml)
                     elseif k == "build"
                         build = _convert(String, v)
                     else
-                        error("deps keys must be 'version' or 'channel', got '$k'")
+                        error("deps keys must be 'version', 'channel' or 'build', got '$k'")
                     end
                 end
             else
@@ -75,9 +75,26 @@ function parse_deps(toml)
     if haskey(toml, "pip")
         pip = _convert(Dict{String,Any}, toml["pip"])
         if haskey(pip, "deps")
-            pip_deps = _convert(Dict{String,String}, pip["deps"])
-            for (name, version) in pip_deps
-                pkg = PipPkgSpec(name, version=version)
+            pip_deps = _convert(Dict{String,Any}, pip["deps"])
+            for (name, dep) in pip_deps
+                version = ""
+                binary = ""
+                if dep isa AbstractString
+                    version = _convert(String, dep)
+                elseif dep isa AbstractDict
+                    for (k, v) in _convert(Dict{String,Any}, dep)
+                        if k == "version"
+                            version = _convert(String, v)
+                        elseif k == "binary"
+                            binary = _convert(String, v)
+                        else
+                            error("pip.deps keys must be 'version' or 'binary', got '$k'")
+                        end
+                    end
+                else
+                    error("pip.deps must be String or Dict, got $(typeof(dep))")
+                end
+                pkg = PipPkgSpec(name, version=version, binary=binary)
                 push!(pip_packages, pkg)
             end
         end
@@ -177,9 +194,10 @@ function status(; io::IO=stderr)
                     print(io, " v", curpkg.version)
                 end
             end
-            if !isempty(pkg.version)
-                printstyled(io, " (", pkg.version, ")", color=:light_black)
-            end
+            specparts = String[]
+            pkg.version == "" || push!(specparts, pkg.version)
+            pkg.binary == "" || push!(specparts, "$(pkg.binary)-binary")
+            isempty(specparts) || printstyled(io, " (", join(specparts, ", "), ")", color=:light_black)
             println(io)
         end
     end
@@ -227,7 +245,18 @@ function add!(toml, pkg::PipPkgSpec)
     pip = get!(Dict{String,Any}, toml, "pip")
     deps = get!(Dict{String,Any}, pip, "deps")
     filter!(kv -> normalise_pip_pkg(kv[1]) != pkg.name, deps)
-    deps[pkg.name] = pkg.version
+    dep = Dict{String,Any}()
+    if pkg.version != ""
+        dep["version"] = pkg.version
+    end
+    if pkg.binary != ""
+        dep["binary"] = pkg.binary
+    end
+    if issubset(keys(dep), ["version"])
+        deps[pkg.name] = pkg.version
+    else
+        deps[pkg.name] = dep
+    end
 end
 
 function rm(pkgs::AbstractVector; resolve=true)
@@ -298,7 +327,7 @@ Removes a channel from the current environment.
 rm_channel(channel::AbstractString; resolve=true) = rm(ChannelSpec(channel), resolve=resolve)
 
 """
-    add_pip(pkg; version="", resolve=true)
+    add_pip(pkg; version="", binary="", resolve=true)
 
 Adds a pip dependency to the current environment.
 
@@ -307,7 +336,7 @@ Adds a pip dependency to the current environment.
     Use conda dependencies instead if at all possible. Pip does not handle version
     conflicts gracefully, so it is possible to get incompatible versions.
 """
-add_pip(pkg::AbstractString; version="", resolve=true) = add(PipPkgSpec(pkg, version=version), resolve=resolve)
+add_pip(pkg::AbstractString; version="", binary="", resolve=true) = add(PipPkgSpec(pkg, version=version, binary=binary), resolve=resolve)
 
 """
     rm_pip(pkg; resolve=true)
