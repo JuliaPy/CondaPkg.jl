@@ -71,9 +71,10 @@ python = ">=3.5,<4"
 perl = ""
 
 [deps.llvmlite]
-# Long syntax to specify other fields, such as the channel
+# Long syntax to specify other fields, such as the channel and build
 version = ">=0.38,<0.39"
 channel = "numba"
+build = "*"
 
 [pip.deps]
 # Pip package names and versions
@@ -81,6 +82,11 @@ build = "~=0.7.0"
 six = ""
 some-remote-package = "@ https://example.com/foo.zip"
 some-local-package = "@ ./foo.zip"
+
+[pip.deps.nmslib]
+# Long syntax to specify other fields
+version = "~=2.1"
+binary = "no"  # or "only"
 ```
 
 ## Access the Conda environment
@@ -118,7 +124,7 @@ end
 
 ### Conda packages
 
-These are identified by a name and version.
+These are identified by a name, version and build.
 
 The version must be a Conda version specifier, or be blank.
 
@@ -135,6 +141,9 @@ The version must be a Pip version specifier, or be blank.
 Direct references such as `foo @ http://example.com/foo.zip` are allowed. As a special case
 if the URL starts with `.` then it is interpreted as a path relative to the directory
 containing the `CondaPkg.toml` file.
+
+Additionally the binary mode specifies whether to only use binary distributions ("only") or
+to never use them ("no").
 
 ### Backends
 

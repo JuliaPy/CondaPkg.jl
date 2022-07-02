@@ -48,14 +48,10 @@ const force_opt = Pkg.REPLMode.OptionDeclaration([
     :api => :force => true,
 ])
 
-const only_binary_opt = Pkg.REPLMode.OptionDeclaration([
-    :name => "onlybinary",
-    :api => :only_binary => true,
-])
-
-const no_binary_opt = Pkg.REPLMode.OptionDeclaration([
-    :name => "nobinary",
-    :api => :no_binary => true,
+const binary_opt = Pkg.REPLMode.OptionDeclaration([
+    :name => "binary",
+    :takes_arg => true,
+    :api => :binary => identity,
 ])
 
 ### status
@@ -164,23 +160,13 @@ const channel_add_spec = Pkg.REPLMode.CommandSpec(
 
 ### pip_add
 
-function pip_add(args; only_binary=false, no_binary=false)
-    binary = ""
-    for (v, b) in [(only_binary, "only"), (no_binary, "no")]
-        if v
-            if binary == ""
-                binary = b
-            else
-                error("--$(binary)binary and --$(b)binary are mutually exclusive")
-            end
-        end
-    end
+function pip_add(args; binary="")
     CondaPkg.add([parse_pip_pkg(arg, binary=binary) for arg in args])
 end
 
 const pip_add_help = Markdown.parse("""
 ```
-conda pip_add [--nobinary|--onlybinary] pkg ...
+conda pip_add [--binary={only|no}] pkg ...
 ```
 
 Add Pip packages to the environment.
@@ -200,7 +186,7 @@ const pip_add_spec = Pkg.REPLMode.CommandSpec(
     help = pip_add_help,
     description = "add Pip packages",
     arg_count = 0 => Inf,
-    option_spec = [no_binary_opt, only_binary_opt],
+    option_spec = [binary_opt],
 )
 
 ### rm
