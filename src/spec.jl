@@ -9,16 +9,18 @@ struct PkgSpec
     name::String
     version::String
     channel::String
-    function PkgSpec(name; version="", channel="")
+    build::String
+    function PkgSpec(name; version="", channel="", build="")
         name = validate_pkg(name)
         version = validate_version(version)
         channel = validate_channel(channel, allow_empty=true)
-        new(name, version, channel)
+        build = validate_build(build)
+        new(name, version, channel, build)
     end
 end
 
-Base.:(==)(x::PkgSpec, y::PkgSpec) = (x.name == y.name) && (x.version == y.version) && (x.channel == y.channel)
-Base.hash(x::PkgSpec, h::UInt) = hash(x.channel, hash(x.version, hash(x.name, h)))
+Base.:(==)(x::PkgSpec, y::PkgSpec) = (x.name == y.name) && (x.version == y.version) && (x.channel == y.channel) && (x.build == y.build)
+Base.hash(x::PkgSpec, h::UInt) = hash(x.build, hash(x.channel, hash(x.version, hash(x.name, h))))
 
 is_valid_pkg(name) = occursin(r"^\s*[-_.a-zA-Z0-9]+\s*$", name) && is_valid_string(name)
 
@@ -42,11 +44,25 @@ validate_version(ver) =
         error("invalid version: $(repr(ver))")
     end
 
+is_valid_build(build) = !occursin(''', build)
+
+normalise_build(build) = strip(build)
+
+validate_build(build) =
+    if is_valid_build(build)
+        return normalise_build(build)
+    else
+        error("invalid build: $(repr(build))")
+    end
+
 function specstr(x::PkgSpec)
     parts = String[]
-    x.version == "" || push!(parts, "version='$(x.version)'")
+    # always include the version, working around a bug in micromamba that the build is
+    # ignored if the version is not set at all
+    push!(parts, "version='$(x.version == "" ? "*" : x.version)'")
     x.channel == "" || push!(parts, "channel='$(x.channel)'")
-    suffix = isempty(parts) ? "" : string("[", join(parts, ", "), "]")
+    x.build == "" || push!(parts, "build='$(x.build)'")
+    suffix = isempty(parts) ? "" : string("[", join(parts, ","), "]")
     string(x.name, suffix)
 end
 

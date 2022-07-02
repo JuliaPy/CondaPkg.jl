@@ -7,18 +7,22 @@ import Markdown
 ### parsing
 
 function parse_pkg(x::String)
-    m = match(r"^\s*(([^:]+)::)?([-_.A-Za-z0-9]+)\s*([<>=!0-9].*)?$", x)
+    m = match(r"^\s*(([^:\s]+)::)?([-_.A-Za-z0-9]+)\s*(([<>=!0-9][^\s]*)\s*([^\s]+))?\s*$", x)
     m === nothing && error("invalid conda package: $x")
     channel = m.captures[2]
     name = m.captures[3]
-    version = m.captures[4]
+    version = m.captures[5]
+    build = m.captures[6]
     if version === nothing
         version = ""
     end
     if channel === nothing
         channel = ""
     end
-    CondaPkg.PkgSpec(name, version=version, channel=channel)
+    if build === nothing
+        build = ""
+    end
+    CondaPkg.PkgSpec(name, version=version, channel=channel, build=build)
 end
 
 function parse_pip_pkg(x::String)

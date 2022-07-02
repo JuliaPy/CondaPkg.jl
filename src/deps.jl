@@ -38,6 +38,7 @@ function parse_deps(toml)
         for (name, dep) in deps
             version = ""
             channel = ""
+            build = ""
             if dep isa AbstractString
                 version = _convert(String, dep)
             elseif dep isa AbstractDict
@@ -46,6 +47,8 @@ function parse_deps(toml)
                         version = _convert(String, v)
                     elseif k == "channel"
                         channel = _convert(String, v)
+                    elseif k == "build"
+                        build = _convert(String, v)
                     else
                         error("deps keys must be 'version' or 'channel', got '$k'")
                     end
@@ -53,7 +56,7 @@ function parse_deps(toml)
             else
                 error("deps must be String or Dict, got $(typeof(dep))")
             end
-            pkg = PkgSpec(name, version=version, channel=channel)
+            pkg = PkgSpec(name, version=version, channel=channel, build=build)
             push!(packages, pkg)
         end
     end
@@ -147,6 +150,7 @@ function status(; io::IO=stderr)
             specparts = String[]
             pkg.version == "" || push!(specparts, pkg.version)
             pkg.channel == "" || push!(specparts, "channel=$(pkg.channel)")
+            pkg.build == "" || push!(specparts, "build=$(pkg.build)")
             isempty(specparts) || printstyled(io, " (", join(specparts, ", "), ")", color=:light_black)
             println(io)
         end
@@ -203,6 +207,9 @@ function add!(toml, pkg::PkgSpec)
     end
     if pkg.channel != ""
         dep["channel"] = pkg.channel
+    end
+    if pkg.build != ""
+        dep["build"] = pkg.build
     end
     if issubset(keys(dep), ["version"])
         deps[pkg.name] = pkg.version
@@ -263,11 +270,11 @@ function rm!(toml, pkg::PipPkgSpec)
 end
 
 """
-    add(pkg; version="", channel="", resolve=true)
+    add(pkg; version="", channel="", build="", resolve=true)
 
 Adds a dependency to the current environment.
 """
-add(pkg::AbstractString; version="", channel="", resolve=true) = add(PkgSpec(pkg, version=version, channel=channel), resolve=resolve)
+add(pkg::AbstractString; version="", channel="", build="", resolve=true) = add(PkgSpec(pkg, version=version, channel=channel, build=build), resolve=resolve)
 
 """
     rm(pkg; resolve=true)
