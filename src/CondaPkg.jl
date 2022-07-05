@@ -39,6 +39,7 @@ include("meta.jl")
 include("resolve.jl")
 include("env.jl")
 include("deps.jl")
+include("import.jl")
 
 include("PkgREPL.jl")
 
