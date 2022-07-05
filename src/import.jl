@@ -1,7 +1,7 @@
 
 
 """
-import_conda_env(yaml_file::String; overwrite::Bool=false)
+    import_conda_env(yaml_file::String; overwrite::Bool=false)
 
 Import a conda environment.yml file into the CondaPkg.toml format
 """
@@ -12,6 +12,10 @@ function import_conda_env(yaml_file::String; overwrite::Bool=false)
     if isfile(dfile) & !overwrite
         error("There is an existing CondaPkg.toml file: $dfile.",
                 "Set overwrite=true to replace this file.")
+    end
+    
+    if overwrite
+        rm(dfile)
     end
 
     env = YAML.load_file(yaml_file)
@@ -28,19 +32,18 @@ function import_conda_env(yaml_file::String; overwrite::Bool=false)
         import_dependency(dep)
     end
 
-
     CondaPkg.resolve()
 end
 
 """
-    function import_dependency(dep::String)
+    import_dependency(dep::String)
 
 Import a basic conda dependency. This is either just
 a package, or a package + verion.
 
 Examples:
-- pandas
-- pandas=1.4
+- `pandas`
+- `pandas=1.4`
 """
 function import_dependency(dep::String)
     if occursin("=", dep)
@@ -54,7 +57,7 @@ end
 
 
 """
-    function import_dependency(dep::String)
+    import_dependency(dep::String)
 
 Import pip packages into CondaPkg.toml
 
