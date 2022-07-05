@@ -1,21 +1,17 @@
 
 
 """
-    import_conda_env(yaml_file::String; overwrite::Bool=false)
+    import_conda_env(yaml_file::String; append::Bool=false)
 
 Import a conda environment.yml file into the CondaPkg.toml format
 """
-function import_conda_env(yaml_file::String; overwrite::Bool=false)
+function import_conda_env(yaml_file::String; append::Bool=false)
     # get the current CondaPkg.toml file
     dfile = cur_deps_file()
 
-    if isfile(dfile) & !overwrite
-        error("There is an existing CondaPkg.toml file: $dfile.",
-                "Set overwrite=true to replace this file.")
-    end
-    
-    if overwrite
-        rm(dfile)
+    if isfile(dfile) & !append
+        error("There is an append CondaPkg.toml file: $dfile.",
+                "Set append=true to append this file.")
     end
 
     env = YAML.load_file(yaml_file)
