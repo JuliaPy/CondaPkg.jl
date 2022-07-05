@@ -25,7 +25,6 @@ function import_conda_env(yaml_file::String; overwrite::Bool=false)
 
     # add dependencies
     for dep in env["dependencies"]
-        println(dep)
         import_dependency(dep)
     end
 
