@@ -59,7 +59,9 @@ end
 
 Import pip packages into CondaPkg.toml
 
-Example:
+Example yaml file:
+
+```
 name: test_env
 channels:
   - defaults
@@ -67,6 +69,7 @@ channels:
 dependencies:
 - pip:
     - Flask-Testing
+```
 """
 function import_dependency(dep::Dict)
     for pip_dep in dep["pip"]
