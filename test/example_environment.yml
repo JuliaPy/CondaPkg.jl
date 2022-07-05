@@ -1,0 +1,12 @@
+name: test_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - numpy
+  - pandas=1.4
+  - pip
+  - pip:
+    - mlxtend=0.20.0
+    - black

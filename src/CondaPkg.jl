@@ -12,6 +12,7 @@ import MicroMamba
 import JSON3
 import Pkg
 import TOML
+import YAML
 
 let toml = TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
     @eval const UUID = Base.UUID($(toml["uuid"]))
