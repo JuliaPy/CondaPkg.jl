@@ -221,7 +221,7 @@ const isnull = backend == "Null"
     end
 
     @testset "Import conda environment.yml" begin
-        CondaPkg.import_conda_env("./example_environment.yml"; overwrite=true)
+        CondaPkg.import_conda_env("./example_environment.yml"; append=true)
     end
 
 end
