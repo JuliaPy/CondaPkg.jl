@@ -296,40 +296,32 @@ const TEMP_PKGS = Dict{String,Dict{String,PkgSpec}}()
 const TEMP_CHANNELS = Dict{String,Dict{String,ChannelSpec}}()
 const TEMP_PIP_PKGS = Dict{String,Dict{String,PipPkgSpec}}()
 
-function add_temp!(file, pkg::PkgSpec)
-    pkgs = get!(Dict{String,PkgSpec}, TEMP_PKGS, realpath(file))
-    if !haskey(pkgs, pkg.name) || pkgs[pkg.name] != pkg
-        pkgs[pkg.name] = pkg
-        STATE.resolved = false
-    end
-    return
-end
+add_temp!(file, pkg::PkgSpec) = _add_temp!(TEMP_PKGS, file, pkg)
+add_temp!(file, pkg::ChannelSpec) = _add_temp!(TEMP_CHANNELS, file, pkg)
+add_temp!(file, pkg::PipPkgSpec) = _add_temp!(TEMP_PIP_PKGS, file, pkg)
 
-function add_temp!(file, channel::ChannelSpec)
-    channels = get!(Dict{String,ChannelSpec}, TEMP_CHANNELS, realpath(file))
-    if !haskey(channels, channel.name) || channels[channel.name] != channel
-        channels[channel.name] = channels
-        STATE.resolved = false
-    end
-    return
-end
-
-function add_temp!(file, pkg::PipPkgSpec)
-    pkgs = get!(Dict{String,PipPkgSpec}, TEMP_PIP_PKGS, realpath(file))
-    if !haskey(pkgs, pkg.name) || pkgs[pkg.name] != pkg
-        pkgs[pkg.name] = pkg
-        STATE.resolved = false
-    end
-    return
-end
-
-function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file())
-    toml = read_deps(; file)
-    for pkg in pkgs
-        rm!(toml, pkg)
-    end
-    write_deps(toml)
+function _add_temp!(dict, file, pkg)
+    file = realpath(file)
+    pkgs = get!(valtype(dict), dict, file)
+    haskey(pkgs, pkg.name) && pkgs[pkg.name] == pkg && return
+    pkgs[pkg.name] = pkg
     STATE.resolved = false
+    return
+end
+
+function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false)
+    if temp
+        for pkg in pkgs
+            rm_temp!(file, pkg)
+        end
+    else
+        toml = read_deps(; file)
+        for pkg in pkgs
+            rm!(toml, pkg)
+        end
+        write_deps(toml)
+        STATE.resolved = false
+    end
     resolve && CondaPkg.resolve()
     return
 end
@@ -360,6 +352,21 @@ function rm!(toml, pkg::PipPkgSpec)
     length(deps) < n || error("pip package not found: $(pkg.name)")
     isempty(deps) && delete!(pip, "deps")
     isempty(pip) && delete!(toml, "pip")
+end
+
+rm_temp!(file, pkg::PkgSpec) = _rm_temp!(TEMP_PKGS, file, pkg)
+rm_temp!(file, pkg::ChannelSpec) = _rm_temp!(TEMP_CHANNELS, file, pkg)
+rm_temp!(file, pkg::PipPkgSpec) = _rm_temp!(TEMP_PIP_PKGS, file, pkg)
+
+function _rm_temp!(dict, file, pkg)
+    file = realpath(file)
+    haskey(dict, file) || return
+    pkgs = dict[file]
+    haskey(pkgs, pkg.name) || return
+    delete!(pkgs, pkg.name)
+    STATE.resolved = false
+    isempty(pkgs) && delete!(dict, file)
+    return
 end
 
 """
