@@ -126,7 +126,7 @@ function read_parsed_deps(file)
             append!(deps.pip_packages, values(temp_pip_pkgs))
         end
     else
-        deps = Dict{String,Any}()
+        deps = parse_deps(Dict{String,Any}())
     end
     return deps
 end
