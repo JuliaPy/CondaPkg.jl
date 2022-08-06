@@ -104,6 +104,33 @@ function parse_deps(toml)
     return (packages=packages, channels=channels, pip_packages=pip_packages)
 end
 
+function read_parsed_deps(file)
+    if isfile(file)
+        # read and parse the deps file
+        file = realpath(file)
+        deps = parse_deps(TOML.parsefile(file))
+        # add any extras
+        temp_pkgs = get!(Dict{String,PkgSpec}, TEMP_PKGS, file)
+        if !isempty(temp_pkgs)
+            filter!(p->!haskey(temp_pkgs, p.name), deps.packages)
+            append!(deps.packages, values(temp_pkgs))
+        end
+        temp_channels = get!(Dict{String,ChannelSpec}, TEMP_CHANNELS, file)
+        if !isempty(temp_channels)
+            filter!(p->!haskey(temp_channels, p.name), deps.channels)
+            append!(deps.channels, values(temp_channels))
+        end
+        temp_pip_pkgs = get!(Dict{String,PipPkgSpec}, TEMP_PIP_PKGS, file)
+        if !isempty(temp_pip_pkgs)
+            filter!(p->!haskey(temp_pip_pkgs, p.name), deps.pip_packages)
+            append!(deps.pip_packages, values(temp_pip_pkgs))
+        end
+    else
+        deps = Dict{String,Any}()
+    end
+    return deps
+end
+
 function current_packages()
     cmd = conda_cmd(`list -p $(envdir()) --json`)
     pkglist = JSON3.read(cmd)
@@ -130,7 +157,7 @@ function status(; io::IO=stderr)
     dfile = cur_deps_file()
     resolved = is_resolved()
     isnull = backend() == :Null
-    pkgs, channels, pippkgs = parse_deps(read_deps(file=dfile))
+    pkgs, channels, pippkgs = read_parsed_deps(dfile)
     curpkgs = resolved && !isnull && !isempty(pkgs) ? current_packages() : nothing
     curpippkgs = resolved && !isnull && !isempty(pippkgs) ? current_pip_packages() : nothing
     blank = isempty(pkgs) && isempty(channels) && isempty(pippkgs)
@@ -203,18 +230,24 @@ function status(; io::IO=stderr)
     end
 end
 
-function add(pkgs::AbstractVector; resolve=true)
-    toml = read_deps()
-    for pkg in pkgs
-        add!(toml, pkg)
+function add(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false)
+    if temp
+        for pkg in pkgs
+            add_temp!(file, pkg)
+        end
+    else
+        toml = read_deps(; file)
+        for pkg in pkgs
+            add!(toml, pkg)
+        end
+        write_deps(toml)
+        STATE.resolved = false
     end
-    write_deps(toml)
-    STATE.resolved = false
     resolve && CondaPkg.resolve()
     return
 end
 
-add(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; resolve=true) = add([pkg], resolve=resolve)
+add(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; kw...) = add([pkg]; kw...)
 
 function add!(toml, pkg::PkgSpec)
     deps = get!(Dict{String,Any}, toml, "deps")
@@ -259,8 +292,39 @@ function add!(toml, pkg::PipPkgSpec)
     end
 end
 
-function rm(pkgs::AbstractVector; resolve=true)
-    toml = read_deps()
+const TEMP_PKGS = Dict{String,Dict{String,PkgSpec}}()
+const TEMP_CHANNELS = Dict{String,Dict{String,ChannelSpec}}()
+const TEMP_PIP_PKGS = Dict{String,Dict{String,PipPkgSpec}}()
+
+function add_temp!(file, pkg::PkgSpec)
+    pkgs = get!(Dict{String,PkgSpec}, TEMP_PKGS, realpath(file))
+    if !haskey(pkgs, pkg.name) || pkgs[pkg.name] != pkg
+        pkgs[pkg.name] = pkg
+        STATE.resolved = false
+    end
+    return
+end
+
+function add_temp!(file, channel::ChannelSpec)
+    channels = get!(Dict{String,ChannelSpec}, TEMP_CHANNELS, realpath(file))
+    if !haskey(channels, channel.name) || channels[channel.name] != channel
+        channels[channel.name] = channels
+        STATE.resolved = false
+    end
+    return
+end
+
+function add_temp!(file, pkg::PipPkgSpec)
+    pkgs = get!(Dict{String,PipPkgSpec}, TEMP_PIP_PKGS, realpath(file))
+    if !haskey(pkgs, pkg.name) || pkgs[pkg.name] != pkg
+        pkgs[pkg.name] = pkg
+        STATE.resolved = false
+    end
+    return
+end
+
+function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file())
+    toml = read_deps(; file)
     for pkg in pkgs
         rm!(toml, pkg)
     end
@@ -270,7 +334,7 @@ function rm(pkgs::AbstractVector; resolve=true)
     return
 end
 
-rm(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; resolve=true) = rm([pkg], resolve=resolve)
+rm(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; kw...) = rm([pkg]; kw...)
 
 function rm!(toml, pkg::PkgSpec)
     deps = get!(Dict{String,Any}, toml, "deps")
@@ -303,28 +367,28 @@ end
 
 Adds a dependency to the current environment.
 """
-add(pkg::AbstractString; version="", channel="", build="", resolve=true) = add(PkgSpec(pkg, version=version, channel=channel, build=build), resolve=resolve)
+add(pkg::AbstractString; version="", channel="", build="", kw...) = add(PkgSpec(pkg, version=version, channel=channel, build=build); kw...)
 
 """
     rm(pkg; resolve=true)
 
 Removes a dependency from the current environment.
 """
-rm(pkg::AbstractString; resolve=true) = rm(PkgSpec(pkg); resolve=resolve)
+rm(pkg::AbstractString; kw...) = rm(PkgSpec(pkg); kw...)
 
 """
     add_channel(channel; resolve=true)
 
 Adds a channel to the current environment.
 """
-add_channel(channel::AbstractString; resolve=true) = add(ChannelSpec(channel), resolve=resolve)
+add_channel(channel::AbstractString; kw...) = add(ChannelSpec(channel); kw...)
 
 """
     rm_channel(channel; resolve=true)
 
 Removes a channel from the current environment.
 """
-rm_channel(channel::AbstractString; resolve=true) = rm(ChannelSpec(channel), resolve=resolve)
+rm_channel(channel::AbstractString; kw...) = rm(ChannelSpec(channel); kw...)
 
 """
     add_pip(pkg; version="", binary="", resolve=true)
@@ -336,11 +400,11 @@ Adds a pip dependency to the current environment.
     Use conda dependencies instead if at all possible. Pip does not handle version
     conflicts gracefully, so it is possible to get incompatible versions.
 """
-add_pip(pkg::AbstractString; version="", binary="", resolve=true) = add(PipPkgSpec(pkg, version=version, binary=binary), resolve=resolve)
+add_pip(pkg::AbstractString; version="", binary="", kw...) = add(PipPkgSpec(pkg, version=version, binary=binary); kw...)
 
 """
     rm_pip(pkg; resolve=true)
 
 Removes a pip dependency from the current environment.
 """
-rm_pip(pkg::AbstractString; resolve=true) = rm(PipPkgSpec(pkg), resolve=resolve)
+rm_pip(pkg::AbstractString; kw...) = rm(PipPkgSpec(pkg); kw...)

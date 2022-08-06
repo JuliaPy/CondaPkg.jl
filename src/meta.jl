@@ -4,7 +4,7 @@ information about the most recent resolve.
 """
 
 # increment whenever the metadata format changes
-const META_VERSION = 8
+const META_VERSION = 9
 
 @kwdef mutable struct Meta
     timestamp::Float64
@@ -14,6 +14,9 @@ const META_VERSION = 8
     packages::Vector{PkgSpec}
     channels::Vector{ChannelSpec}
     pip_packages::Vector{PipPkgSpec}
+    temp_packages::Dict{String,Vector{PkgSpec}}
+    temp_channels::Dict{String,Vector{ChannelSpec}}
+    temp_pip_packages::Dict{String,Vector{PipPkgSpec}}
 end
 
 function read_meta(io::IO)
@@ -27,6 +30,9 @@ function read_meta(io::IO)
             packages = read_meta(io, Vector{PkgSpec}),
             channels = read_meta(io, Vector{ChannelSpec}),
             pip_packages = read_meta(io, Vector{PipPkgSpec}),
+            temp_packages = read_meta(io, Dict{String,Vector{PkgSpec}}),
+            temp_channels = read_meta(io, Dict{String,Vector{ChannelSpec}}),
+            temp_pip_packages = read_meta(io, Dict{String,Vector{PipPkgSpec}}),
         )
     end
 end
@@ -47,6 +53,16 @@ function read_meta(io::IO, ::Type{Vector{T}}) where {T}
     for _ in 1:len
         item = read_meta(io, T)
         push!(ans, item)
+    end
+    ans
+end
+function read_meta(io::IO, ::Type{Dict{K,V}}) where {K,V}
+    len = read(io, Int)
+    ans = Dict{K,V}()
+    for _ in 1:len
+        k = read_meta(io, K)
+        v = read_meta(io, V)
+        ans[k] = v
     end
     ans
 end
@@ -80,6 +96,9 @@ function write_meta(io::IO, meta::Meta)
     write_meta(io, meta.packages)
     write_meta(io, meta.channels)
     write_meta(io, meta.pip_packages)
+    write_meta(io, meta.temp_packages)
+    write_meta(io, meta.temp_channels)
+    write_meta(io, meta.temp_pip_packages)
     return
 end
 function write_meta(io::IO, x::Float64)
@@ -93,6 +112,13 @@ function write_meta(io::IO, x::Vector)
     write(io, convert(Int, length(x)))
     for item in x
         write_meta(io, item)
+    end
+end
+function write_meta(io::IO, x::Dict)
+    write(io, convert(Int, length(x)))
+    for (k, v) in x
+        write_meta(io, k)
+        write_meta(io, v)
     end
 end
 function write_meta(io::IO, x::VersionNumber)
