@@ -4,7 +4,7 @@ information about the most recent resolve.
 """
 
 # increment whenever the metadata format changes
-const META_VERSION = 9
+const META_VERSION = 10
 
 @kwdef mutable struct Meta
     timestamp::Float64
@@ -14,9 +14,9 @@ const META_VERSION = 9
     packages::Vector{PkgSpec}
     channels::Vector{ChannelSpec}
     pip_packages::Vector{PipPkgSpec}
-    temp_packages::Dict{String,Vector{PkgSpec}}
-    temp_channels::Dict{String,Vector{ChannelSpec}}
-    temp_pip_packages::Dict{String,Vector{PipPkgSpec}}
+    temp_packages::Dict{String,Dict{String,PkgSpec}}
+    temp_channels::Dict{String,Dict{String,ChannelSpec}}
+    temp_pip_packages::Dict{String,Dict{String,PipPkgSpec}}
 end
 
 function read_meta(io::IO)
@@ -30,9 +30,9 @@ function read_meta(io::IO)
             packages = read_meta(io, Vector{PkgSpec}),
             channels = read_meta(io, Vector{ChannelSpec}),
             pip_packages = read_meta(io, Vector{PipPkgSpec}),
-            temp_packages = read_meta(io, Dict{String,Vector{PkgSpec}}),
-            temp_channels = read_meta(io, Dict{String,Vector{ChannelSpec}}),
-            temp_pip_packages = read_meta(io, Dict{String,Vector{PipPkgSpec}}),
+            temp_packages = read_meta(io, Dict{String,Dict{String,PkgSpec}}),
+            temp_channels = read_meta(io, Dict{String,Dict{String,ChannelSpec}}),
+            temp_pip_packages = read_meta(io, Dict{String,Dict{String,PipPkgSpec}}),
         )
     end
 end

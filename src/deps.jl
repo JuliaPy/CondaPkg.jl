@@ -105,28 +105,26 @@ function parse_deps(toml)
 end
 
 function read_parsed_deps(file)
+    # read and parse the deps file
+    deps = parse_deps(read_deps(; file))
+    # add any temp dependencies
     if isfile(file)
-        # read and parse the deps file
         file = realpath(file)
-        deps = parse_deps(TOML.parsefile(file))
-        # add any extras
-        temp_pkgs = get!(Dict{String,PkgSpec}, TEMP_PKGS, file)
-        if !isempty(temp_pkgs)
+        if haskey(TEMP_PKGS, file)
+            temp_pkgs = TEMP_PKGS[file]
             filter!(p->!haskey(temp_pkgs, p.name), deps.packages)
             append!(deps.packages, values(temp_pkgs))
         end
-        temp_channels = get!(Dict{String,ChannelSpec}, TEMP_CHANNELS, file)
-        if !isempty(temp_channels)
+        if haskey(TEMP_CHANNELS, file)
+            temp_channels = TEMP_CHANNELS[file]
             filter!(p->!haskey(temp_channels, p.name), deps.channels)
             append!(deps.channels, values(temp_channels))
         end
-        temp_pip_pkgs = get!(Dict{String,PipPkgSpec}, TEMP_PIP_PKGS, file)
-        if !isempty(temp_pip_pkgs)
+        if haskey(TEMP_PIP_PKGS, file)
+            temp_pip_pkgs = TEMP_PIP_PKGS[file]
             filter!(p->!haskey(temp_pip_pkgs, p.name), deps.pip_packages)
             append!(deps.pip_packages, values(temp_pip_pkgs))
         end
-    else
-        deps = parse_deps(Dict{String,Any}())
     end
     return deps
 end

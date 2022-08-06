@@ -17,13 +17,9 @@ function _resolve_top_env(load_path)
     top_env
 end
 
-_meta_temp_packages() = Dict(k=>collect(values(v)) for (k,v) in TEMP_PKGS if !isempty(v))
-_meta_temp_channels() = Dict(k => collect(values(v)) for (k, v) in TEMP_CHANNELS if !isempty(v))
-_meta_temp_pip_packages() = Dict(k => collect(values(v)) for (k, v) in TEMP_PIP_PKGS if !isempty(v))
-
 function _resolve_can_skip_1(load_path, meta_file)
     meta = open(read_meta, meta_file)
-    if meta !== nothing && meta.version == VERSION && meta.load_path == load_path && meta.temp_packages == _meta_temp_packages() && meta.temp_channels == _meta_temp_channels() && meta.temp_pip_packages == _meta_temp_pip_packages()
+    if meta !== nothing && meta.version == VERSION && meta.load_path == load_path && meta.temp_packages == TEMP_PKGS && meta.temp_channels == TEMP_CHANNELS && meta.temp_pip_packages == TEMP_PIP_PKGS
         timestamp = max(meta.timestamp, stat(meta_file).mtime)
         skip = true
         for env in [meta.load_path; meta.extra_path]
@@ -426,9 +422,9 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         packages = specs,
         channels = channels,
         pip_packages = pip_specs,
-        temp_packages = _meta_temp_packages(),
-        temp_channels = _meta_temp_channels(),
-        temp_pip_packages = _meta_temp_pip_packages(),
+        temp_packages = TEMP_PKGS,
+        temp_channels = TEMP_CHANNELS,
+        temp_pip_packages = TEMP_PIP_PKGS,
     )
     open(io->write_meta(io, meta), meta_file, "w")
     # all done
