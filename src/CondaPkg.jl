@@ -10,6 +10,7 @@ end
 import Base: @kwdef
 import MicroMamba
 import JSON3
+import Pidfile
 import Pkg
 import TOML
 

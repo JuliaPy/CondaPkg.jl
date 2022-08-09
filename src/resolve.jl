@@ -333,119 +333,133 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     top_env = _resolve_top_env(load_path)
     STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
     meta_file = joinpath(meta_dir, "meta")
+    lock_file = joinpath(meta_dir, "lock")
     conda_env = joinpath(meta_dir, "env")
-    # skip resolving if nothing has changed since the metadata was updated
-    if !force && isdir(conda_env) && isfile(meta_file) && _resolve_can_skip_1(load_path, meta_file)
-        STATE.resolved = true
-        interactive && _log(io, "Dependencies already up to date")
-        return
+    # grap a file lock so only one process can resolve this environment at a time
+    mkpath(meta_dir)
+    lock = try
+        Pidfile.mkpidlock(lock_file; wait=false)
+    catch
+        interactive && _log(io, "Waiting for lock to be freed at $lock_file")
+        interactive && _log(io, "(You may delete this file if you are sure no other process is resolving)")
+        Pidfile.mkpidlock(lock_file; wait=true)
     end
-    # find all dependencies
-    (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(io, load_path)
-    # install pip if there are pip packages to install
-    if !isempty(pip_packages) && !haskey(packages, "pip")
-        get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] = PkgSpec("pip")
-        if !any(c.name in ("conda-forge", "anaconda") for c in channels)
-            push!(channels, ChannelSpec("conda-forge"))
+    try
+        # skip resolving if nothing has changed since the metadata was updated
+        if !force && isdir(conda_env) && isfile(meta_file) && _resolve_can_skip_1(load_path, meta_file)
+            STATE.resolved = true
+            interactive && _log(io, "Dependencies already up to date")
+            return
         end
-    end
-    # sort channels
-    # (in the future we might prioritise them)
-    sort!(unique!(channels), by=c->c.name)
-    # merge dependencies
-    specs = _resolve_merge_packages(packages)
-    # merge pip dependencies
-    pip_specs = _resolve_merge_pip_packages(pip_packages)
-    # find what has changed
-    meta = isfile(meta_file) ? open(read_meta, meta_file) : nothing
-    if meta === nothing
-        removed_pkgs = String[]
-        changed_pkgs = String[]
-        added_pkgs = unique!(String[x.name for x in specs])
-        removed_pip_pkgs = String[]
-        changed_pip_pkgs = String[]
-        added_pip_pkgs = unique!(String[x.name for x in pip_specs])
-    else
-        removed_pkgs, changed_pkgs, added_pkgs = _resolve_diff(meta.packages, specs)
-        removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)
-    end
-    changes = sort([
-        (i>3 ? "$pkg (pip)" : pkg, mod1(i,3))
-        for (i, pkgs) in enumerate([added_pkgs, changed_pkgs, removed_pkgs, added_pip_pkgs, changed_pip_pkgs, removed_pip_pkgs])
-        for pkg in pkgs
-    ])
-    dry_run |= offline()
-    if !isempty(changes)
-        if dry_run
-            _log(io, "Offline mode, these changes are not resolved")
+        # find all dependencies
+        (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(io, load_path)
+        # install pip if there are pip packages to install
+        if !isempty(pip_packages) && !haskey(packages, "pip")
+            get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] = PkgSpec("pip")
+            if !any(c.name in ("conda-forge", "anaconda") for c in channels)
+                push!(channels, ChannelSpec("conda-forge"))
+            end
+        end
+        # sort channels
+        # (in the future we might prioritise them)
+        sort!(unique!(channels), by=c->c.name)
+        # merge dependencies
+        specs = _resolve_merge_packages(packages)
+        # merge pip dependencies
+        pip_specs = _resolve_merge_pip_packages(pip_packages)
+        # find what has changed
+        meta = isfile(meta_file) ? open(read_meta, meta_file) : nothing
+        if meta === nothing
+            removed_pkgs = String[]
+            changed_pkgs = String[]
+            added_pkgs = unique!(String[x.name for x in specs])
+            removed_pip_pkgs = String[]
+            changed_pip_pkgs = String[]
+            added_pip_pkgs = unique!(String[x.name for x in pip_specs])
         else
-            _log(io, "Resolving changes")
+            removed_pkgs, changed_pkgs, added_pkgs = _resolve_diff(meta.packages, specs)
+            removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)
         end
-        for (pkg, i) in changes
-            char = i==1 ? "+" : i==2 ? "~" : "-"
-            color = i==1 ? :green : i==2 ? :yellow : :red
-            _log(io, char, " ", pkg, label="", color=color)
+        changes = sort([
+            (i>3 ? "$pkg (pip)" : pkg, mod1(i,3))
+            for (i, pkgs) in enumerate([added_pkgs, changed_pkgs, removed_pkgs, added_pip_pkgs, changed_pip_pkgs, removed_pip_pkgs])
+            for pkg in pkgs
+        ])
+        dry_run |= offline()
+        if !isempty(changes)
+            if dry_run
+                _log(io, "Offline mode, these changes are not resolved")
+            else
+                _log(io, "Resolving changes")
+            end
+            for (pkg, i) in changes
+                char = i==1 ? "+" : i==2 ? "~" : "-"
+                color = i==1 ? :green : i==2 ? :yellow : :red
+                _log(io, char, " ", pkg, label="", color=color)
+            end
         end
+        # install/uninstall packages
+        if !force && meta !== nothing && stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages)))
+            # the state is sufficiently clean that we can modify the existing conda environment
+            changed = false
+            if !isempty(removed_pip_pkgs)
+                dry_run && return
+                changed = true
+                _resolve_pip_remove(io, removed_pip_pkgs, load_path)
+            end
+            if !isempty(removed_pkgs)
+                dry_run && return
+                changed = true
+                _resolve_conda_remove(io, conda_env, removed_pkgs)
+            end
+            if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed)
+                dry_run && return
+                changed = true
+                _resolve_conda_install(io, conda_env, specs, channels)
+            end
+            if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
+                dry_run && return
+                changed = true
+                _resolve_pip_install(io, pip_specs, load_path)
+            end
+            if !changed
+                _log(io, "Dependencies already up to date")
+            end
+        else
+            # the state is too dirty, recreate the conda environment from scratch
+            dry_run && return
+            # remove environment
+            mkpath(meta_dir)
+            if isdir(conda_env)
+                _resolve_conda_remove_all(io, conda_env)
+            end
+            # create conda environment
+            _resolve_conda_install(io, conda_env, specs, channels; create=true)
+            # install pip packages
+            if !isempty(pip_specs)
+                _resolve_pip_install(io, pip_specs, load_path)
+            end
+        end
+        # save metadata
+        meta = Meta(
+            timestamp = time(),
+            load_path = load_path,
+            extra_path = extra_path,
+            version = VERSION,
+            packages = specs,
+            channels = channels,
+            pip_packages = pip_specs,
+            temp_packages = TEMP_PKGS,
+            temp_channels = TEMP_CHANNELS,
+            temp_pip_packages = TEMP_PIP_PKGS,
+        )
+        open(io->write_meta(io, meta), meta_file, "w")
+        # all done
+        STATE.resolved = true
+        return
+    finally
+        close(lock)
     end
-    # install/uninstall packages
-    if !force && meta !== nothing && stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages)))
-        # the state is sufficiently clean that we can modify the existing conda environment
-        changed = false
-        if !isempty(removed_pip_pkgs)
-            dry_run && return
-            changed = true
-            _resolve_pip_remove(io, removed_pip_pkgs, load_path)
-        end
-        if !isempty(removed_pkgs)
-            dry_run && return
-            changed = true
-            _resolve_conda_remove(io, conda_env, removed_pkgs)
-        end
-        if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed)
-            dry_run && return
-            changed = true
-            _resolve_conda_install(io, conda_env, specs, channels)
-        end
-        if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
-            dry_run && return
-            changed = true
-            _resolve_pip_install(io, pip_specs, load_path)
-        end
-        if !changed
-            _log(io, "Dependencies already up to date")
-        end
-    else
-        # the state is too dirty, recreate the conda environment from scratch
-        dry_run && return
-        # remove environment
-        mkpath(meta_dir)
-        if isdir(conda_env)
-            _resolve_conda_remove_all(io, conda_env)
-        end
-        # create conda environment
-        _resolve_conda_install(io, conda_env, specs, channels; create=true)
-        # install pip packages
-        if !isempty(pip_specs)
-            _resolve_pip_install(io, pip_specs, load_path)
-        end
-    end
-    # save metadata
-    meta = Meta(
-        timestamp = time(),
-        load_path = load_path,
-        extra_path = extra_path,
-        version = VERSION,
-        packages = specs,
-        channels = channels,
-        pip_packages = pip_specs,
-        temp_packages = TEMP_PKGS,
-        temp_channels = TEMP_CHANNELS,
-        temp_pip_packages = TEMP_PIP_PKGS,
-    )
-    open(io->write_meta(io, meta), meta_file, "w")
-    # all done
-    STATE.resolved = true
-    return
 end
 
 function is_resolved()
