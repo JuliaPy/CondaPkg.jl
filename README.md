@@ -163,6 +163,13 @@ The default backend is an implementation detail, but is currently `MicroMamba`.
 If you set `JULIA_CONDAPKG_EXE` but not `JULIA_CONDAPKG_BACKEND` then the `System` backend
 is used.
 
+### Offline mode
+
+You may activate "offline mode" by setting the environment variable
+`JULIA_CONDAPKG_OFFLINE=yes`. This will prevent CondaPkg from attempting to download or
+install new packages. In this case, it is up to you to ensure that any required packages are
+already available (such as by having previously called `CondaPkg.resolve()`).
+
 ### Verbosity
 
 You can control the verbosity of any `conda` or `pip` commands executed by setting the

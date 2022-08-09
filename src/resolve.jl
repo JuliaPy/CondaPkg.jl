@@ -298,6 +298,17 @@ function _run(io::IO, cmd::Cmd, args...; flags=String[])
     run(cmd)
 end
 
+function offline()
+    x = get(ENV, "JULIA_CONDAPKG_OFFLINE", "no")
+    if x == "yes"
+        return true
+    elseif x == "no" || x == ""
+        return false
+    else
+        error("invalid setting: JULIA_CONDAPKG_OFFLINE=$x: expecting yes or no")
+    end
+end
+
 function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dry_run::Bool=false)
     # if frozen, do nothing
     if STATE.frozen
@@ -363,8 +374,13 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         for (i, pkgs) in enumerate([added_pkgs, changed_pkgs, removed_pkgs, added_pip_pkgs, changed_pip_pkgs, removed_pip_pkgs])
         for pkg in pkgs
     ])
-    if !dry_run && !isempty(changes)
-        _log(io, "Resolving changes")
+    dry_run |= offline()
+    if !isempty(changes)
+        if dry_run
+            _log(io, "Offline mode, these changes are not resolved")
+        else
+            _log(io, "Resolving changes")
+        end
         for (pkg, i) in changes
             char = i==1 ? "+" : i==2 ? "~" : "-"
             color = i==1 ? :green : i==2 ? :yellow : :red
