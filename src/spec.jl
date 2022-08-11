@@ -57,13 +57,13 @@ validate_build(build) =
 
 function specstr(x::PkgSpec)
     parts = String[]
-    # always include the version, working around a bug in micromamba that the build is
-    # ignored if the version is not set at all
-    push!(parts, "version='$(x.version == "" ? "*" : x.version)'")
     x.channel == "" || push!(parts, "channel='$(x.channel)'")
     x.build == "" || push!(parts, "build='$(x.build)'")
     suffix = isempty(parts) ? "" : string("[", join(parts, ","), "]")
-    string(x.name, suffix)
+    # always include the version, working around a bug in micromamba that the build is
+    # ignored if the version is not set at all
+    version = x.version == "" ? "=*" : "=$(x.version)"
+    string(x.name, suffix, version)
 end
 
 struct ChannelSpec
