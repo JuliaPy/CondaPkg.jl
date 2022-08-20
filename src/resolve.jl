@@ -70,6 +70,9 @@ function _resolve_find_dependencies(io, load_path)
             end
         end
     end
+    if isempty(channels)
+        push!(channels, ChannelSpec("conda-forge"))
+    end
     (packages, channels, pip_packages, extra_path)
 end
 
