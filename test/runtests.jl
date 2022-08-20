@@ -72,6 +72,11 @@ const isnull = backend == "Null"
 
     end
 
+    @testset "resolve (empty)" begin
+        @test CondaPkg.resolve() === nothing
+        @test occursin("(empty)", status())
+    end
+
     isnull && @testset "Null backend" begin
         @test CondaPkg.backend() == :Null
         @test CondaPkg.activate!(copy(ENV)) == ENV
