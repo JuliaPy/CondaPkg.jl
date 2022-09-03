@@ -15,7 +15,7 @@ managing Conda packages.
 - Conda dependencies are defined in `CondaPkg.toml`, which is analogous to `Project.toml`.
 - CondaPkg will install these dependencies into a Conda environment specific to the current
   Julia project. Hence dependencies are isolated from other projects or environments.
-- Functions like `add`, `rm`, `status` exist to edit the dependencies programatically.
+- Functions like `add`, `rm`, `status` exist to edit the dependencies programmatically.
 - Or you can do `pkg> conda add some_package` to edit the dependencies from the Pkg REPL.
 
 ## Install
