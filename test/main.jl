@@ -36,6 +36,7 @@ end
 
 @testitem "install/remove python package" begin
     include("setup.jl")
+    CondaPkg.add("python", version="==3.10.2")
     # verify package isn't already installed
     @test !occursin("six", status())
     CondaPkg.withenv() do
@@ -61,6 +62,7 @@ end
 
 @testitem "pip install/remove python package" begin
     include("setup.jl")
+    CondaPkg.add("python", version="==3.10.2")
     # verify package isn't already installed
     @test !occursin("six", status())
     CondaPkg.withenv() do
@@ -88,12 +90,10 @@ end
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
-        # install package, verify that executable exists
+        CondaPkg.add("python", version="==3.10.2")
         CondaPkg.add("curl")
         curl_path = CondaPkg.which("curl")
         @test isfile(curl_path)
-
-        # test uninstall
         CondaPkg.rm("curl")
         CondaPkg.resolve(force=true)
         @test !isfile(curl_path)
@@ -103,7 +103,6 @@ end
 @testitem "gc()" begin
     include("setup.jl")
     if testgc
-        # verify that micromamba clean runs without errors
         CondaPkg.gc()
     end
 end

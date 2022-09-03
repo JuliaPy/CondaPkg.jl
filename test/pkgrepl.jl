@@ -48,6 +48,7 @@ end
 
 @testitem "run" begin
     include("setup.jl")
+    CondaPkg.add("python", version="==3.10.2")
     # TODO: capture the output and check it contains "Python 3.10.2"
     if !isnull
         CondaPkg.PkgREPL.run(["python", "--version"])
