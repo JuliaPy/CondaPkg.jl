@@ -90,11 +90,12 @@ end
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
-        CondaPkg.add("python", version="==3.10.2")
-        CondaPkg.add("curl")
+        CondaPkg.add("curl", resolve=false)
+        CondaPkg.resolve(force=true)
         curl_path = CondaPkg.which("curl")
+        @test curl_path !== nothing
         @test isfile(curl_path)
-        CondaPkg.rm("curl")
+        CondaPkg.rm("curl", resolve=false)
         CondaPkg.resolve(force=true)
         @test !isfile(curl_path)
     end
