@@ -9,12 +9,12 @@ function backend()
             STATE.backend = :MicroMamba
         elseif backend == "Null"
             STATE.backend = :Null
-        elseif backend == "System"
+        elseif backend == "System" || backend == "Current"
             ok = false
             for exe in (exe == "" ? ["micromamba", "mamba", "conda"] : [exe])
                 exe2 = Sys.which(exe)
                 if exe2 !== nothing
-                    STATE.backend = :System
+                    STATE.backend = Symbol(backend)
                     STATE.condaexe = exe2
                     ok = true
                     break
@@ -38,7 +38,7 @@ function conda_cmd(args=``; io::IO=stderr)
     b = backend()
     if b == :MicroMamba
         MicroMamba.cmd(args, io=io)
-    elseif b == :System
+    elseif b in (:System, :Current)
         `$(STATE.condaexe) $args`
     elseif b == :Null
         error("Can not run conda command when backend is Null. Manage conda actions outside of julia.")

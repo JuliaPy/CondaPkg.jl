@@ -9,7 +9,7 @@ This file defines functions for interacting with the environment, such as `withe
 "Activate" the Conda environment by modifying the given dict of environment variables.
 """
 function activate!(e)
-    backend() == :Null && return e
+    backend() in (:Null, :Current) && return e
     old_path = get(e, "PATH", "")
     d = envdir()
     path_sep = Sys.iswindows() ? ';' : ':'
@@ -68,7 +68,11 @@ Throws an error if backend is Null.
 function envdir(args...)
     backend() == :Null && throw(ErrorException("Can not get envdir when backend is Null."))
     resolve()
-    joinpath(STATE.meta_dir, "env", args...)
+    if backend() == :Current
+        joinpath(dirname(STATE.meta_dir), args...)
+    else
+        joinpath(STATE.meta_dir, "env", args...)
+    end
 end
 
 """
@@ -91,7 +95,7 @@ end
 Find the binary called `progname` in the Conda environment.
 """
 function which(progname)
-    backend() == :Null && return Sys.which(progname)
+    backend() in (:Null, :Current) && return Sys.which(progname)
     # Set the PATH to dirs in the environment, then use Sys.which().
     old_path = get(ENV, "PATH", nothing)
     ENV["PATH"] = join(bindirs(), Sys.iswindows() ? ';' : ':')

@@ -154,6 +154,10 @@ by setting the environment variable `JULIA_CONDAPKG_BACKEND` to one of the follo
   [MicroMamba.jl](https://github.com/cjdoris/MicroMamba.jl).
 - `System`: Use a pre-installed Conda. If `JULIA_CONDAPKG_EXE` is set, that is used.
   Otherwise we look for `conda`, `mamba` or `micromamba` in your `PATH`.
+- `Current`: Use the currently activated Conda environment instead of creating a new one.
+  This backend will only ever install packages, never uninstall. The Conda executable used
+  is the same as for the System backend. Similar to the default behaviour of
+  [Conda.jl](https://github.com/JuliaPy/Conda.jl).
 - `Null`: Don't use CondaPkg to manage dependencies. Use this if you are in a pre-existing
   Conda environment that already satisfies the dependencies of your project. It is up to you
   to ensure any required packages are installed.

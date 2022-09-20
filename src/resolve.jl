@@ -318,7 +318,8 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         return
     end
     # if backend is Null, assume resolved
-    if backend() == :Null
+    back = backend()
+    if back == :Null
         interactive && _log(io, "Using the Null backend, nothing to do")
         STATE.resolved = true
         return
@@ -332,12 +333,21 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     end
     STATE.resolved = false
     STATE.load_path = load_path
-    # find the topmost env in the load_path which depends on CondaPkg
-    top_env = _resolve_top_env(load_path)
-    STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
+    if back == :Current
+        # use a pre-existing conda environment
+        conda_env = get(ENV, "CONDA_PREFIX", "")
+        if conda_env == ""
+            error("CondaPkg is using the Current backend, but you are not in a Conda environment")
+        end
+        STATE.meta_dir = meta_dir = joinpath(conda_env, ".JuliaCondaPkg")
+    else
+        # find the topmost env in the load_path which depends on CondaPkg
+        top_env = _resolve_top_env(load_path)
+        STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
+        conda_env = joinpath(meta_dir, "env")
+    end
     meta_file = joinpath(meta_dir, "meta")
     lock_file = joinpath(meta_dir, "lock")
-    conda_env = joinpath(meta_dir, "env")
     # grap a file lock so only one process can resolve this environment at a time
     mkpath(meta_dir)
     lock = try
@@ -372,7 +382,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         pip_specs = _resolve_merge_pip_packages(pip_packages)
         # find what has changed
         meta = isfile(meta_file) ? open(read_meta, meta_file) : nothing
-        if meta === nothing
+        if (meta === nothing) || (back == :Current)
             removed_pkgs = String[]
             changed_pkgs = String[]
             added_pkgs = unique!(String[x.name for x in specs])
@@ -384,7 +394,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)
         end
         changes = sort([
-            (i>3 ? "$pkg (pip)" : pkg, mod1(i,3))
+            (i>3 ? "$pkg (pip)" : pkg, mod1(i, 3))
             for (i, pkgs) in enumerate([added_pkgs, changed_pkgs, removed_pkgs, added_pip_pkgs, changed_pip_pkgs, removed_pip_pkgs])
             for pkg in pkgs
         ])
@@ -402,15 +412,17 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             end
         end
         # install/uninstall packages
-        if !force && meta !== nothing && stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages)))
+        if (back == :Current) || (!force && meta !== nothing && stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages))))
             # the state is sufficiently clean that we can modify the existing conda environment
             changed = false
             if !isempty(removed_pip_pkgs)
+                @assert back != :Current
                 dry_run && return
                 changed = true
                 _resolve_pip_remove(io, removed_pip_pkgs, load_path)
             end
             if !isempty(removed_pkgs)
+                @assert back != :Current
                 dry_run && return
                 changed = true
                 _resolve_conda_remove(io, conda_env, removed_pkgs)
