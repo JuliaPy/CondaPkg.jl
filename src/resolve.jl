@@ -172,7 +172,7 @@ function _resolve_pip_diff(old_specs, new_specs)
 end
 
 function _verbosity()
-    parse(Int, get(ENV, "JULIA_CONDAPKG_VERBOSITY", "-1"))
+    parse(Int, get(ENV, "JULIA_CONDAPKG_VERBOSITY", "0"))
 end
 
 function _verbosity_flags()
@@ -368,7 +368,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(io, load_path)
         # install pip if there are pip packages to install
         if !isempty(pip_packages) && !haskey(packages, "pip")
-            get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] = PkgSpec("pip")
+            get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] = PkgSpec("pip", version=">=22.0.0")
             if !any(c.name in ("conda-forge", "anaconda") for c in channels)
                 push!(channels, ChannelSpec("conda-forge"))
             end

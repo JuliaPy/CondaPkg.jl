@@ -178,6 +178,6 @@ already available (such as by having previously called `CondaPkg.resolve()`).
 
 You can control the verbosity of any `conda` or `pip` commands executed by setting the
 environment variable `JULIA_CONDAPKG_VERBOSITY` to a number:
-- `-1` is quiet mode (the default).
-- `0` is normal mode.
+- `-1` is quiet mode.
+- `0` is normal mode (the default).
 - `1`, `2`, etc. are verbose modes, useful for debugging.
