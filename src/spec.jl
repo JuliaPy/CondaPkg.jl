@@ -19,6 +19,11 @@ struct PkgSpec
     end
 end
 
+# return a modified version of the given spec
+function PkgSpec(old::PkgSpec; name=old.name, version=old.version, channel=old.channel, build=old.build)
+    return PkgSpec(name; version, channel, build)
+end
+
 Base.:(==)(x::PkgSpec, y::PkgSpec) = (x.name == y.name) && (x.version == y.version) && (x.channel == y.channel) && (x.build == y.build)
 Base.hash(x::PkgSpec, h::UInt) = hash(x.build, hash(x.channel, hash(x.version, hash(x.name, h))))
 

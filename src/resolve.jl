@@ -45,6 +45,55 @@ end
 
 _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 
+# For each (V, B) in this list, if Julia has libstdc++ loaded at version at least V, then
+# B is a compatible bound for libstdcxx_ng.
+# See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
+# See https://gcc.gnu.org/develop.html#timeline.
+const _compatible_libstdcxx_ng_versions = [
+    (v"3.4.31", ">=3.4,<=13.1"),
+    (v"3.4.30", ">=3.4,<=12.2"),
+    (v"3.4.29", ">=3.4,<=11.3"),
+    (v"3.4.28", ">=3.4,<=10.4"),
+    (v"3.4.27", ">=3.4,<=9.2"),
+    (v"3.4.26", ">=3.4,<=9.1"),
+    (v"3.4.25", ">=3.4,<=8.5"),
+    (v"3.4.24", ">=3.4,<=7.5"),
+    (v"3.4.23", ">=3.4,<=7.1"),
+    (v"3.4.22", ">=3.4,<=6.5"),
+    (v"3.4.21", ">=3.4,<=5.5"),
+    (v"3.4.20", ">=3.4,<=4.9"),
+    (v"3.4.19", ">=3.4,<=4.8"),
+    (v"3.4.18", ">=3.4,<=4.8"),
+]
+
+"""
+    _compatible_libstdcxx_ng_version()
+
+Version of libstdcxx-ng compatible with the libstdc++ loaded into Julia.
+
+Specifying the package "libstdcxx-ng" with version "<=julia" will replace the version with
+this one. This should be used by anything which embeds Python into the Julia process - for
+instance it is used by PythonCall.
+"""
+function _compatible_libstdcxx_ng_version()
+    if !Sys.islinux()
+        return
+    end
+    # bound = get(ENV, "JULIA_CONDAPKG_LIBSTDCXX_VERSION_BOUND", "")
+    # if bound != ""
+    #     return bound
+    # end
+    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version()
+    if loaded_libstdcxx_version === nothing
+        return
+    end
+    for (version, bound) in _compatible_libstdcxx_ng_versions
+        if loaded_libstdcxx_version ≥ version
+            return bound
+        end
+    end
+end
+
 function _resolve_find_dependencies(io, load_path)
     packages = Dict{String,Dict{String,PkgSpec}}() # name -> depsfile -> spec
     channels = ChannelSpec[]
@@ -58,6 +107,11 @@ function _resolve_find_dependencies(io, load_path)
             _log(io, "Found dependencies: $fn")
             pkgs, chans, pippkgs = read_parsed_deps(fn)
             for pkg in pkgs
+                if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
+                    version = _compatible_libstdcxx_ng_version()
+                    version === nothing && continue
+                    pkg = PkgSpec(pkg; version)
+                end
                 get!(Dict{String,PkgSpec}, packages, pkg.name)[fn] = pkg
             end
             if isempty(chans)

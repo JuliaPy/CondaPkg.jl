@@ -101,6 +101,14 @@ end
     end
 end
 
+@testitem "install/remove libstdcxx_ng" begin
+    include("setup.jl")
+    CondaPkg.add("libstdcxx-ng", version="<=julia", resolve=false)
+    CondaPkg.resolve(force=true)
+    CondaPkg.rm("libstdcxx-ng", resolve=false)
+    CondaPkg.resolve(force=true)
+end
+
 @testitem "gc()" begin
     include("setup.jl")
     if testgc
