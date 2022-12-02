@@ -3,7 +3,7 @@ This file defines `resolve()`, which ensures all dependencies are installed.
 """
 
 function _resolve_top_env(load_path)
-    top_env = ""
+    (top_env = get(ENV, "JULIA_CONDAPKG_TOPENV", "")) == "" || return top_env
     for env in load_path
         proj = Base.env_project_file(env)
         is_condapkg = proj isa String && Base.project_file_name_uuid(proj, "").uuid == UUID
