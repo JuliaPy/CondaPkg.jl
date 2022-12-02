@@ -175,12 +175,12 @@ Add Pip packages to the environment.
 
 ```
 pkg> conda pip_add build~=0.7
-pkg> conda pip_add --nobinary nmslib
+pkg> conda pip_add --binary=no nmslib
 ```
 """)
 
 const pip_add_spec = Pkg.REPLMode.CommandSpec(
-    name = "pip add",
+    name = "pip_add",
     api = pip_add,
     should_splat = false,
     help = pip_add_help,
