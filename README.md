@@ -68,6 +68,7 @@ channels = ["anaconda", "conda-forge"]
 [deps]
 # Conda package names and versions
 python = ">=3.5,<4"
+pyarrow = "==6.0.0"
 perl = ""
 
 [deps.llvmlite]
