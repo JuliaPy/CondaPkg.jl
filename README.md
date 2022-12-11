@@ -174,6 +174,11 @@ You may activate "offline mode" by setting the environment variable
 install new packages. In this case, it is up to you to ensure that any required packages are
 already available (such as by having previously called `CondaPkg.resolve()`).
 
+### Conda environment path
+
+By default, CondaPkg installs conda packages in the `DEPOT_PATH`. If you wish to centralize
+the conda envionment, you can use `JULIA_CONDAPKG_ENV=<arbitrary path>`.
+
 ### Verbosity
 
 You can control the verbosity of any `conda` or `pip` commands executed by setting the
