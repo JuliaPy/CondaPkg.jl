@@ -3,7 +3,7 @@ This file defines `resolve()`, which ensures all dependencies are installed.
 """
 
 function _resolve_top_env(load_path)
-    (top_env = get(ENV, "JULIA_CONDAPKG_TOPENV", "")) == "" || return top_env
+    top_env = ""
     for env in load_path
         proj = Base.env_project_file(env)
         is_condapkg = proj isa String && Base.project_file_name_uuid(proj, "").uuid == UUID
@@ -397,7 +397,11 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         # find the topmost env in the load_path which depends on CondaPkg
         top_env = _resolve_top_env(load_path)
         STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-        conda_env = joinpath(meta_dir, "env")
+        conda_env = if (condapkg_env = get(ENV, "JULIA_CONDAPKG_ENV", nothing)) !== nothing
+            condapkg_env
+        else
+            joinpath(meta_dir, "env")
+        end
     end
     meta_file = joinpath(meta_dir, "meta")
     lock_file = joinpath(meta_dir, "lock")
