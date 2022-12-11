@@ -392,13 +392,14 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         if conda_env == ""
             error("CondaPkg is using the Current backend, but you are not in a Conda environment")
         end
+        shared = true  # environment is shared, disallow removing packages
         STATE.meta_dir = meta_dir = joinpath(conda_env, ".JuliaCondaPkg")
     else
         # find the topmost env in the load_path which depends on CondaPkg
         top_env = _resolve_top_env(load_path)
         STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-        conda_env = if (condapkg_env = get(ENV, "JULIA_CONDAPKG_ENV", nothing)) !== nothing
-            condapkg_env
+        conda_env = if (shared = haskey(ENV, "JULIA_CONDAPKG_ENV"))
+            ENV["JULIA_CONDAPKG_ENV"]
         else
             joinpath(meta_dir, "env")
         end
@@ -472,14 +473,12 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         if (back == :Current) || (!force && meta !== nothing && stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages))))
             # the state is sufficiently clean that we can modify the existing conda environment
             changed = false
-            if !isempty(removed_pip_pkgs)
-                @assert back != :Current
+            if !isempty(removed_pip_pkgs) && !shared
                 dry_run && return
                 changed = true
                 _resolve_pip_remove(io, removed_pip_pkgs, load_path)
             end
-            if !isempty(removed_pkgs)
-                @assert back != :Current
+            if !isempty(removed_pkgs) && !shared
                 dry_run && return
                 changed = true
                 _resolve_conda_remove(io, conda_env, removed_pkgs)
