@@ -86,7 +86,6 @@ end
     end
 end
 
-
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
@@ -107,6 +106,22 @@ end
     CondaPkg.resolve(force=true)
     CondaPkg.rm("libstdcxx-ng", resolve=false)
     CondaPkg.resolve(force=true)
+end
+
+@testitem "external conda env" begin
+    include("setup.jl")
+    dn = tempname()
+    withenv("JULIA_CONDAPKG_ENV" => dn) do
+        CondaPkg.resolve()
+        CondaPkg.add("ca-certificates")
+        CondaPkg.withenv() do
+            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
+        end
+        CondaPkg.rm("ca-certificates")  # noop, since shared env
+        CondaPkg.withenv() do
+            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
+        end
+    end
 end
 
 @testitem "gc()" begin

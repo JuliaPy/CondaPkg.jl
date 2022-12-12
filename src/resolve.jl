@@ -365,14 +365,21 @@ function offline()
     end
 end
 
+function is_clean(conda_env, meta)
+    meta === nothing && return false
+    conda_env == meta.conda_env || return false
+    stat(conda_env).mtime ≤ meta.timestamp || return false
+    isdir(conda_env) && return true
+    (isempty(meta.packages) && isempty(meta.pip_packages)) && return true
+    false
+end
+
 function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dry_run::Bool=false)
     # if frozen, do nothing
-    if STATE.frozen
-        return
-    end
+    STATE.frozen && return
     # if backend is Null, assume resolved
     back = backend()
-    if back == :Null
+    if back === :Null
         interactive && _log(io, "Using the Null backend, nothing to do")
         STATE.resolved = true
         return
@@ -386,19 +393,19 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     end
     STATE.resolved = false
     STATE.load_path = load_path
-    if back == :Current
+    if back === :Current
         # use a pre-existing conda environment
-        conda_env = get(ENV, "CONDA_PREFIX", "")
-        if conda_env == ""
+        if (conda_env = get(ENV, "CONDA_PREFIX", nothing)) === nothing
             error("CondaPkg is using the Current backend, but you are not in a Conda environment")
         end
-        shared = true  # environment is shared, disallow removing packages
         STATE.meta_dir = meta_dir = joinpath(conda_env, ".JuliaCondaPkg")
+        STATE.conda_env = conda_env
+        shared = true  # environment is shared, disallow removing packages
     else
         # find the topmost env in the load_path which depends on CondaPkg
         top_env = _resolve_top_env(load_path)
         STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-        conda_env = if (shared = haskey(ENV, "JULIA_CONDAPKG_ENV"))
+        STATE.conda_env = conda_env = if (shared = haskey(ENV, "JULIA_CONDAPKG_ENV"))
             ENV["JULIA_CONDAPKG_ENV"]
         else
             joinpath(meta_dir, "env")
@@ -440,13 +447,13 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         pip_specs = _resolve_merge_pip_packages(pip_packages)
         # find what has changed
         meta = isfile(meta_file) ? open(read_meta, meta_file) : nothing
-        if (meta === nothing) || (back == :Current)
+        if (meta === nothing) || (back === :Current)
             removed_pkgs = String[]
             changed_pkgs = String[]
-            added_pkgs = unique!(String[x.name for x in specs])
+            added_pkgs = unique!(map(x -> x.name, specs))
             removed_pip_pkgs = String[]
             changed_pip_pkgs = String[]
-            added_pip_pkgs = unique!(String[x.name for x in pip_specs])
+            added_pip_pkgs = unique!(map(x -> x.name, pip_specs))
         else
             removed_pkgs, changed_pkgs, added_pkgs = _resolve_diff(meta.packages, specs)
             removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)
@@ -458,11 +465,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         ])
         dry_run |= offline()
         if !isempty(changes)
-            if dry_run
-                _log(io, "Offline mode, these changes are not resolved")
-            else
-                _log(io, "Resolving changes")
-            end
+            _log(io, dry_run ? "Offline mode, these changes are not resolved" : "Resolving changes")
             for (pkg, i) in changes
                 char = i==1 ? "+" : i==2 ? "~" : "-"
                 color = i==1 ? :green : i==2 ? :yellow : :red
@@ -470,7 +473,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             end
         end
         # install/uninstall packages
-        if (back == :Current) || (!force && meta !== nothing && stat(conda_env).mtime < meta.timestamp && (isdir(conda_env) || (isempty(meta.packages) && isempty(meta.pip_packages))))
+        if (back === :Current) || (!force && is_clean(conda_env, meta))
             # the state is sufficiently clean that we can modify the existing conda environment
             changed = false
             if !isempty(removed_pip_pkgs) && !shared
@@ -501,19 +504,16 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             dry_run && return
             # remove environment
             mkpath(meta_dir)
-            if isdir(conda_env)
-                _resolve_conda_remove_all(io, conda_env)
-            end
+            isdir(conda_env) && _resolve_conda_remove_all(io, conda_env)
             # create conda environment
             _resolve_conda_install(io, conda_env, specs, channels; create=true)
             # install pip packages
-            if !isempty(pip_specs)
-                _resolve_pip_install(io, pip_specs, load_path)
-            end
+            isempty(pip_specs) || _resolve_pip_install(io, pip_specs, load_path)
         end
         # save metadata
         meta = Meta(
             timestamp = time(),
+            conda_env = conda_env,
             load_path = load_path,
             extra_path = extra_path,
             version = VERSION,
