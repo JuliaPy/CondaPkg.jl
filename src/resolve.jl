@@ -252,7 +252,7 @@ function _resolve_conda_install(io, conda_env, specs, channels; create=false)
     vrb = _verbosity_flags()
     cmd = conda_cmd(`$(create ? "create" : "install") $vrb -y -p $conda_env --override-channels --no-channel-priority $args`, io=io)
     flags = append!(["-y", "--override-channels", "--no-channel-priority"], vrb)
-    _run(io, cmd, "Installing packages", flags=flags)
+    _run(io, cmd, create ? "Creating environment" : "Installing packages", flags=flags)
     nothing
 end
 
