@@ -496,17 +496,21 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
                 changed = true
                 _resolve_pip_install(io, pip_specs, load_path)
             end
-            if !changed
-                _log(io, "Dependencies already up to date")
-            end
+            changed || _log(io, "Dependencies already up to date")
         else
             # the state is too dirty, recreate the conda environment from scratch
             dry_run && return
             # remove environment
             mkpath(meta_dir)
-            isdir(conda_env) && _resolve_conda_remove_all(io, conda_env)
+            create = true
+            isdir(conda_env) && if shared
+                _log(io, "Cannot remove a shared environment")
+                create = false
+            else
+                _resolve_conda_remove_all(io, conda_env)
+            end
             # create conda environment
-            _resolve_conda_install(io, conda_env, specs, channels; create=true)
+            _resolve_conda_install(io, conda_env, specs, channels; create=create)
             # install pip packages
             isempty(pip_specs) || _resolve_pip_install(io, pip_specs, load_path)
         end

@@ -9,4 +9,7 @@ pop!(ENV, "JULIA_CONDAPKG_OFFLINE", nothing)
 pop!(ENV, "JULIA_CONDAPKG_EXE", nothing)
 pop!(ENV, "JULIA_CONDAPKG_ENV", nothing)
 
+# avoid micromamba flooding the terminal with progress bar characters
+get!(ENV, "CI", true)
+
 @run_package_tests
