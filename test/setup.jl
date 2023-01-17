@@ -19,3 +19,4 @@ CondaPkg.STATE.load_path = String[]
 CondaPkg.STATE.meta_dir = ""
 CondaPkg.STATE.frozen = false
 CondaPkg.STATE.conda_env = ""
+CondaPkg.STATE.shared = false

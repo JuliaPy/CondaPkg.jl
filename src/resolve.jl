@@ -400,12 +400,13 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         end
         STATE.meta_dir = meta_dir = joinpath(conda_env, ".JuliaCondaPkg")
         STATE.conda_env = conda_env
-        shared = true  # environment is shared, disallow removing packages
+        STATE.shared = shared = true  # environment is shared, disallow removing packages
     else
         # find the topmost env in the load_path which depends on CondaPkg
         top_env = _resolve_top_env(load_path)
         STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-        STATE.conda_env = conda_env = if (shared = haskey(ENV, "JULIA_CONDAPKG_ENV"))
+        STATE.shared = shared = haskey(ENV, "JULIA_CONDAPKG_ENV")
+        STATE.conda_env = conda_env = if shared
             ENV["JULIA_CONDAPKG_ENV"]
         else
             joinpath(meta_dir, "env")

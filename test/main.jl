@@ -113,25 +113,20 @@ end
 
 @testitem "external conda env" begin
     include("setup.jl")
-    println(100)
-    env = tempname()
-    @show env
-    withenv("JULIA_CONDAPKG_ENV" => env) do
+    isnull || withenv("JULIA_CONDAPKG_ENV" => tempname()) do
         CondaPkg.resolve()
-        println(status())
+        @test !occursin("ca-certificates", status())
         CondaPkg.add("ca-certificates")
-        println(status())
         @test occursin("ca-certificates", status())
-        isnull || CondaPkg.withenv() do
+        CondaPkg.withenv() do
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
         CondaPkg.rm("ca-certificates")  # noop, since shared env
         @test occursin("ca-certificates", status())
-        isnull || CondaPkg.withenv() do
+        CondaPkg.withenv() do
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
     end
-    println(200)
 end
 
 @testitem "gc()" begin

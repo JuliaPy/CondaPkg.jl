@@ -29,6 +29,7 @@ end
     load_path::Vector{String} = String[]
     meta_dir::String = ""
     conda_env::String = ""
+    shared::Bool = false
     frozen::Bool = false
 end
 
