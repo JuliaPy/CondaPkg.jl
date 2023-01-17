@@ -110,7 +110,7 @@ end
 
 @testitem "external conda env" begin
     include("setup.jl")
-    withenv("JULIA_CONDAPKG_ENV" => tempname()) do
+    isnull || withenv("JULIA_CONDAPKG_ENV" => tempname()) do
         CondaPkg.resolve()
         CondaPkg.add("ca-certificates")
         CondaPkg.withenv() do
