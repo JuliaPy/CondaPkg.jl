@@ -118,11 +118,15 @@ end
     @show env
     withenv("JULIA_CONDAPKG_ENV" => env) do
         CondaPkg.resolve()
+        println(status())
         CondaPkg.add("ca-certificates")
+        println(status())
+        @test occursin("ca-certificates", status())
         isnull || CondaPkg.withenv() do
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
         CondaPkg.rm("ca-certificates")  # noop, since shared env
+        @test occursin("ca-certificates", status())
         isnull || CondaPkg.withenv() do
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
