@@ -11,6 +11,8 @@ end
         @test CondaPkg.activate!(copy(ENV)) == ENV
         @test occursin("Null", status())
         @test_throws ErrorException CondaPkg.envdir()
+    else
+        @test true
     end
 end
 
@@ -106,26 +108,32 @@ end
     CondaPkg.resolve(force=true)
     CondaPkg.rm("libstdcxx-ng", resolve=false)
     CondaPkg.resolve(force=true)
+    @test true
 end
 
 @testitem "external conda env" begin
     include("setup.jl")
-    isnull || withenv("JULIA_CONDAPKG_ENV" => tempname()) do
+    println(100)
+    env = tempname()
+    @show env
+    withenv("JULIA_CONDAPKG_ENV" => env) do
         CondaPkg.resolve()
         CondaPkg.add("ca-certificates")
-        CondaPkg.withenv() do
+        isnull || CondaPkg.withenv() do
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
         CondaPkg.rm("ca-certificates")  # noop, since shared env
-        CondaPkg.withenv() do
+        isnull || CondaPkg.withenv() do
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
     end
+    println(200)
 end
 
 @testitem "gc()" begin
     include("setup.jl")
     testgc && CondaPkg.gc()
+    @test true
 end
 
 @testitem "validation" begin
