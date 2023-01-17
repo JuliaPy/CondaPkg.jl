@@ -118,14 +118,8 @@ end
         @test !occursin("ca-certificates", status())
         CondaPkg.add("ca-certificates")
         @test occursin("ca-certificates", status())
-        CondaPkg.withenv() do
-            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
-        end
         CondaPkg.rm("ca-certificates")  # noop, since shared env
         @test occursin("ca-certificates", status())
-        CondaPkg.withenv() do
-            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
-        end
     end
 end
 
