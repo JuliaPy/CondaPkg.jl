@@ -177,7 +177,7 @@ already available (such as by having previously called `CondaPkg.resolve()`).
 ### Conda environment path
 
 By default, CondaPkg installs conda packages in the `DEPOT_PATH`. If you wish to centralize
-the conda envionment, you can use `JULIA_CONDAPKG_ENV=<arbitrary path>`.
+the conda environment, you can use `JULIA_CONDAPKG_ENV=<arbitrary path>`.
 
 ### Verbosity
 
