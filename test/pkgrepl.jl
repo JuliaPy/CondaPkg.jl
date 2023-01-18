@@ -54,3 +54,32 @@ end
         CondaPkg.PkgREPL.run(["python", "--version"])
     end
 end
+
+@testitem "parsing" begin
+    include("setup.jl")
+    let spec = CondaPkg.PkgREPL.parse_pkg("numpy=1.11")
+        @test spec.name == "numpy"
+        @test spec.version == "1.11"
+    end
+    let spec = CondaPkg.PkgREPL.parse_pkg("numpy==1.11")
+        @test spec.name == "numpy"
+        @test spec.version == "=1.11"
+    end
+    let spec = CondaPkg.PkgREPL.parse_pkg("numpy>1.11")
+        @test spec.name == "numpy"
+        @test spec.version == ">1.11"
+    end
+    let spec = CondaPkg.PkgREPL.parse_pkg("numpy=1.11.1|1.11.3")
+        @test spec.name == "numpy"
+        @test spec.version == "1.11.1|1.11.3"
+    end
+    let spec = CondaPkg.PkgREPL.parse_pkg("numpy>=1.8,<2")
+        @test spec.name == "numpy"
+        @test spec.version == ">=1.8,<2"
+    end
+    let spec = CondaPkg.PkgREPL.parse_pkg("tensorflow=*=cpu*")
+        @test spec.name == "tensorflow"
+        @test spec.version == "*"
+        @test spec.build == "cpu*"
+    end
+end
