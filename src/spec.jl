@@ -43,7 +43,9 @@ is_valid_version(ver) = occursin(r"^\s*($|[!<>=0-9])", ver) && is_valid_string(v
 normalise_version(ver) = strip(ver)
 
 validate_version(ver) =
-    if is_valid_version(ver)
+    if strip(ver) == "*"
+        "*"
+    elseif is_valid_version(ver)
         normalise_version(ver)
     else
         error("invalid version: $(repr(ver))")
