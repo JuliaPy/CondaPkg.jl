@@ -113,7 +113,9 @@ end
 
 @testitem "external conda env" begin
     include("setup.jl")
-    isnull || withenv("JULIA_CONDAPKG_ENV" => tempname()) do
+    dn = tempname()
+    @show dn
+    isnull || withenv("JULIA_CONDAPKG_ENV" => dn) do
         CondaPkg.resolve()
         @test !occursin("ca-certificates", status())
         CondaPkg.add("ca-certificates")
@@ -121,6 +123,7 @@ end
         CondaPkg.rm("ca-certificates")
         @test !occursin("ca-certificates", status())  # removed from specs ...
         CondaPkg.withenv() do  # ... but still installed (shared env might be used by specs from alternate julia versions)
+            foreach(println, readdir(CondaPkg.envdir()))
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
     end
