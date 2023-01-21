@@ -308,12 +308,15 @@ function _add_temp!(dict, file, pkg)
 end
 
 function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false)
-    STATE.shared && return  # refuse to remove specs from shared env
     if temp
-        foreach(pkg -> rm_temp!(file, pkg), pkgs)
+        for pkg in pkgs
+            rm_temp!(file, pkg)
+        end
     else
         toml = read_deps(; file)
-        foreach(pkg -> rm!(toml, pkg), pkgs)
+        for pkg in pkgs
+            rm!(toml, pkg)
+        end
         write_deps(toml)
         STATE.resolved = false
     end
