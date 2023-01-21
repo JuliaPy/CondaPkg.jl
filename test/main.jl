@@ -118,8 +118,11 @@ end
         @test !occursin("ca-certificates", status())
         CondaPkg.add("ca-certificates")
         @test occursin("ca-certificates", status())
-        CondaPkg.rm("ca-certificates")  # noop, since shared env
-        @test occursin("ca-certificates", status())
+        CondaPkg.rm("ca-certificates")
+        @test !occursin("ca-certificates", status())  # removed from specs ...
+        CondaPkg.withenv() do  # ... but still installed (shared env might be used by specs from alternate julia versions)
+            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
+        end
     end
 end
 
