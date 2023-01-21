@@ -395,7 +395,8 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     STATE.load_path = load_path
     if back === :Current
         # use a pre-existing conda environment
-        if (conda_env = get(ENV, "CONDA_PREFIX", nothing)) === nothing
+        conda_env = get(ENV, "CONDA_PREFIX", "")
+        if conda_env == ""
             error("CondaPkg is using the Current backend, but you are not in a Conda environment")
         end
         STATE.meta_dir = meta_dir = joinpath(conda_env, ".JuliaCondaPkg")
@@ -405,12 +406,15 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         # find the topmost env in the load_path which depends on CondaPkg
         top_env = _resolve_top_env(load_path)
         STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-        STATE.shared = shared = haskey(ENV, "JULIA_CONDAPKG_ENV")
-        STATE.conda_env = conda_env = if shared
-            ENV["JULIA_CONDAPKG_ENV"]
+        conda_env = get(ENV, "JULIA_CONDAPKG_ENV", "")
+        if conda_env == ""
+            conda_env = joinpath(meta_dir, "env")
+            shared = false
         else
-            joinpath(meta_dir, "env")
+            shared = true
         end
+        STATE.conda_env = conda_env
+        STATE.shared = shared
     end
     meta_file = joinpath(meta_dir, "meta")
     lock_file = joinpath(meta_dir, "lock")
@@ -451,10 +455,10 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         if (meta === nothing) || (back === :Current)
             removed_pkgs = String[]
             changed_pkgs = String[]
-            added_pkgs = unique!(map(x -> x.name, specs))
+            added_pkgs = unique!(String[x.name for x in specs])
             removed_pip_pkgs = String[]
             changed_pip_pkgs = String[]
-            added_pip_pkgs = unique!(map(x -> x.name, pip_specs))
+            added_pip_pkgs = unique!(String[x.name for x in pip_specs])
         else
             removed_pkgs, changed_pkgs, added_pkgs = _resolve_diff(meta.packages, specs)
             removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)
