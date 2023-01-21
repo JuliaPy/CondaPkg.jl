@@ -308,6 +308,7 @@ function _add_temp!(dict, file, pkg)
 end
 
 function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false)
+    STATE.shared && return # refuse to remove specs from shared env
     if temp
         for pkg in pkgs
             rm_temp!(file, pkg)
