@@ -508,11 +508,13 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             # remove environment
             mkpath(meta_dir)
             create = true
-            isdir(conda_env) && if shared
-                _log(io, "Cannot remove a shared environment")
-                create = false
-            else
-                _resolve_conda_remove_all(io, conda_env)
+            if isdir(conda_env)
+                if shared
+                    _log(io, "Cannot remove a shared environment")
+                    create = false
+                else
+                    _resolve_conda_remove_all(io, conda_env)
+                end
             end
             # create conda environment
             _resolve_conda_install(io, conda_env, specs, channels; create=create)
