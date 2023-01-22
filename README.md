@@ -179,6 +179,11 @@ already available (such as by having previously called `CondaPkg.resolve()`).
 By default, CondaPkg installs conda packages in the `DEPOT_PATH`. If you wish to centralize
 the conda environment, you can use `JULIA_CONDAPKG_ENV=<arbitrary path>`.
 
+Note that the versions specified in a per-julia-version `CondaPkg.toml` can become
+un-synchronized with the packages installed in the shared conda environment.
+In this case, you will have to re-resolve the dependencies using `resolve(; force = true)`.
+This restriction might be alleviated in future `CondaPkg` versions.
+
 ### Verbosity
 
 You can control the verbosity of any `conda` or `pip` commands executed by setting the
