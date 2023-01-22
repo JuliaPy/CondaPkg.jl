@@ -477,7 +477,6 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
                 _log(io, char, " ", pkg, label="", color=color)
             end
         end
-        @show specs is_clean(conda_env, meta)
         # install/uninstall packages
         if (back === :Current) || (!force && is_clean(conda_env, meta))
             # the state is sufficiently clean that we can modify the existing conda environment
