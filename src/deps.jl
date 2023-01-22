@@ -307,7 +307,7 @@ function _add_temp!(dict, file, pkg)
     return
 end
 
-function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false)
+function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false, kw...)
     if temp
         for pkg in pkgs
             rm_temp!(file, pkg)
@@ -320,7 +320,7 @@ function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false
         write_deps(toml)
         STATE.resolved = false
     end
-    resolve && CondaPkg.resolve()
+    resolve && CondaPkg.resolve(; kw...)
     return
 end
 

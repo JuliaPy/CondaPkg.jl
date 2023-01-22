@@ -123,7 +123,7 @@ end
         CondaPkg.withenv() do
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
-        CondaPkg.rm("ca-certificates")
+        CondaPkg.rm("ca-certificates"; interactive=true, force=true)
         @test !occursin("ca-certificates", status())  # removed from specs ...
         CondaPkg.withenv() do  # ... but still installed (shared env might be used by specs from alternate julia versions)
             foreach(println, readdir(CondaPkg.envdir()))
