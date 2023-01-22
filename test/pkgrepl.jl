@@ -4,27 +4,27 @@
 
 @testitem "add/rm package" begin
     include("setup.jl")
-    CondaPkg.PkgREPL.add(["  six ==1.16.0 "])
+    CondaPkg.PkgREPL.add(["six==1.16.0"])
     @test occursin("six", status())
     @test occursin("(==1.16.0)", status())
-    CondaPkg.PkgREPL.rm([" six "])
+    CondaPkg.PkgREPL.rm(["six"])
     @test !occursin("six", status())
 end
 
 @testitem "add/rm channel" begin
     include("setup.jl")
-    CondaPkg.PkgREPL.channel_add([" numba "])
+    CondaPkg.PkgREPL.channel_add(["numba"])
     @test occursin("numba", status())
-    CondaPkg.PkgREPL.channel_rm([" numba "])
+    CondaPkg.PkgREPL.channel_rm(["numba"])
     @test !occursin("numba", status())
 end
 
 @testitem "add/rm pip package" begin
     include("setup.jl")
-    CondaPkg.PkgREPL.pip_add([" six ==1.16.0 "])
+    CondaPkg.PkgREPL.pip_add(["six==1.16.0"])
     @test occursin("six", status())
     @test occursin("(==1.16.0)", status())
-    CondaPkg.PkgREPL.pip_rm([" six "])
+    CondaPkg.PkgREPL.pip_rm(["six"])
     @test !occursin("six", status())
 end
 

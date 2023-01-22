@@ -30,7 +30,6 @@ function parse_pip_pkg(x::String; binary::String="")
     ([~!<>=@].*)?
     $
     """x, x)
-    m = match(r"^\s*$", x)
     m === nothing && error("invalid pip package: $x")
     name = m.captures[1]
     version = something(m.captures[2], "")
