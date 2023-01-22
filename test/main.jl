@@ -118,7 +118,7 @@ end
     isnull || withenv("JULIA_CONDAPKG_ENV" => dn) do
         CondaPkg.resolve()
         @test !occursin("ca-certificates", status())
-        CondaPkg.add("ca-certificates")
+        CondaPkg.add("ca-certificates"; interactive=true)
         @test occursin("ca-certificates", status())
         CondaPkg.withenv() do
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))

@@ -388,7 +388,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     # this is a very fast check which avoids touching the file system
     load_path = Base.load_path()
     if !force && STATE.resolved && STATE.load_path == load_path
-        interactive && _log(io, "Dependencies already up to date")
+        interactive && _log(io, "Dependencies already up to date (resolved)")
         return
     end
     STATE.resolved = false
@@ -477,6 +477,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
                 _log(io, char, " ", pkg, label="", color=color)
             end
         end
+        @show specs is_clean(conda_env, meta)
         # install/uninstall packages
         if (back === :Current) || (!force && is_clean(conda_env, meta))
             # the state is sufficiently clean that we can modify the existing conda environment

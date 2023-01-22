@@ -228,7 +228,7 @@ function status(; io::IO=stderr)
     end
 end
 
-function add(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false)
+function add(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false, kw...)
     if temp
         for pkg in pkgs
             add_temp!(file, pkg)
@@ -241,7 +241,7 @@ function add(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=fals
         write_deps(toml)
         STATE.resolved = false
     end
-    resolve && CondaPkg.resolve()
+    resolve && CondaPkg.resolve(; kw...)
     return
 end
 
