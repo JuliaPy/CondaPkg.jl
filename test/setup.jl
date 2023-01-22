@@ -20,3 +20,7 @@ CondaPkg.STATE.meta_dir = ""
 CondaPkg.STATE.frozen = false
 CondaPkg.STATE.conda_env = ""
 CondaPkg.STATE.shared = false
+
+empty!(CondaPkg.TEMP_PKGS)
+empty!(CondaPkg.TEMP_CHANNELS)
+empty!(CondaPkg.TEMP_PIP_PKGS)
