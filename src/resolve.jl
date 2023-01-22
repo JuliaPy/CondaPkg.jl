@@ -242,6 +242,7 @@ function _resolve_conda_remove_all(io, conda_env)
 end
 
 function _resolve_conda_install(io, conda_env, specs, channels; create=false)
+    (length(specs) == 0 && !create) && return  # installing 0 packages is invalid
     args = String[]
     for spec in specs
         push!(args, specstr(spec))
