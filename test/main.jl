@@ -113,7 +113,7 @@ end
 
 @testitem "external conda env" begin
     include("setup.jl")
-    dn = tempname()
+    dn = string(tempname(), backend, Sys.KERNEL, VERSION)
     @show dn
     isnull || withenv("JULIA_CONDAPKG_ENV" => dn) do
         CondaPkg.resolve()
