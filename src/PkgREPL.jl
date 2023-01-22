@@ -115,8 +115,10 @@ Add packages to the environment.
 
 ```
 pkg> conda add python
-pkg> conda add python>=3.5,<4
-pkg> conda add conda-forge::numpy
+pkg> conda add python>=3.5,<4       # version range
+pkg> conda add python@3.9.*|3.10.*  # version pattern
+pkg> conda add conda-forge::numpy   # channel
+pkg> conda add tensorflow#cpu*      # build string pattern
 ```
 """)
 
@@ -174,8 +176,9 @@ Add Pip packages to the environment.
 **Examples**
 
 ```
-pkg> conda pip_add build~=0.7
-pkg> conda pip_add --binary=no nmslib
+pkg> conda pip_add build
+pkg> conda pip_add build~=0.7          # version range
+pkg> conda pip_add --binary=no nmslib  # always build from source
 ```
 """)
 
