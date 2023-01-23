@@ -7,32 +7,32 @@ import Markdown
 ### parsing
 
 function parse_pkg(x::String)
-    m = match(r"^\s*(([^:\s]+)::)?([-_.A-Za-z0-9]+)\s*(([<>=!0-9][^\s]*)(\s+([^\s]+))?)?\s*$", x)
+    m = match(r"""
+    ^
+    (?:([^\s\:]+)::)?  # channel
+    ([-_.A-Za-z0-9]+)  # name
+    (?:\@?([<>=!0-9][^\s\#]*))?  # version
+    (?:\#([^\s]+))?  # build
+    $
+    """x, x)
     m === nothing && error("invalid conda package: $x")
-    channel = m.captures[2]
-    name = m.captures[3]
-    version = m.captures[5]
-    build = m.captures[7]
-    if version === nothing
-        version = ""
-    end
-    if channel === nothing
-        channel = ""
-    end
-    if build === nothing
-        build = ""
-    end
+    channel = something(m.captures[1], "")
+    name = m.captures[2]
+    version = something(m.captures[3], "")
+    build = something(m.captures[4], "")
     CondaPkg.PkgSpec(name, version=version, channel=channel, build=build)
 end
 
 function parse_pip_pkg(x::String; binary::String="")
-    m = match(r"^\s*([-_.A-Za-z0-9]+)\s*([~!<>=@].*)?$", x)
+    m = match(r"""
+    ^
+    ([-_.A-Za-z0-9]+)
+    ([~!<>=@].*)?
+    $
+    """x, x)
     m === nothing && error("invalid pip package: $x")
     name = m.captures[1]
-    version = m.captures[2]
-    if version === nothing
-        version = ""
-    end
+    version = something(m.captures[2], "")
     CondaPkg.PipPkgSpec(name, version=version, binary=binary)
 end
 
@@ -115,8 +115,10 @@ Add packages to the environment.
 
 ```
 pkg> conda add python
-pkg> conda add python>=3.5,<4
-pkg> conda add conda-forge::numpy
+pkg> conda add python>=3.5,<4       # version range
+pkg> conda add python@3.9.*|3.10.*  # version pattern
+pkg> conda add conda-forge::numpy   # channel
+pkg> conda add tensorflow#cpu*      # build string pattern
 ```
 """)
 
@@ -174,8 +176,9 @@ Add Pip packages to the environment.
 **Examples**
 
 ```
-pkg> conda pip_add build~=0.7
-pkg> conda pip_add --binary=no nmslib
+pkg> conda pip_add build
+pkg> conda pip_add build~=0.7          # version range
+pkg> conda pip_add --binary=no nmslib  # always build from source
 ```
 """)
 

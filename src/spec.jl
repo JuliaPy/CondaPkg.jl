@@ -38,7 +38,7 @@ validate_pkg(name) =
         error("invalid package: $(repr(name))")
     end
 
-is_valid_version(ver) = occursin(r"^\s*($|[!<>=0-9])", ver) && is_valid_string(ver)
+is_valid_version(ver) = occursin(r"^\s*($|[!<>=0-9])", ver) && is_valid_string(ver; allow_glob=true)
 
 normalise_version(ver) = strip(ver)
 
