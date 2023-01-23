@@ -68,11 +68,7 @@ Throws an error if backend is Null.
 function envdir(args...)
     backend() == :Null && throw(ErrorException("Can not get envdir when backend is Null."))
     resolve()
-    if backend() == :Current
-        joinpath(dirname(STATE.meta_dir), args...)
-    else
-        joinpath(STATE.meta_dir, "env", args...)
-    end
+    normpath(STATE.conda_env, args...)
 end
 
 """

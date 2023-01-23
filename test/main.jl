@@ -11,6 +11,8 @@ end
         @test CondaPkg.activate!(copy(ENV)) == ENV
         @test occursin("Null", status())
         @test_throws ErrorException CondaPkg.envdir()
+    else
+        @test true
     end
 end
 
@@ -86,7 +88,6 @@ end
     end
 end
 
-
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
@@ -107,13 +108,37 @@ end
     CondaPkg.resolve(force=true)
     CondaPkg.rm("libstdcxx-ng", resolve=false)
     CondaPkg.resolve(force=true)
+    @test true
+end
+
+@testitem "external conda env" begin
+    include("setup.jl")
+    dn = string(tempname(), backend, Sys.KERNEL, VERSION)
+    @show dn
+    isnull || withenv("JULIA_CONDAPKG_ENV" => dn) do
+        # create empty env
+        CondaPkg.resolve()
+        @test !occursin("ca-certificates", status())
+        # add a package to specs and install it
+        CondaPkg.add("ca-certificates"; interactive=true, force=true)  # force: spurious windows failures
+        @test occursin("ca-certificates", status())
+        CondaPkg.withenv() do
+            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
+        end
+        # remove a package from specs, it must remain installed because we use a shared centralized env
+        CondaPkg.rm("ca-certificates"; interactive=true, force=true)
+        @test !occursin("ca-certificates", status())  # removed from specs ...
+        CondaPkg.withenv() do  # ... but still installed (shared env might be used by specs from alternate julia versions)
+            foreach(println, readdir(CondaPkg.envdir()))
+            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
+        end
+    end
 end
 
 @testitem "gc()" begin
     include("setup.jl")
-    if testgc
-        CondaPkg.gc()
-    end
+    testgc && CondaPkg.gc()
+    @test true
 end
 
 @testitem "validation" begin
