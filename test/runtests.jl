@@ -1,3 +1,6 @@
-using TestItemRunner
+using CondaPkg
+using Test
 
-@run_package_tests
+include("internals.jl")
+include("pkgrepl.jl")
+include("main.jl")

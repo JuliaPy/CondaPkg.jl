@@ -2,7 +2,7 @@
 # but calling them is the closest thing to calling
 # the Pkg REPL.
 
-@testitem "add/rm package" begin
+@testset "add/rm package" begin
     include("setup.jl")
     CondaPkg.PkgREPL.add(["  six ==1.16.0 "])
     @test occursin("six", status())
@@ -11,7 +11,7 @@
     @test !occursin("six", status())
 end
 
-@testitem "add/rm channel" begin
+@testset "add/rm channel" begin
     include("setup.jl")
     CondaPkg.PkgREPL.channel_add([" numba "])
     @test occursin("numba", status())
@@ -19,7 +19,7 @@ end
     @test !occursin("numba", status())
 end
 
-@testitem "add/rm pip package" begin
+@testset "add/rm pip package" begin
     include("setup.jl")
     CondaPkg.PkgREPL.pip_add([" six ==1.16.0 "])
     @test occursin("six", status())
@@ -28,25 +28,25 @@ end
     @test !occursin("six", status())
 end
 
-@testitem "status" begin
+@testset "status" begin
     include("setup.jl")
     # TODO: capture the output and check it equals status()
     CondaPkg.PkgREPL.status()
 end
 
-@testitem "resolve" begin
+@testset "resolve" begin
     include("setup.jl")
     CondaPkg.PkgREPL.resolve()
 end
 
-@testitem "gc" begin
+@testset "gc" begin
     include("setup.jl")
     if testgc
         CondaPkg.PkgREPL.gc()
     end
 end
 
-@testitem "run" begin
+@testset "run" begin
     include("setup.jl")
     CondaPkg.add("python", version="==3.10.2")
     # TODO: capture the output and check it contains "Python 3.10.2"

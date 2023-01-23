@@ -1,10 +1,10 @@
-@testitem "resolve (empty)" begin
+@testset "resolve (empty)" begin
     include("setup.jl")
     @test CondaPkg.resolve() === nothing
     @test occursin("(empty)", status())
 end
 
-@testitem "Null backend" begin
+@testset "Null backend" begin
     include("setup.jl")
     if isnull
         @test CondaPkg.backend() == :Null
@@ -14,7 +14,7 @@ end
     end
 end
 
-@testitem "add/remove channel" begin
+@testset "add/remove channel" begin
     include("setup.jl")
     @test !occursin("conda-forge", status())
     CondaPkg.add_channel("conda-forge")
@@ -23,7 +23,7 @@ end
     @test !occursin("conda-forge", status())
 end
 
-@testitem "install python" begin
+@testset "install python" begin
     include("setup.jl")
     @test !occursin("python", status())
     CondaPkg.add("python", version="==3.10.2")
@@ -34,7 +34,7 @@ end
     @test occursin("python", status())
 end
 
-@testitem "install/remove python package" begin
+@testset "install/remove python package" begin
     include("setup.jl")
     CondaPkg.add("python", version="==3.10.2")
     # verify package isn't already installed
@@ -60,7 +60,7 @@ end
     end
 end
 
-@testitem "pip install/remove python package" begin
+@testset "pip install/remove python package" begin
     include("setup.jl")
     CondaPkg.add("python", version="==3.10.2")
     # verify package isn't already installed
@@ -87,7 +87,7 @@ end
 end
 
 
-@testitem "install/remove executable package" begin
+@testset "install/remove executable package" begin
     include("setup.jl")
     if !isnull
         CondaPkg.add("curl", resolve=false)
@@ -101,7 +101,7 @@ end
     end
 end
 
-@testitem "install/remove libstdcxx_ng" begin
+@testset "install/remove libstdcxx_ng" begin
     include("setup.jl")
     CondaPkg.add("libstdcxx-ng", version="<=julia", resolve=false)
     CondaPkg.resolve(force=true)
@@ -109,14 +109,14 @@ end
     CondaPkg.resolve(force=true)
 end
 
-@testitem "gc()" begin
+@testset "gc()" begin
     include("setup.jl")
     if testgc
         CondaPkg.gc()
     end
 end
 
-@testitem "validation" begin
+@testset "validation" begin
     include("setup.jl")
     @test_throws Exception CondaPkg.add("!invalid!package!")
     @test_throws Exception CondaPkg.add_pip("!invalid!package!")

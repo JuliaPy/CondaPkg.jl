@@ -1,4 +1,4 @@
-@testitem "PkgSpec" begin
+@testset "PkgSpec" begin
     include("setup.jl")
     @test_throws Exception CondaPkg.PkgSpec("")
     @test_throws Exception CondaPkg.PkgSpec("foo!")
@@ -9,14 +9,14 @@
     @test spec.channel == "SOME_chaNNEL"
 end
 
-@testitem "ChannelSpec" begin
+@testset "ChannelSpec" begin
     include("setup.jl")
     @test_throws Exception CondaPkg.ChannelSpec("")
     spec = CondaPkg.ChannelSpec("  SOME_chaNNEL  ")
     @test spec.name == "SOME_chaNNEL"
 end
 
-@testitem "PipPkgSpec" begin
+@testset "PipPkgSpec" begin
     include("setup.jl")
     @test_throws Exception CondaPkg.PipPkgSpec("")
     @test_throws Exception CondaPkg.PipPkgSpec("foo!")
@@ -26,7 +26,7 @@ end
     @test spec.version == "@./SOME/Path"
 end
 
-@testitem "meta IO" begin
+@testset "meta IO" begin
     include("setup.jl")
     specs = Any[
         CondaPkg.PkgSpec("foo", version="=1.2.3", channel="bar"),
@@ -45,7 +45,7 @@ end
     end
 end
 
-@testitem "abspathurl" begin
+@testset "abspathurl" begin
     include("setup.jl")
     @test startswith(CondaPkg.abspathurl("foo"), "file://")
     @test endswith(CondaPkg.abspathurl("foo"), "/foo")
