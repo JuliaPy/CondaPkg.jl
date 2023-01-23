@@ -412,6 +412,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             conda_env = joinpath(meta_dir, "env")
             shared = false
         else
+            isabspath(conda_env) || error("JULIA_CONDAPKG_ENV must be an absolute path")
             shared = true
         end
         STATE.conda_env = conda_env
