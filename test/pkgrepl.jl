@@ -41,16 +41,19 @@ end
 
 @testitem "gc" begin
     include("setup.jl")
-    if testgc
-        CondaPkg.PkgREPL.gc()
-    end
+    testgc && CondaPkg.PkgREPL.gc()
 end
 
 @testitem "run" begin
     include("setup.jl")
     CondaPkg.add("python", version="==3.10.2")
-    # TODO: capture the output and check it contains "Python 3.10.2"
     if !isnull
-        CondaPkg.PkgREPL.run(["python", "--version"])
+        fn = tempname()
+        open(fn, "w") do io
+            redirect_stdout(io) do
+                CondaPkg.PkgREPL.run(["python", "--version"])
+            end
+        end
+        @test contains(read(fn, String), "3.10.2")
     end
 end

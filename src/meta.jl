@@ -4,10 +4,11 @@ information about the most recent resolve.
 """
 
 # increment whenever the metadata format changes
-const META_VERSION = 10
+const META_VERSION = 11
 
 @kwdef mutable struct Meta
     timestamp::Float64
+    conda_env::String
     load_path::Vector{String}
     extra_path::Vector{String}
     version::VersionNumber
@@ -24,6 +25,7 @@ function read_meta(io::IO)
     if read(io, Int) == META_VERSION
         Meta(
             timestamp = read_meta(io, Float64),
+            conda_env = read_meta(io, String),
             load_path = read_meta(io, Vector{String}),
             extra_path = read_meta(io, Vector{String}),
             version = read_meta(io, VersionNumber),
@@ -90,6 +92,7 @@ end
 function write_meta(io::IO, meta::Meta)
     write(io, META_VERSION)
     write_meta(io, meta.timestamp)
+    write_meta(io, meta.conda_env)
     write_meta(io, meta.load_path)
     write_meta(io, meta.extra_path)
     write_meta(io, meta.version)
