@@ -105,28 +105,7 @@ function parse_deps(toml)
 end
 
 function read_parsed_deps(file)
-    # read and parse the deps file
-    deps = parse_deps(read_deps(; file))
-    # add any temp dependencies
-    if isfile(file)
-        file = realpath(file)
-        if haskey(TEMP_PKGS, file)
-            temp_pkgs = TEMP_PKGS[file]
-            filter!(p->!haskey(temp_pkgs, p.name), deps.packages)
-            append!(deps.packages, values(temp_pkgs))
-        end
-        if haskey(TEMP_CHANNELS, file)
-            temp_channels = TEMP_CHANNELS[file]
-            filter!(p->!haskey(temp_channels, p.name), deps.channels)
-            append!(deps.channels, values(temp_channels))
-        end
-        if haskey(TEMP_PIP_PKGS, file)
-            temp_pip_pkgs = TEMP_PIP_PKGS[file]
-            filter!(p->!haskey(temp_pip_pkgs, p.name), deps.pip_packages)
-            append!(deps.pip_packages, values(temp_pip_pkgs))
-        end
-    end
-    return deps
+    return parse_deps(read_deps(; file))
 end
 
 function current_packages()
@@ -228,19 +207,13 @@ function status(; io::IO=stderr)
     end
 end
 
-function add(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false, kw...)
-    if temp
-        for pkg in pkgs
-            add_temp!(file, pkg)
-        end
-    else
-        toml = read_deps(; file)
-        for pkg in pkgs
-            add!(toml, pkg)
-        end
-        write_deps(toml)
-        STATE.resolved = false
+function add(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), kw...)
+    toml = read_deps(; file)
+    for pkg in pkgs
+        add!(toml, pkg)
     end
+    write_deps(toml)
+    STATE.resolved = false
     resolve && CondaPkg.resolve(; kw...)
     return
 end
@@ -290,36 +263,13 @@ function add!(toml, pkg::PipPkgSpec)
     end
 end
 
-const TEMP_PKGS = Dict{String,Dict{String,PkgSpec}}()
-const TEMP_CHANNELS = Dict{String,Dict{String,ChannelSpec}}()
-const TEMP_PIP_PKGS = Dict{String,Dict{String,PipPkgSpec}}()
-
-add_temp!(file, pkg::PkgSpec) = _add_temp!(TEMP_PKGS, file, pkg)
-add_temp!(file, pkg::ChannelSpec) = _add_temp!(TEMP_CHANNELS, file, pkg)
-add_temp!(file, pkg::PipPkgSpec) = _add_temp!(TEMP_PIP_PKGS, file, pkg)
-
-function _add_temp!(dict, file, pkg)
-    file = realpath(file)
-    pkgs = get!(valtype(dict), dict, file)
-    haskey(pkgs, pkg.name) && pkgs[pkg.name] == pkg && return
-    pkgs[pkg.name] = pkg
-    STATE.resolved = false
-    return
-end
-
-function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), temp=false, kw...)
-    if temp
-        for pkg in pkgs
-            rm_temp!(file, pkg)
-        end
-    else
-        toml = read_deps(; file)
-        for pkg in pkgs
-            rm!(toml, pkg)
-        end
-        write_deps(toml)
-        STATE.resolved = false
+function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), kw...)
+    toml = read_deps(; file)
+    for pkg in pkgs
+        rm!(toml, pkg)
     end
+    write_deps(toml)
+    STATE.resolved = false
     resolve && CondaPkg.resolve(; kw...)
     return
 end
@@ -350,21 +300,6 @@ function rm!(toml, pkg::PipPkgSpec)
     length(deps) < n || error("pip package not found: $(pkg.name)")
     isempty(deps) && delete!(pip, "deps")
     isempty(pip) && delete!(toml, "pip")
-end
-
-rm_temp!(file, pkg::PkgSpec) = _rm_temp!(TEMP_PKGS, file, pkg)
-rm_temp!(file, pkg::ChannelSpec) = _rm_temp!(TEMP_CHANNELS, file, pkg)
-rm_temp!(file, pkg::PipPkgSpec) = _rm_temp!(TEMP_PIP_PKGS, file, pkg)
-
-function _rm_temp!(dict, file, pkg)
-    file = realpath(file)
-    haskey(dict, file) || return
-    pkgs = dict[file]
-    haskey(pkgs, pkg.name) || return
-    delete!(pkgs, pkg.name)
-    STATE.resolved = false
-    isempty(pkgs) && delete!(dict, file)
-    return
 end
 
 """
