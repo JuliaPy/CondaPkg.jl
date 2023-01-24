@@ -101,7 +101,7 @@ function _resolve_find_dependencies(io, load_path)
     orig_project = Pkg.project().path
     try
         for proj in load_path
-            Pkg.activate(proj)
+            Pkg.activate(proj; io=devnull)
             for env in [proj; [p.source for p in values(Pkg.dependencies())]]
                 dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
                 fn = joinpath(dir, "CondaPkg.toml")
@@ -129,7 +129,7 @@ function _resolve_find_dependencies(io, load_path)
             end
         end
     finally
-        Pkg.activate(orig_project)
+        Pkg.activate(orig_project; io=devnull)
     end
     if isempty(channels)
         push!(channels, ChannelSpec("conda-forge"))
