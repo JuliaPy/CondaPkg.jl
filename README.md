@@ -38,6 +38,7 @@ pkg> conda add python perl       # adds conda packages
 pkg> conda pip_add build         # adds pip packages
 pkg> conda rm perl               # removes conda packages
 pkg> conda run python --version  # runs the given command in the conda environment
+pkg> conda update                # update conda and pip installed packages
 ```
 
 For more information do `?` or `?conda` from the Pkg REPL.
@@ -98,6 +99,7 @@ binary = "no"  # or "only"
 - `resolve(; force=false)` resolves dependencies. You don't normally need to call this
   because the other API functions will automatically resolve first. Pass `force=true` if
   you change a `CondaPkg.toml` file mid-session.
+- `update()` update the conda and pip installed packages.
 - `gc()` removes unused caches to save disk space.
 
 ### Examples

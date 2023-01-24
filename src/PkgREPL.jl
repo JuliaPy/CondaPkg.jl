@@ -101,7 +101,7 @@ const resolve_spec = Pkg.REPLMode.CommandSpec(
 ### update
 
 function update()
-    CondaPkg.resolve(force=true, interactive=true)
+    CondaPkg.update()
 end
 
 const update_help = Markdown.parse("""

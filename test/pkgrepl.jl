@@ -37,16 +37,19 @@ end
 @testitem "resolve" begin
     include("setup.jl")
     CondaPkg.PkgREPL.resolve()
+    @test CondaPkg.is_resolved()
 end
 
 @testitem "update" begin
     include("setup.jl")
     CondaPkg.PkgREPL.update()
+    @test CondaPkg.is_resolved()
 end
 
 @testitem "gc" begin
     include("setup.jl")
     testgc && CondaPkg.PkgREPL.gc()
+    @test true
 end
 
 @testitem "run" begin
