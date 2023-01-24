@@ -19,7 +19,7 @@ end
 
 function _resolve_can_skip_1(load_path, meta_file)
     meta = open(read_meta, meta_file)
-    if meta !== nothing && meta.version == VERSION && meta.load_path == load_path && meta.temp_packages == TEMP_PKGS && meta.temp_channels == TEMP_CHANNELS && meta.temp_pip_packages == TEMP_PIP_PKGS
+    if meta !== nothing && meta.version == VERSION && meta.load_path == load_path
         timestamp = max(meta.timestamp, stat(meta_file).mtime)
         skip = true
         for env in [meta.load_path; meta.extra_path]
@@ -533,9 +533,6 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             packages = specs,
             channels = channels,
             pip_packages = pip_specs,
-            temp_packages = TEMP_PKGS,
-            temp_channels = TEMP_CHANNELS,
-            temp_pip_packages = TEMP_PIP_PKGS,
         )
         open(io->write_meta(io, meta), meta_file, "w")
         # all done
