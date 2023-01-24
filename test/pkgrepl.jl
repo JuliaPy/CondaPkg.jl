@@ -39,6 +39,11 @@ end
     CondaPkg.PkgREPL.resolve()
 end
 
+@testitem "update" begin
+    include("setup.jl")
+    CondaPkg.PkgREPL.update()
+end
+
 @testitem "gc" begin
     include("setup.jl")
     testgc && CondaPkg.PkgREPL.gc()
