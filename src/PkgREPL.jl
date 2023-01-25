@@ -98,6 +98,27 @@ const resolve_spec = Pkg.REPLMode.CommandSpec(
     option_spec = [force_opt],
 )
 
+### update
+
+function update()
+    CondaPkg.update()
+end
+
+const update_help = Markdown.parse("""
+```
+conda update
+```
+
+Update Conda dependencies.
+""")
+
+const update_spec = Pkg.REPLMode.CommandSpec(
+    name = "update",
+    api = update,
+    help = update_help,
+    description = "update Conda dependencies",
+)
+
 ### add
 
 function add(args)
@@ -303,7 +324,7 @@ const gc_spec = Pkg.REPLMode.CommandSpec(
     description = "delete files no longer used by Conda",
 )
 
-## run
+### run
 
 function run(args)
     CondaPkg.withenv() do
@@ -334,6 +355,8 @@ const SPECS = Dict(
     "st" => status_spec,
     "status" => status_spec,
     "resolve" => resolve_spec,
+    "up" => update_spec,
+    "update" => update_spec,
     "add" => add_spec,
     "remove" => rm_spec,
     "rm" => rm_spec,

@@ -135,7 +135,13 @@ end
     end
 end
 
-@testitem "gc()" begin
+@testitem "update" begin
+    include("setup.jl")
+    CondaPkg.update()
+    @test CondaPkg.is_resolved()
+end
+
+@testitem "gc" begin
     include("setup.jl")
     testgc && CondaPkg.gc()
     @test true
