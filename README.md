@@ -180,7 +180,26 @@ already available (such as by having previously called `CondaPkg.resolve()`).
 ### Conda environment path
 
 By default, CondaPkg installs conda packages into the current project. If you wish to
-centralize the conda environment, you can set `JULIA_CONDAPKG_ENV=<arbitrary path>`.
+centralize the conda environment, you can set `JULIA_CONDAPKG_ENV=<arbitrary path>` e.g.
+in your [`startup.jl`](https://docs.julialang.org/en/v1/manual/environment-variables/#Environment-Variables) file,
+and maybe [`MAMBA_ROOT_PREFIX`](https://github.com/cjdoris/MicroMamba.jl#usage).
+
+Here is an example:
+```julia
+julia> ENV["MAMBA_ROOT_PREFIX"]  # working directory for `micromamba`: extracted files and tarballs will land in `pkgs`
+"/home/user/shared_conda"
+julia> ENV["JULIA_CONDAPKG_ENV"]  # shared conda env with a `bin`, `lib`, `share`, `etc`, ... structure
+"/home/user/shared_conda/env"
+julia> using CondaPkg
+pkg> conda add matplotlib
+[...]  # donwload & install `matplotlib` into the shared env
+pkg> conda status
+CondaPkg Status /home/user/.julia/environments/v1.8/CondaPkg.toml  # stores specs / versions into per julia version `.toml` file
+Packages
+  matplotlib v3.6.2
+pkg> conda run python -c 'import sys; print(sys.executable)'
+/home/user/shared_conda/env/bin/python  # binaries are installed in a dedicated path
+```
 
 **Warning:** If you do this, the versions specified in a per-julia-version `CondaPkg.toml`
 can become un-synchronized with the packages installed in the shared conda environment.
