@@ -203,7 +203,7 @@ pkg> conda run python -c 'import sys; print(sys.executable)'
 
 **Warning:** If you do this, the versions specified in a per-julia-version `CondaPkg.toml`
 can become un-synchronized with the packages installed in the shared conda environment.
-In this case, you will have to re-resolve the dependencies using `resolve(; force = true)`.
+In this case, you will have to re-resolve the dependencies using `pkg> conda update`.
 This restriction might be alleviated in future `CondaPkg` versions.
 
 ### Verbosity
