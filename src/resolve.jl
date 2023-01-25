@@ -555,3 +555,7 @@ function is_resolved()
     resolve(io=devnull, dry_run=true)
     STATE.resolved
 end
+
+function update()
+    resolve(force=true, interactive=true)
+end
