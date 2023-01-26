@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+* Adds named shared environments: `JULIA_CONDAPKG_ENV=@<name>`.
 * Add `update` function and REPL command.
 * Bug fixes.
 

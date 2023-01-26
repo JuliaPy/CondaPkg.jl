@@ -179,13 +179,16 @@ already available (such as by having previously called `CondaPkg.resolve()`).
 
 ### Conda environment path
 
-By default, CondaPkg installs conda packages into the current project. If you wish to
-centralize the conda environment, you can set `JULIA_CONDAPKG_ENV=<arbitrary path>`.
+By default, CondaPkg installs Conda packages into the current project, so that different
+projects can have different dependencies. If you wish to centralize the Conda environment,
+you can set the environment variable `JULIA_CONDAPKG_ENV` to one of:
+- `@<name>` for a named shared environment, stored in `~/.julia/conda_environments/<name>`.
+- An absolute path.
 
 **Warning:** If you do this, the versions specified in a per-julia-version `CondaPkg.toml`
-can become un-synchronized with the packages installed in the shared conda environment.
-In this case, you will have to re-resolve the dependencies using `resolve(; force = true)`.
-This restriction might be alleviated in future `CondaPkg` versions.
+can become un-synchronized with the packages installed in the shared Conda environment.
+In this case, you will have to re-resolve the dependencies using `resolve(force=true)`.
+This restriction might be alleviated in future CondaPkg versions.
 
 ### Verbosity
 
