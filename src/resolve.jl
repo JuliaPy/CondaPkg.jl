@@ -419,6 +419,12 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         if conda_env == ""
             conda_env = joinpath(meta_dir, "env")
             shared = false
+        elseif startswith(conda_env, "@")
+            conda_env_name = conda_env[2:end]
+            conda_env_name == "" && error("JULIA_CONDAPKG_ENV shared name cannot be empty")
+            any(c -> c in ('\\', '/', '@', '#'), conda_env_name) && error("JULIA_CONDAPKG_ENV shared name cannot include special characters")
+            conda_env = joinpath(Base.DEPOT_PATH[1], "conda_environments", conda_env_name)
+            shared = true
         else
             isabspath(conda_env) || error("JULIA_CONDAPKG_ENV must be an absolute path")
             shared = true
@@ -520,7 +526,6 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             create = true
             if isdir(conda_env)
                 if shared
-                    _log(io, "Cannot remove a shared environment")
                     create = false
                 else
                     _resolve_conda_remove_all(io, conda_env)
