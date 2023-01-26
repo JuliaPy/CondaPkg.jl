@@ -421,11 +421,8 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             shared = false
         elseif startswith(conda_env, "@")
             conda_env_name = conda_env[2:end]
-            any(c -> c in ('\\', '/', '@'), conda_env_name) && error("JULIA_CONDAPKG_ENV shared name cannot include special characters")
-            conda_env_name = replace(conda_env_name, "#" => string(Base.VERSION.major); count=1)
-            conda_env_name = replace(conda_env_name, "#" => string(Base.VERSION.minor); count=1)
-            conda_env_name = replace(conda_env_name, "#" => string(Base.VERSION.patch); count=1)
-            any(==('#'), conda_env_name) && error("JULIA_CONDAPKG_ENV shared name has too many '#'")
+            conda_env_name == "" && error("JULIA_CONDAPKG_ENV shared name cannot be empty")
+            any(c -> c in ('\\', '/', '@', '#'), conda_env_name) && error("JULIA_CONDAPKG_ENV shared name cannot include special characters")
             conda_env = joinpath(Base.DEPOT_PATH[1], "conda_environments", conda_env_name)
             shared = true
         else
