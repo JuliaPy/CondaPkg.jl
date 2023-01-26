@@ -526,7 +526,6 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             create = true
             if isdir(conda_env)
                 if shared
-                    _log(io, "Cannot remove a shared environment")
                     create = false
                 else
                     _resolve_conda_remove_all(io, conda_env)
