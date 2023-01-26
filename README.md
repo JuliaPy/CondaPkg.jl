@@ -125,23 +125,19 @@ end
 
 ## Details
 
-### Conda packages
-
-These are identified by a name, version and build.
-
-The version must be a Conda version specifier, or be blank.
-
 ### Conda channels
 
-If not specified in `CondaPkg.toml`, packages are installed from the `conda-forge` channel.
+You can specify the channel to install a particular package from, such as with
+`pkg> conda add some-channel::some-package`.
+
+You can also specify a top-level list of channels, from which all other packages are
+installed, such as with `pkg> conda channel_add some-channel`.
+
+By default, packages are installed from the `conda-forge` channel.
 
 ### Pip packages
 
-These are identified by a name and version.
-
-The version must be a Pip version specifier, or be blank.
-
-Direct references such as `foo @ http://example.com/foo.zip` are allowed. As a special case
+Direct references such as `foo@http://example.com/foo.zip` are allowed. As a special case
 if the URL starts with `.` then it is interpreted as a path relative to the directory
 containing the `CondaPkg.toml` file.
 
