@@ -114,7 +114,6 @@ end
 @testitem "external conda env" begin
     include("setup.jl")
     dn = string(tempname(), backend, Sys.KERNEL, VERSION)
-    @show dn
     isnull || withenv("JULIA_CONDAPKG_ENV" => dn) do
         # create empty env
         CondaPkg.resolve()
@@ -129,9 +128,20 @@ end
         CondaPkg.rm("ca-certificates"; interactive=true, force=true)
         @test !occursin("ca-certificates", status())  # removed from specs ...
         CondaPkg.withenv() do  # ... but still installed (shared env might be used by specs from alternate julia versions)
-            foreach(println, readdir(CondaPkg.envdir()))
             @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
         end
+    end
+end
+
+@testitem "shared env" begin
+    include("setup.jl")
+    isnull || withenv("JULIA_CONDAPKG_ENV" => "@my_env") do
+        CondaPkg.add("python"; force=true)
+        @test CondaPkg.envdir() == joinpath(Base.DEPOT_PATH[1], "conda_environments", "my_env")
+        @test ispath(CondaPkg.envdir(), "bin", "python")
+    end
+    isnull || withenv("JULIA_CONDAPKG_ENV" => "@/some/absolute/path") do
+        @test_throws ErrorException CondaPkg.add("python"; force=true)
     end
 end
 
