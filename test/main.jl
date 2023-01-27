@@ -138,7 +138,7 @@ end
     isnull || withenv("JULIA_CONDAPKG_ENV" => "@my_env") do
         CondaPkg.add("python"; force=true)
         @test CondaPkg.envdir() == joinpath(Base.DEPOT_PATH[1], "conda_environments", "my_env")
-        @test ispath(CondaPkg.envdir(), "bin", "python")
+        @test isfile(CondaPkg.envdir(Sys.iswindows() ? "python.exe" : "bin/python"))
     end
     isnull || withenv("JULIA_CONDAPKG_ENV" => "@/some/absolute/path") do
         @test_throws ErrorException CondaPkg.add("python"; force=true)
