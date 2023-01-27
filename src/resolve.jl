@@ -425,6 +425,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             shared = true
         else
             isabspath(conda_env) || error("JULIA_CONDAPKG_ENV must be an absolute path")
+            occursin(".CondaPkg", conda_env) && error("JULIA_CONDAPKG_ENV must not be an existing .CondaPkg, select another directory")
             shared = true
         end
         STATE.conda_env = conda_env
