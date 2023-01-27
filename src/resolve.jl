@@ -17,30 +17,37 @@ function _resolve_top_env(load_path)
     top_env
 end
 
-function _resolve_can_skip_1(load_path, meta_file)
+function _resolve_env_is_clean(conda_env, meta)
+    conda_env == meta.conda_env || return false
+    stat(conda_env).mtime ≤ meta.timestamp || return false
+    isdir(conda_env) && return true
+    (isempty(meta.packages) && isempty(meta.pip_packages)) && return true
+    false
+end
+
+function _resolve_can_skip_1(conda_env, load_path, meta_file)
+    isdir(conda_env) || return false
+    isfile(meta_file) || return false
     meta = open(read_meta, meta_file)
-    if meta !== nothing && meta.version == VERSION && meta.load_path == load_path
-        timestamp = max(meta.timestamp, stat(meta_file).mtime)
-        skip = true
-        for env in [meta.load_path; meta.extra_path]
-            dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
-            if isdir(dir)
-                if stat(dir).mtime > timestamp
-                    skip = false
-                    break
-                else
-                    fn = joinpath(dir, "CondaPkg.toml")
-                    if isfile(fn) && stat(fn).mtime > timestamp
-                        skip = false
-                        break
-                    end
+    meta !== nothing || return false
+    meta.version == VERSION || return false
+    meta.load_path == load_path || return false
+    meta.conda_env == conda_env || return false
+    timestamp = max(meta.timestamp, stat(meta_file).mtime)
+    for env in [meta.load_path; meta.extra_path]
+        dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
+        if isdir(dir)
+            if stat(dir).mtime > timestamp
+                return false
+            else
+                fn = joinpath(dir, "CondaPkg.toml")
+                if isfile(fn) && stat(fn).mtime > timestamp
+                    return false
                 end
             end
         end
-        return skip
-    else
-        return false
     end
+    return true
 end
 
 _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
@@ -374,15 +381,6 @@ function offline()
     end
 end
 
-function is_clean(conda_env, meta)
-    meta === nothing && return false
-    conda_env == meta.conda_env || return false
-    stat(conda_env).mtime ≤ meta.timestamp || return false
-    isdir(conda_env) && return true
-    (isempty(meta.packages) && isempty(meta.pip_packages)) && return true
-    false
-end
-
 function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dry_run::Bool=false)
     # if frozen, do nothing
     STATE.frozen && return
@@ -439,7 +437,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     end
     try
         # skip resolving if nothing has changed since the metadata was updated
-        if !force && isdir(conda_env) && isfile(meta_file) && _resolve_can_skip_1(load_path, meta_file)
+        if !force && _resolve_can_skip_1(conda_env, load_path, meta_file)
             STATE.resolved = true
             interactive && _log(io, "Dependencies already up to date")
             return
@@ -488,7 +486,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             end
         end
         # install/uninstall packages
-        if !force && is_clean(conda_env, meta)
+        if !force && meta !== nothing && _resolve_env_is_clean(conda_env, meta)
             # the state is sufficiently clean that we can modify the existing conda environment
             changed = false
             if !isempty(removed_pip_pkgs) && !shared
