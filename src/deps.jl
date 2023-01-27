@@ -154,6 +154,11 @@ function status(; io::IO=stderr)
         printstyled(io, "Using the Null backend", color=:yellow)
         println(io, " (dependencies shown here are not being managed)")
     end
+    if resolved
+        printstyled(io, "Environment", bold=true, color=:cyan)
+        println(io)
+        println(io, "  ", STATE.conda_env)
+    end
     if !isempty(pkgs)
         printstyled(io, "Packages", bold=true, color=:cyan)
         println(io)
