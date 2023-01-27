@@ -400,37 +400,30 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     end
     STATE.resolved = false
     STATE.load_path = load_path
+    # find the topmost env in the load_path which depends on CondaPkg
+    top_env = _resolve_top_env(load_path)
+    STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
+    conda_env = get(ENV, "JULIA_CONDAPKG_ENV", "")
     if back === :Current
-        # use a pre-existing conda environment
         conda_env = get(ENV, "CONDA_PREFIX", "")
-        if conda_env == ""
-            error("CondaPkg is using the Current backend, but you are not in a Conda environment")
-        end
-        STATE.meta_dir = meta_dir = joinpath(conda_env, ".JuliaCondaPkg")
-        STATE.conda_env = conda_env
-        STATE.shared = shared = true  # environment is shared, disallow removing packages
+        conda_env != "" || error("CondaPkg is using the Current backend, but you are not in a Conda environment")
+        shared = true
+    elseif conda_env == ""
+        conda_env = joinpath(meta_dir, "env")
+        shared = false
+    elseif startswith(conda_env, "@")
+        conda_env_name = conda_env[2:end]
+        conda_env_name == "" && error("JULIA_CONDAPKG_ENV shared name cannot be empty")
+        any(c -> c in ('\\', '/', '@', '#'), conda_env_name) && error("JULIA_CONDAPKG_ENV shared name cannot include special characters")
+        conda_env = joinpath(Base.DEPOT_PATH[1], "conda_environments", conda_env_name)
+        shared = true
     else
-        # find the topmost env in the load_path which depends on CondaPkg
-        top_env = _resolve_top_env(load_path)
-        STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-        conda_env = get(ENV, "JULIA_CONDAPKG_ENV", "")
-        if conda_env == ""
-            conda_env = joinpath(meta_dir, "env")
-            shared = false
-        elseif startswith(conda_env, "@")
-            conda_env_name = conda_env[2:end]
-            conda_env_name == "" && error("JULIA_CONDAPKG_ENV shared name cannot be empty")
-            any(c -> c in ('\\', '/', '@', '#'), conda_env_name) && error("JULIA_CONDAPKG_ENV shared name cannot include special characters")
-            conda_env = joinpath(Base.DEPOT_PATH[1], "conda_environments", conda_env_name)
-            shared = true
-        else
-            isabspath(conda_env) || error("JULIA_CONDAPKG_ENV must be an absolute path")
-            occursin(".CondaPkg", conda_env) && error("JULIA_CONDAPKG_ENV must not be an existing .CondaPkg, select another directory")
-            shared = true
-        end
-        STATE.conda_env = conda_env
-        STATE.shared = shared
+        isabspath(conda_env) || error("JULIA_CONDAPKG_ENV must be an absolute path")
+        occursin(".CondaPkg", conda_env) && error("JULIA_CONDAPKG_ENV must not be an existing .CondaPkg, select another directory")
+        shared = true
     end
+    STATE.conda_env = conda_env
+    STATE.shared = shared
     meta_file = joinpath(meta_dir, "meta")
     lock_file = joinpath(meta_dir, "lock")
     # grap a file lock so only one process can resolve this environment at a time
@@ -467,7 +460,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         pip_specs = _resolve_merge_pip_packages(pip_packages)
         # find what has changed
         meta = isfile(meta_file) ? open(read_meta, meta_file) : nothing
-        if (meta === nothing) || (back === :Current)
+        if meta === nothing
             removed_pkgs = String[]
             changed_pkgs = String[]
             added_pkgs = unique!(String[x.name for x in specs])
@@ -493,7 +486,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             end
         end
         # install/uninstall packages
-        if (back === :Current) || (!force && meta !== nothing && _resolve_env_is_clean(conda_env, meta))
+        if !force && meta !== nothing && _resolve_env_is_clean(conda_env, meta)
             # the state is sufficiently clean that we can modify the existing conda environment
             changed = false
             if !isempty(removed_pip_pkgs) && !shared
@@ -506,12 +499,12 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
                 changed = true
                 _resolve_conda_remove(io, conda_env, removed_pkgs)
             end
-            if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed)
+            if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed || shared)
                 dry_run && return
                 changed = true
                 _resolve_conda_install(io, conda_env, specs, channels)
             end
-            if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
+            if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed || shared)
                 dry_run && return
                 changed = true
                 _resolve_pip_install(io, pip_specs, load_path)

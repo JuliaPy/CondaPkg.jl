@@ -177,9 +177,10 @@ already available (such as by having previously called `CondaPkg.resolve()`).
 
 By default, CondaPkg installs Conda packages into the current project, so that different
 projects can have different dependencies. If you wish to centralize the Conda environment,
-you can set the environment variable `JULIA_CONDAPKG_ENV` to one of:
-- `@<name>` for a named shared environment, stored in `~/.julia/conda_environments/<name>`.
-- An absolute path.
+you can set one of these environment variables:
+- `JULIA_CONDAPKG_ENV=@<name>` for a named shared environment, stored in `~/.julia/conda_environments/<name>`.
+- `JULIA_CONDAPKG_ENV=<some absolute path>` for a shared environment at the given path.
+- `JULIA_BACKEND=Current` to use the currently activated Conda environment.
 
 **Warning:** If you do this, the versions specified in a per-julia-version `CondaPkg.toml`
 can become un-synchronized with the packages installed in the shared Conda environment.
