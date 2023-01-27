@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.17 (2023-01-27)
 * Adds named shared environments: `JULIA_CONDAPKG_ENV=@<name>`.
 * Add `update` function and PkgREPL command.
+* The shared environment from using the `Current` backend is treated the same as other
+  shared environments.
 * Bug fixes.
-
 
 ## 0.2.16 (2023-01-23)
 * Allow `JULIA_CONDAPKG_ENV` to specify the location of a shared Conda environment.
