@@ -431,8 +431,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     lock = try
         Pidfile.mkpidlock(lock_file; wait=false)
     catch
-        interactive && _log(io, "Waiting for lock to be freed at $lock_file")
-        interactive && _log(io, "(You may delete this file if you are sure no other process is resolving)")
+        @info "CondaPkg: Waiting for lock to be freed. You may delete this file if no other process is resolving." lock_file
         Pidfile.mkpidlock(lock_file; wait=true)
     end
     try
