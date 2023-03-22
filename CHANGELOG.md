@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.18 (2023-03-22)
+* Lock file is always shown when locked.
+
 ## 0.2.17 (2023-01-27)
 * Adds named shared environments: `JULIA_CONDAPKG_ENV=@<name>`.
 * Add `update` function and PkgREPL command.
