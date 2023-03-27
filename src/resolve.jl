@@ -85,10 +85,6 @@ function _compatible_libstdcxx_ng_version()
     if !Sys.islinux()
         return
     end
-    # bound = get(ENV, "JULIA_CONDAPKG_LIBSTDCXX_VERSION_BOUND", "")
-    # if bound != ""
-    #     return bound
-    # end
     loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version()
     if loaded_libstdcxx_version === nothing
         return
