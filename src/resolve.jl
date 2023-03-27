@@ -236,7 +236,7 @@ function _resolve_pip_diff(old_specs, new_specs)
 end
 
 function _verbosity()
-    parse(Int, get(ENV, "JULIA_CONDAPKG_VERBOSITY", "0"))
+    getpref(Int, "verbosity", "JULIA_CONDAPKG_VERBOSITY", 0)
 end
 
 function _verbosity_flags()
@@ -367,14 +367,7 @@ function _run(io::IO, cmd::Cmd, args...; flags=String[])
 end
 
 function offline()
-    x = get(ENV, "JULIA_CONDAPKG_OFFLINE", "no")
-    if x == "yes"
-        return true
-    elseif x == "no" || x == ""
-        return false
-    else
-        error("invalid setting: JULIA_CONDAPKG_OFFLINE=$x: expecting yes or no")
-    end
+    getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
 end
 
 function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dry_run::Bool=false)
@@ -399,7 +392,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     # find the topmost env in the load_path which depends on CondaPkg
     top_env = _resolve_top_env(load_path)
     STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-    conda_env = get(ENV, "JULIA_CONDAPKG_ENV", "")
+    conda_env = getpref(String, "env", "JULIA_CONDAPKG_ENV", "")
     if back === :Current
         conda_env = get(ENV, "CONDA_PREFIX", "")
         conda_env != "" || error("CondaPkg is using the Current backend, but you are not in a Conda environment")
@@ -409,13 +402,13 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         shared = false
     elseif startswith(conda_env, "@")
         conda_env_name = conda_env[2:end]
-        conda_env_name == "" && error("JULIA_CONDAPKG_ENV shared name cannot be empty")
-        any(c -> c in ('\\', '/', '@', '#'), conda_env_name) && error("JULIA_CONDAPKG_ENV shared name cannot include special characters")
+        conda_env_name == "" && error("shared env name cannot be empty")
+        any(c -> c in ('\\', '/', '@', '#'), conda_env_name) && error("shared env name cannot include special characters")
         conda_env = joinpath(Base.DEPOT_PATH[1], "conda_environments", conda_env_name)
         shared = true
     else
-        isabspath(conda_env) || error("JULIA_CONDAPKG_ENV must be an absolute path")
-        occursin(".CondaPkg", conda_env) && error("JULIA_CONDAPKG_ENV must not be an existing .CondaPkg, select another directory")
+        isabspath(conda_env) || error("shared env must be an absolute path")
+        occursin(".CondaPkg", conda_env) && error("shared env must not be an existing .CondaPkg, select another directory")
         shared = true
     end
     STATE.conda_env = conda_env
