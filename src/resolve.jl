@@ -105,6 +105,7 @@ function _resolve_find_dependencies(io, load_path)
     channels = ChannelSpec[]
     pip_packages = Dict{String,Dict{String,PipPkgSpec}}() # name -> depsfile -> spec
     extra_path = String[]
+    parsed = Set{String}()
     orig_project = Pkg.project().path
     try
         for proj in load_path
@@ -113,7 +114,11 @@ function _resolve_find_dependencies(io, load_path)
                 dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
                 fn = joinpath(dir, "CondaPkg.toml")
                 if isfile(fn)
-                    env in load_path || push!(extra_path, env)
+                    fn in parsed && continue
+                    push!(parsed, fn)
+                    if env ∉ load_path && env ∉ extra_path
+                        push!(extra_path, env)
+                    end
                     _log(io, "Found dependencies: $fn")
                     pkgs, chans, pippkgs = read_parsed_deps(fn)
                     for pkg in pkgs
