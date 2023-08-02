@@ -300,6 +300,11 @@ function _resolve_pip_install(io, pip_specs, load_path)
         elseif spec.binary == "no"
             push!(args, "--no-binary", spec.name)
         end
+        if spec.editable
+            # remove the @ from the beginning of the path.
+            url = replace(spec.version, r"@\s*"=>"")
+            push!(args, "--editable", url)
+        end
     end
     for spec in pip_specs
         push!(args, specstr(spec))

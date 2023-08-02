@@ -43,6 +43,9 @@ function read_meta(io::IO, ::Type{String})
     end
     String(bytes)
 end
+function read_meta(io::IO, ::Type{Bool})
+    read(io, Bool)
+end
 function read_meta(io::IO, ::Type{Vector{T}}) where {T}
     len = read(io, Int)
     ans = Vector{T}()
@@ -91,6 +94,9 @@ function write_meta(io::IO, x::Float64)
 end
 function write_meta(io::IO, x::String)
     write(io, convert(Int, sizeof(x)))
+    write(io, x)
+end
+function write_meta(io::IO, x::Bool)
     write(io, x)
 end
 function write_meta(io::IO, x::Vector)

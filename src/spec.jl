@@ -150,13 +150,4 @@ validate_pip_editable(editable, version) =
         error("invalid pip version for editable install: must start with `@` but version is $(version)")
     end
 
-function specstr(x::PipPkgSpec)
-    @show x
-    if x.editable
-        # remove the @ from the beginning of the path.
-        url = replace(x.version, r"@\s*"=>"")
-        return string("--editable", " ", url)
-    else
-        return x.version == "" ? x.name : string(x.name, " ", x.version)
-    end
-end
+specstr(x::PipPkgSpec) = x.editable || (x.version == "") ? x.name : string(x.name, " ", x.version)
