@@ -57,7 +57,7 @@ These functions are intended to be used interactively when the Pkg REPL is not a
 - `rm(pkg)` removes a dependency.
 - `add_channel(channel)` adds a channel.
 - `rm_channel(channel)` removes a channel.
-- `add_pip(pkg; version="")` adds/replaces a pip dependency.
+- `add_pip(pkg; version="", binary="", editable=false)` adds/replaces a pip dependency.
 - `rm_pip(pkg)` removes a pip dependency.
 
 ### CondaPkg.toml
@@ -89,6 +89,7 @@ some-local-package = "@ ./foo.zip"
 # Long syntax to specify other fields
 version = "~=2.1"
 binary = "no"  # or "only"
+editable = true  # install package with `--editable`/`-e` `pip` argument if `true`: https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs
 ```
 
 ## Access the Conda environment
