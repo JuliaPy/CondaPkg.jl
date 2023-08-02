@@ -150,4 +150,6 @@ validate_pip_editable(editable, version) =
         error("invalid pip version for editable install: must start with `@` but version is $(version)")
     end
 
-specstr(x::PipPkgSpec) = x.editable || (x.version == "") ? x.name : string(x.name, " ", x.version)
+function specstr(x::PipPkgSpec) 
+    return x.version == "" ? x.name : string(x.name, " ", x.version)
+end

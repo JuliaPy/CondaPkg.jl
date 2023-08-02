@@ -307,7 +307,9 @@ function _resolve_pip_install(io, pip_specs, load_path)
         end
     end
     for spec in pip_specs
-        push!(args, specstr(spec))
+        if !spec.editable
+            push!(args, specstr(spec))
+        end
     end
     vrb = _verbosity_flags()
     flags = vrb
@@ -318,7 +320,6 @@ function _resolve_pip_install(io, pip_specs, load_path)
         withenv() do
             pip = which("pip")
             cmd = `$pip install $vrb $args`
-            @show cmd
             _run(io, cmd, "Installing Pip packages", flags=flags)
         end
     finally
