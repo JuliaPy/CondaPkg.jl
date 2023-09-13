@@ -180,6 +180,7 @@ function _resolve_merge_pip_packages(packages)
         versions = String[]
         urls = String[]
         binary = ""
+        editables = Bool[]
         for (fn, pkg) in pkgs
             @assert pkg.name == name
             if startswith(pkg.version, "@")
@@ -198,6 +199,7 @@ function _resolve_merge_pip_packages(packages)
                     error("$(binary)-binary and $(pkg.binary)-binary both specified for pip package '$name'")
                 end
             end
+            push!(editables, pkg.editable)
         end
         sort!(unique!(urls))
         sort!(unique!(versions))
@@ -209,7 +211,12 @@ function _resolve_merge_pip_packages(packages)
         else
             error("direct references ('@ ...') and version specifiers both given for pip package '$name'")
         end
-        push!(specs, PipPkgSpec(name, version=version, binary=binary))
+        unique!(editables)
+        if length(editables) != 1
+            error("both 'editable = true' and 'editable = false' specified for pip package '$name'")
+        end
+        editable = only(editables)
+        push!(specs, PipPkgSpec(name, version=version, binary=binary, editable=editable))
     end
     sort!(specs, by=x->x.name)
 end
@@ -293,9 +300,16 @@ function _resolve_pip_install(io, pip_specs, load_path)
         elseif spec.binary == "no"
             push!(args, "--no-binary", spec.name)
         end
+        if spec.editable
+            # remove the @ from the beginning of the path.
+            url = replace(spec.version, r"@\s*"=>"")
+            push!(args, "--editable", url)
+        end
     end
     for spec in pip_specs
-        push!(args, specstr(spec))
+        if !spec.editable
+            push!(args, specstr(spec))
+        end
     end
     vrb = _verbosity_flags()
     flags = vrb

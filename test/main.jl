@@ -88,6 +88,32 @@ end
     end
 end
 
+@testitem "pip install/remove an editable python package" begin
+    include("setup.jl")
+    CondaPkg.add("python", version="==3.10.2")
+    # verify package isn't already installed
+    @test !occursin("foo", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import foo"`)
+    end
+
+    # install package
+    # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
+    CondaPkg.add_pip("foo", version="@ $(dirname(@__FILE__))/Foo", editable=true)
+    @test occursin("foo", status())
+    @test occursin("$(dirname(@__FILE__))/Foo", status())
+    CondaPkg.withenv() do
+        isnull || run(`python -c "import foo"`)
+    end
+
+    # remove package
+    CondaPkg.rm_pip("foo")
+    @test !occursin("foo", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import foo"`)
+    end
+end
+
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull

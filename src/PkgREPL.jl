@@ -23,7 +23,7 @@ function parse_pkg(x::String)
     CondaPkg.PkgSpec(name, version=version, channel=channel, build=build)
 end
 
-function parse_pip_pkg(x::String; binary::String="")
+function parse_pip_pkg(x::String; binary::String="", editable=false)
     m = match(r"""
     ^
     ([-_.A-Za-z0-9]+)
@@ -33,7 +33,7 @@ function parse_pip_pkg(x::String; binary::String="")
     m === nothing && error("invalid pip package: $x")
     name = m.captures[1]
     version = something(m.captures[2], "")
-    CondaPkg.PipPkgSpec(name, version=version, binary=binary)
+    CondaPkg.PipPkgSpec(name, version=version, binary=binary, editable=editable)
 end
 
 function parse_channel(x::String)
@@ -52,6 +52,13 @@ const binary_opt = Pkg.REPLMode.OptionDeclaration([
     :name => "binary",
     :takes_arg => true,
     :api => :binary => identity,
+])
+
+const editable_opt = Pkg.REPLMode.OptionDeclaration([
+    :name => "editable",
+    :short_name => "e",
+    :takes_arg => false,
+    :api => :editable => true,
 ])
 
 ### status
@@ -183,13 +190,13 @@ const channel_add_spec = Pkg.REPLMode.CommandSpec(
 
 ### pip_add
 
-function pip_add(args; binary="")
-    CondaPkg.add([parse_pip_pkg(arg, binary=binary) for arg in args])
+function pip_add(args; binary="", editable=false)
+    CondaPkg.add([parse_pip_pkg(arg, binary=binary, editable=editable) for arg in args])
 end
 
 const pip_add_help = Markdown.parse("""
 ```
-conda pip_add [--binary={only|no}] pkg ...
+conda pip_add [--binary={only|no}] [--editable] pkg ...
 ```
 
 Add Pip packages to the environment.
@@ -200,6 +207,7 @@ Add Pip packages to the environment.
 pkg> conda pip_add build
 pkg> conda pip_add build~=0.7          # version range
 pkg> conda pip_add --binary=no nmslib  # always build from source
+pkg> conda pip_add --editable nmslib@/path/to/package_source  # install locally
 ```
 """)
 
@@ -210,7 +218,7 @@ const pip_add_spec = Pkg.REPLMode.CommandSpec(
     help = pip_add_help,
     description = "add Pip packages",
     arg_count = 0 => Inf,
-    option_spec = [binary_opt],
+    option_spec = [binary_opt, editable_opt],
 )
 
 ### rm
