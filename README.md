@@ -194,3 +194,11 @@ environment variable `JULIA_CONDAPKG_VERBOSITY` to a number:
 - `-1` is quiet mode.
 - `0` is normal mode (the default).
 - `1`, `2`, etc. are verbose modes, useful for debugging.
+
+## Frequently Asked Questions
+
+### Can I get my package to use a specific Conda environment?
+
+No. The location of the Conda environment is configured purely by the user. Letting packages
+specify this configuration is not composable - if two packages want to set the location of
+the environment, then they will be in conflict.
