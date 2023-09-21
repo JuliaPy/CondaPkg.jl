@@ -1,10 +1,10 @@
-<img src="https://github.com/cjdoris/CondaPkg.jl/raw/main/logo.png" alt="CondaPkg.jl logo" style="width: 100px;">
+<img src="https://github.com/JuliaPy/CondaPkg.jl/raw/main/logo.png" alt="CondaPkg.jl logo" style="width: 100px;">
 
 # CondaPkg.jl
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![Test Status](https://github.com/cjdoris/CondaPkg.jl/actions/workflows/tests.yml/badge.svg)](https://github.com/cjdoris/CondaPkg.jl/actions/workflows/tests.yml)
-[![Codecov](https://codecov.io/gh/cjdoris/CondaPkg.jl/branch/main/graph/badge.svg?token=1flP5128hZ)](https://codecov.io/gh/cjdoris/CondaPkg.jl)
+[![Test Status](https://github.com/JuliaPy/CondaPkg.jl/actions/workflows/tests.yml/badge.svg)](https://github.com/JuliaPy/CondaPkg.jl/actions/workflows/tests.yml)
+[![Codecov](https://codecov.io/gh/JuliaPy/CondaPkg.jl/branch/main/graph/badge.svg?token=1flP5128hZ)](https://codecov.io/gh/JuliaPy/CondaPkg.jl)
 
 Add [Conda](https://docs.conda.io/en/latest/) dependencies to your Julia project.
 
@@ -150,7 +150,7 @@ This package has a number of different "backends" which control exactly which im
 of Conda is used to manage the Conda environments. You can explicitly select a backend
 by setting the environment variable `JULIA_CONDAPKG_BACKEND` to one of the following values:
 - `MicroMamba`: Uses MicroMamba from the package
-  [MicroMamba.jl](https://github.com/cjdoris/MicroMamba.jl).
+  [MicroMamba.jl](https://github.com/JuliaPy/MicroMamba.jl).
 - `System`: Use a pre-installed Conda. If `JULIA_CONDAPKG_EXE` is set, that is used.
   Otherwise we look for `conda`, `mamba` or `micromamba` in your `PATH`.
 - `Current`: Use the currently activated Conda environment instead of creating a new one.
@@ -194,3 +194,11 @@ environment variable `JULIA_CONDAPKG_VERBOSITY` to a number:
 - `-1` is quiet mode.
 - `0` is normal mode (the default).
 - `1`, `2`, etc. are verbose modes, useful for debugging.
+
+## Frequently Asked Questions
+
+### Can I get my package to use a specific Conda environment?
+
+No. The location of the Conda environment is configured purely by the user. Letting packages
+specify this configuration is not composable - if two packages want to set the location of
+the environment, then they will be in conflict.
