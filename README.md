@@ -176,7 +176,7 @@ julia> using PreferenceTools
 
 julia> # press ] to enter pkg mode
 
-pkg> preference add -g CondaPkg backend=System offline=true
+pkg> preference add CondaPkg backend=System offline=true
 ```
 
 ### Backends
