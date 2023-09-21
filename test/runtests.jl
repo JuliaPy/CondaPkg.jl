@@ -7,7 +7,6 @@ if get(ENV, "CI", "false") == "false"
     @info "local tests"
     # start with a clean state when running local tests
     delete!(ENV, "MAMBA_ROOT_PREFIX")
-    delete!(ENV, "JULIA_CONDAPKG_LIBSTDCXX_VERSION_BOUND")
     delete!(ENV, "JULIA_CONDAPKG_VERBOSITY")
     delete!(ENV, "JULIA_CONDAPKG_BACKEND")
     delete!(ENV, "JULIA_CONDAPKG_OFFLINE")
