@@ -47,15 +47,6 @@ For more information do `?` or `?conda` from the Pkg REPL.
 corresponding Conda package then use that. Pip does not handle version conflicts
 gracefully, so it is possible to get incompatible versions.
 
-**Hint:** To avoid having to manually run `using CondaPkg` before the `conda`
-Pkg REPL command becomes available, you can add the following to your [startup
-file](https://docs.julialang.org/en/v1/manual/command-line-interface/#Startup-file)
-(`~/.julia/config/startup.jl`):
-
-```julia
-Base.identify_package("CondaPkg") === nothing || Base.require(@__MODULE__, :CondaPkg)
-```
-
 ### Functions
 
 These functions are intended to be used interactively when the Pkg REPL is not available
@@ -211,3 +202,13 @@ environment variable `JULIA_CONDAPKG_VERBOSITY` to a number:
 No. The location of the Conda environment is configured purely by the user. Letting packages
 specify this configuration is not composable - if two packages want to set the location of
 the environment, then they will be in conflict.
+
+### Can I make the Pkg REPL command work without `using CondaPkg` first?
+
+Yes, you can add the following to your [startup
+file](https://docs.julialang.org/en/v1/manual/command-line-interface/#Startup-file)
+(`~/.julia/config/startup.jl`):
+
+```julia
+Base.identify_package("CondaPkg") === nothing || Base.require(@__MODULE__, :CondaPkg)
+```
