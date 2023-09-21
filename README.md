@@ -164,9 +164,7 @@ The easiest way to set these preferences is with the
 package. For example:
 ```
 julia> using PreferenceTools
-
-julia> # press ] to enter pkg mode
-
+julia> # now press ] to enter the Pkg REPL
 pkg> preference add CondaPkg backend=System offline=true
 ```
 
