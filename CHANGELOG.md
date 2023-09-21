@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.19 (2023-09-21)
+* Now configurable using preferences.
+
 ## 0.2.18 (2023-03-22)
 * Lock file is always shown when locked.
 
