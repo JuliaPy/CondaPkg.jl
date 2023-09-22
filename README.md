@@ -1,10 +1,10 @@
-<img src="https://github.com/cjdoris/CondaPkg.jl/raw/main/logo.png" alt="CondaPkg.jl logo" style="width: 100px;">
+<img src="https://github.com/JuliaPy/CondaPkg.jl/raw/main/logo.png" alt="CondaPkg.jl logo" style="width: 100px;">
 
 # CondaPkg.jl
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![Test Status](https://github.com/cjdoris/CondaPkg.jl/actions/workflows/tests.yml/badge.svg)](https://github.com/cjdoris/CondaPkg.jl/actions/workflows/tests.yml)
-[![Codecov](https://codecov.io/gh/cjdoris/CondaPkg.jl/branch/main/graph/badge.svg?token=1flP5128hZ)](https://codecov.io/gh/cjdoris/CondaPkg.jl)
+[![Test Status](https://github.com/JuliaPy/CondaPkg.jl/actions/workflows/tests.yml/badge.svg)](https://github.com/JuliaPy/CondaPkg.jl/actions/workflows/tests.yml)
+[![Codecov](https://codecov.io/gh/JuliaPy/CondaPkg.jl/branch/main/graph/badge.svg?token=1flP5128hZ)](https://codecov.io/gh/JuliaPy/CondaPkg.jl)
 
 Add [Conda](https://docs.conda.io/en/latest/) dependencies to your Julia project.
 
@@ -144,14 +144,38 @@ containing the `CondaPkg.toml` file.
 Additionally the binary mode specifies whether to only use binary distributions ("only") or
 to never use them ("no").
 
+### Preferences
+
+You can configure this package with a number of preferences. These can be set either as
+[Julia preferences](https://github.com/JuliaPackaging/Preferences.jl) or as environment
+variables. This table gives an overview of the preferences, and later sections describe them
+in more detail.
+
+| Preference | Environment variable | Description |
+| ---------- | -------------------- | ----------- |
+| `backend` | `JULIA_CONDAPKG_BACKEND` | One of `MicroMamba`, `System`, `Current` or `Null` |
+| `exe` | `JULIA_CONDAPKG_EXE` | Path to the Conda executable. |
+| `offline` | `JULIA_CONDAPKG_OFFLINE` | When `true`, work in offline mode. |
+| `env` | `JULIA_CONDAPKG_ENV` | Path to the Conda environment to use. |
+| `verbosity` | `JULIA_CONDAPKG_VERBOSITY` | One of `-1`, `0`, `1` or `2`. |
+
+The easiest way to set these preferences is with the
+[`PreferenceTools`](https://github.com/cjdoris/PreferenceTools.jl)
+package. For example:
+```
+julia> using PreferenceTools
+julia> # now press ] to enter the Pkg REPL
+pkg> preference add CondaPkg backend=System offline=true
+```
+
 ### Backends
 
 This package has a number of different "backends" which control exactly which implementation
 of Conda is used to manage the Conda environments. You can explicitly select a backend
-by setting the environment variable `JULIA_CONDAPKG_BACKEND` to one of the following values:
+by setting the `backend` preference to one of the following values:
 - `MicroMamba`: Uses MicroMamba from the package
-  [MicroMamba.jl](https://github.com/cjdoris/MicroMamba.jl).
-- `System`: Use a pre-installed Conda. If `JULIA_CONDAPKG_EXE` is set, that is used.
+  [MicroMamba.jl](https://github.com/JuliaPy/MicroMamba.jl).
+- `System`: Use a pre-installed Conda. If the `exe` preference is set, that is used.
   Otherwise we look for `conda`, `mamba` or `micromamba` in your `PATH`.
 - `Current`: Use the currently activated Conda environment instead of creating a new one.
   This backend will only ever install packages, never uninstall. The Conda executable used
@@ -163,13 +187,13 @@ by setting the environment variable `JULIA_CONDAPKG_BACKEND` to one of the follo
 
 The default backend is an implementation detail, but is currently `MicroMamba`.
 
-If you set `JULIA_CONDAPKG_EXE` but not `JULIA_CONDAPKG_BACKEND` then the `System` backend
+If you set the `exe` preference but not the `backend` preference then the `System` backend
 is used.
 
 ### Offline mode
 
-You may activate "offline mode" by setting the environment variable
-`JULIA_CONDAPKG_OFFLINE=yes`. This will prevent CondaPkg from attempting to download or
+You may activate "offline mode" by setting the preference `offline=true`.
+This will prevent CondaPkg from attempting to download or
 install new packages. In this case, it is up to you to ensure that any required packages are
 already available (such as by having previously called `CondaPkg.resolve()`).
 
@@ -177,10 +201,10 @@ already available (such as by having previously called `CondaPkg.resolve()`).
 
 By default, CondaPkg installs Conda packages into the current project, so that different
 projects can have different dependencies. If you wish to centralize the Conda environment,
-you can set one of these environment variables:
-- `JULIA_CONDAPKG_ENV=@<name>` for a named shared environment, stored in `~/.julia/conda_environments/<name>`.
-- `JULIA_CONDAPKG_ENV=<some absolute path>` for a shared environment at the given path.
-- `JULIA_BACKEND=Current` to use the currently activated Conda environment.
+you can set one of these preferences:
+- `env=@<name>` for a named shared environment, stored in `~/.julia/conda_environments/<name>`.
+- `env=<some absolute path>` for a shared environment at the given path.
+- `backend=Current` to use the currently activated Conda environment.
 
 **Warning:** If you do this, the versions specified in a per-julia-version `CondaPkg.toml`
 can become un-synchronized with the packages installed in the shared Conda environment.
@@ -190,7 +214,25 @@ This restriction might be alleviated in future CondaPkg versions.
 ### Verbosity
 
 You can control the verbosity of any `conda` or `pip` commands executed by setting the
-environment variable `JULIA_CONDAPKG_VERBOSITY` to a number:
+`verbosity` preference to a number:
 - `-1` is quiet mode.
 - `0` is normal mode (the default).
 - `1`, `2`, etc. are verbose modes, useful for debugging.
+
+## Frequently Asked Questions
+
+### Can I get my package to use a specific Conda environment?
+
+No. The location of the Conda environment is configured purely by the user. Letting packages
+specify this configuration is not composable - if two packages want to set the location of
+the environment, then they will be in conflict.
+
+### Can I make the Pkg REPL command work without `using CondaPkg` first?
+
+Yes, you can add the following to your [startup
+file](https://docs.julialang.org/en/v1/manual/command-line-interface/#Startup-file)
+(`~/.julia/config/startup.jl`):
+
+```julia
+Base.identify_package("CondaPkg") === nothing || Base.require(@__MODULE__, :CondaPkg)
+```

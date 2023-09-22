@@ -1,7 +1,7 @@
 function backend()
     if STATE.backend == :NotSet
-        backend = get(ENV, "JULIA_CONDAPKG_BACKEND", "")
-        exe = get(ENV, "JULIA_CONDAPKG_EXE", "")
+        backend = getpref(String, "backend", "JULIA_CONDAPKG_BACKEND", "")
+        exe = getpref(String, "exe", "JULIA_CONDAPKG_EXE", "")
         if backend == ""
             backend = exe == "" ? "MicroMamba" : "System"
         end
@@ -24,11 +24,11 @@ function backend()
                 if exe == ""
                     error("could not find a conda, mamba or micromamba executable")
                 else
-                    error("not an executable: JULIA_CONDAPKG_EXE=$exe")
+                    error("not an executable: $exe")
                 end
             end
         else
-            error("invalid backend: JULIA_CONDAPKG_BACKEND=$backend")
+            error("invalid backend: $backend")
         end
     end
     STATE.backend
