@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.20 (2023-09-22)
+* Shared envs are now not always fully reinstalled when resolving.
+
 ## 0.2.19 (2023-09-21)
 * Now configurable using preferences.
 
