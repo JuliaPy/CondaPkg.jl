@@ -492,12 +492,12 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
                 changed = true
                 _resolve_conda_remove(io, conda_env, removed_pkgs)
             end
-            if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed || shared)
+            if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed)
                 dry_run && return
                 changed = true
                 _resolve_conda_install(io, conda_env, specs, channels)
             end
-            if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed || shared)
+            if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
                 dry_run && return
                 changed = true
                 _resolve_pip_install(io, pip_specs, load_path)
