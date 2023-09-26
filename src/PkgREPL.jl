@@ -326,11 +326,27 @@ const gc_spec = Pkg.REPLMode.CommandSpec(
 
 ### run
 
-function run(args)
+function run(mode_args)
+    mode = mode_args[1]
+    args = convert(Vector{String}, mode_args[2:end])
     CondaPkg.withenv() do
-        Base.run(Cmd(args))
+        if mode == :conda
+            Base.run(CondaPkg.conda_cmd(args))
+        else
+            Base.run(Cmd(args))
+        end
     end
 end
+
+function parse_run(args::Vector{Pkg.REPLMode.QString}, options)
+    if length(args) > 0 && (args[1].raw in ("mamba", "conda")) && !args[1].isquoted
+        popfirst!(args)
+        return [:conda, Pkg.REPLMode.unwrap(args)...]
+    else
+        return [:run, Pkg.REPLMode.unwrap(args)...]
+    end
+end
+
 
 const run_help = Markdown.parse("""
 ```
@@ -338,6 +354,17 @@ conda run cmd ...
 ```
 
 Run the given command in the Conda environment.
+
+
+```
+conda run mamba|conda ...
+```
+
+Execute the Conda/Mamba executable. This is useful for executing arbitrary
+Conda subcommands. This will use the same mechanism/executable for executing
+the commands as CondaPkg uses internally, ensuring the correct version of
+Conda/Mamba is used. You can quote the executable name to instead use
+whatever is in your PATH.
 """)
 
 const run_spec = Pkg.REPLMode.CommandSpec(
@@ -346,6 +373,7 @@ const run_spec = Pkg.REPLMode.CommandSpec(
     should_splat = false,
     help = run_help,
     arg_count = 1 => Inf,
+    arg_parser = parse_run,
     description = "run a command in the Conda environment",
 )
 
