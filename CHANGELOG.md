@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.21 (2023-09-30)
 * Special handling of `python` with `build="**cpython**"`.
 
 ## 0.2.20 (2023-09-22)
