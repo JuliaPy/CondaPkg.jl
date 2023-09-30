@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* Special handling of `python` with `build="**cpython**"`.
+
 ## 0.2.20 (2023-09-22)
 * Shared envs are now not always fully reinstalled when resolving.
 
