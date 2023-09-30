@@ -145,10 +145,37 @@ function _resolve_find_dependencies(io, load_path)
     (packages, channels, pip_packages, extra_path)
 end
 
-function _resolve_merge_packages(packages)
+function _resolve_merge_packages(packages, channels)
     specs = PkgSpec[]
     for (name, pkgs) in packages
         @assert length(pkgs) > 0
+        # special case: name=python, channel=**cpython**
+        if name == "python" && any(pkg.build == "**cpython**" for pkg in values(pkgs))
+            candidate_channels = String[]
+            append!(candidate_channels, (pkg.channel for pkg in values(pkgs)))
+            append!(candidate_channels, (c.name for c in channels))
+            filter!(c -> c in ("conda-forge", "anaconda", "pkgs/main"), candidate_channels)
+            if isempty(candidate_channels)
+                error("can currently only install cpython from conda-forge, anaconda or pkgs/main channel")
+            end
+            channel = first(candidate_channels)
+            for (fn, pkg) in collect(pkgs)
+                if pkg.build == "**cpython**"
+                    if pkg.channel == ""
+                        pkg = PkgSpec(pkg, channel=channel)
+                    end
+                    if pkg.channel == "conda-forge"
+                        build = "*cpython*"
+                    elseif pkg.channel in ("anaconda", "pkgs/main")
+                        build = ""
+                    else
+                        error("can currently only install cpython from conda-forge, anaconda or pkgs/main channel")
+                    end
+                    pkg = PkgSpec(pkg, build=build)
+                    pkgs[fn] = pkg
+                end
+            end
+        end
         for pkg in values(pkgs)
             @assert pkg.name == name
             push!(specs, pkg)
@@ -448,7 +475,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
         # (in the future we might prioritise them)
         sort!(unique!(channels), by=c->c.name)
         # merge dependencies
-        specs = _resolve_merge_packages(packages)
+        specs = _resolve_merge_packages(packages, channels)
         # merge pip dependencies
         pip_specs = _resolve_merge_pip_packages(pip_packages)
         # find what has changed
