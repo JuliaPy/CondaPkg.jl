@@ -23,7 +23,6 @@ jobs:
         version:
           - '1'
           - '1.6'
-          # - 'nightly'
         os:
           - ubuntu-latest
           - macOS-latest
@@ -33,11 +32,11 @@ jobs:
         backend:
           - MicroMamba
         include:
-          - version: 1
+          - version: '1'
             os: ubuntu-latest
             arch: x64
             backend: System
-          - version: 1
+          - version: '1'
             os: ubuntu-latest
             arch: x64
             backend: 'Null'
@@ -48,6 +47,9 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
+      - run: |
+          julia test/downgrade.jl
+        if: ${{ matrix.version == '1.6' }}
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
