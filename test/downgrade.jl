@@ -11,11 +11,28 @@ for (i, line) in pairs(lines)
     elseif compat && !isempty(line)
         m = match(r"^([A-Za-z0-9]+)( *= *\")([^\"]*)(\".*)", line)
         pkg, eq, ver, post = m.captures
-        if pkg != "julia"
-            ver2 = "~$ver"
-            lines[i] = "$pkg$eq$ver2$post"
-            println("downgraded compat for $pkg: $ver -> $ver2")
+        if pkg == "julia"
+            println("skipping $pkg: $ver")
+            continue
         end
+        ver2 = strip(split(ver, ",")[1])
+        if ver2[1] in "^~="
+            op = ver2[1]
+            ver2 = ver2[2:end]
+        elseif isnumeric(ver2[1])
+            op = '^'
+        else
+            println("skipping $pkg: $ver")
+            continue
+        end
+        if op in "^~" && occursin(r"^0\.[0-9]+\.[0-9]+$", ver2)
+            op = '='
+        elseif op in "^"
+            op = '^'
+        end
+        ver2 = "$op$ver"
+        lines[i] = "$pkg$eq$ver2$post"
+        println("downgrading $pkg: $ver -> $ver2")
     elseif compat
         compat = false
     end
