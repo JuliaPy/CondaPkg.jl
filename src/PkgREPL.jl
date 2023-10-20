@@ -327,8 +327,18 @@ const gc_spec = Pkg.REPLMode.CommandSpec(
 ### run
 
 function run(args)
-    CondaPkg.withenv() do
-        Base.run(Cmd(args))
+    try
+        CondaPkg.withenv() do
+            if args[1] == "conda"
+                Base.run(CondaPkg.conda_cmd(args[2:end]))
+            else
+                Base.run(Cmd(args))
+            end
+        end
+    catch err
+        printstyled(stderr, "ERROR: ", color=:light_red)
+        showerror(stderr, err)
+        println(stderr)
     end
 end
 
@@ -338,6 +348,9 @@ conda run cmd ...
 ```
 
 Run the given command in the Conda environment.
+
+You can do `conda run conda ...` to run whichever conda (or mamba or micromamba) executable
+that CondaPkg uses.
 """)
 
 const run_spec = Pkg.REPLMode.CommandSpec(
