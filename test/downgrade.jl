@@ -11,7 +11,7 @@ for (i, line) in pairs(lines)
     elseif compat && !isempty(line)
         m = match(r"^([A-Za-z0-9]+)( *= *\")([^\"]*)(\".*)", line)
         pkg, eq, ver, post = m.captures
-        if pkg == "julia"
+        if pkg in ["julia", "Markdown", "Pkg", "TOML"]
             println("skipping $pkg: $ver")
             continue
         end
@@ -30,7 +30,11 @@ for (i, line) in pairs(lines)
         elseif op in "^"
             op = '^'
         end
-        ver2 = "$op$ver"
+        ver2 = "$op$ver2"
+        if ver == ver2
+            println("skipping $pkg: $ver")
+            continue
+        end
         lines[i] = "$pkg$eq$ver2$post"
         println("downgrading $pkg: $ver -> $ver2")
     elseif compat
