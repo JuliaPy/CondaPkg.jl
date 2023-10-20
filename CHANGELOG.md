@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.22 (2023-10-20)
 * `pkg> conda run conda ...` now runs whatever conda executable CondaPkg is configured with.
 
 ## 0.2.21 (2023-09-30)
