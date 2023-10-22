@@ -217,7 +217,7 @@ function add(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), kw...)
     for pkg in pkgs
         add!(toml, pkg)
     end
-    write_deps(toml)
+    write_deps(toml; file)
     STATE.resolved = false
     resolve && CondaPkg.resolve(; kw...)
     return
@@ -273,7 +273,7 @@ function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), kw...)
     for pkg in pkgs
         rm!(toml, pkg)
     end
-    write_deps(toml)
+    write_deps(toml; file)
     STATE.resolved = false
     resolve && CondaPkg.resolve(; kw...)
     return
