@@ -336,9 +336,7 @@ function run(args)
             end
         end
     catch err
-        printstyled(stderr, "ERROR: ", color=:light_red)
-        showerror(stderr, err)
-        println(stderr)
+        Base.display_error(err)
     end
 end
 
