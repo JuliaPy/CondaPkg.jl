@@ -236,3 +236,19 @@ file](https://docs.julialang.org/en/v1/manual/command-line-interface/#Startup-fi
 ```julia
 Base.identify_package("CondaPkg") === nothing || Base.require(@__MODULE__, :CondaPkg)
 ```
+
+### Can I install a package from a URL or file?
+
+Yes, using the "direct reference" `@` version syntax. For example in PKG REPL mode
+```
+pkg> pip_add some-package@https://example.com/the/url
+```
+or using the API
+```julia
+CondaPkg.add_pip("some-package", version="@https://example.com/the/url")
+```
+or in `CondaPkg.toml`
+```toml
+[pip.deps]
+"some-package" = "@https://example.com/the/url"
+```
