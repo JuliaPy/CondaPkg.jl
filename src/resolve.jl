@@ -18,36 +18,37 @@ function _resolve_top_env(load_path)
 end
 
 function _resolve_env_is_clean(conda_env, meta)
-    conda_env == meta.conda_env || return false
-    stat(conda_env).mtime ≤ meta.timestamp || return false
-    isdir(conda_env) && return true
-    (isempty(meta.packages) && isempty(meta.pip_packages)) && return true
-    false
+    meta === nothing && return :no_meta, false
+    conda_env == meta.conda_env || return :conda_env, false
+    stat(conda_env).mtime ≤ meta.timestamp || return :mtime_conda_env_valid, false
+    isdir(conda_env) && return :isdir_conda_env, true
+    (isempty(meta.packages) && isempty(meta.pip_packages)) && return :empty_packages, true
+    :dirty, false
 end
 
 function _resolve_can_skip_1(conda_env, load_path, meta_file)
-    isdir(conda_env) || return false
-    isfile(meta_file) || return false
+    isdir(conda_env) || return :isdir_cond_env, false
+    isfile(meta_file) || return :isfile_meta, false
     meta = open(read_meta, meta_file)
-    meta !== nothing || return false
-    meta.version == VERSION || return false
-    meta.load_path == load_path || return false
-    meta.conda_env == conda_env || return false
+    meta !== nothing || return :no_meta, false
+    meta.version == VERSION || return :wrong_meta_version, false
+    meta.load_path == load_path || return :wrong_meta_load_path, false
+    meta.conda_env == conda_env || return :wrong_meta_conda_env, false
     timestamp = max(meta.timestamp, stat(meta_file).mtime)
     for env in [meta.load_path; meta.extra_path]
         dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
         if isdir(dir)
             if stat(dir).mtime > timestamp
-                return false
+                return :newer_dir_mtime, false
             else
                 fn = joinpath(dir, "CondaPkg.toml")
                 if isfile(fn) && stat(fn).mtime > timestamp
-                    return false
+                    return :newer_file_mtime, false
                 end
             end
         end
     end
-    return true
+    :can_skip, true
 end
 
 _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
@@ -164,10 +165,10 @@ function _resolve_merge_packages(packages, channels)
                     if pkg.channel == ""
                         pkg = PkgSpec(pkg, channel=channel)
                     end
-                    if pkg.channel == "conda-forge"
-                        build = "*cpython*"
+                    build = if pkg.channel == "conda-forge"
+                        "*cpython*"
                     elseif pkg.channel in ("anaconda", "pkgs/main")
-                        build = ""
+                        ""
                     else
                         error("can currently only install cpython from conda-forge, anaconda or pkgs/main channel")
                     end
@@ -284,7 +285,7 @@ function _resolve_conda_remove_all(io, conda_env)
     nothing
 end
 
-function _resolve_conda_install(io, conda_env, specs, channels; create=false)
+function _resolve_conda_install(io, conda_env, specs, channels, reason; create=false)
     (length(specs) == 0 && !create) && return  # installing 0 packages is invalid
     args = String[]
     for spec in specs
@@ -296,7 +297,7 @@ function _resolve_conda_install(io, conda_env, specs, channels; create=false)
     vrb = _verbosity_flags()
     cmd = conda_cmd(`$(create ? "create" : "install") $vrb -y -p $conda_env --override-channels --no-channel-priority $args`, io=io)
     flags = append!(["-y", "--override-channels", "--no-channel-priority"], vrb)
-    _run(io, cmd, create ? "Creating environment" : "Installing packages", flags=flags)
+    _run(io, cmd, (create ? "Creating environment" : "Installing packages") * ", reason=$reason", flags=flags)
     nothing
 end
 
@@ -457,13 +458,14 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     end
     try
         # skip resolving if nothing has changed since the metadata was updated
-        if !force && _resolve_can_skip_1(conda_env, load_path, meta_file)
+        reason, can_skip = _resolve_can_skip_1(conda_env, load_path, meta_file)
+        if !force && can_skip
             STATE.resolved = true
-            interactive && _log(io, "Dependencies already up to date")
+            interactive && _log(io, "Dependencies already up to date, reason=$reason")
             return
         end
         # find all dependencies
-        (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(io, load_path)
+        packages, channels, pip_packages, extra_path = _resolve_find_dependencies(io, load_path)
         # install pip if there are pip packages to install
         if !isempty(pip_packages) && !haskey(packages, "pip")
             get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] = PkgSpec("pip", version=">=22.0.0")
@@ -506,7 +508,8 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             end
         end
         # install/uninstall packages
-        if !force && meta !== nothing && _resolve_env_is_clean(conda_env, meta)
+        reason, can_skip = _resolve_env_is_clean(conda_env, meta)
+        if !force && meta !== nothing && can_skip
             # the state is sufficiently clean that we can modify the existing conda environment
             changed = false
             if !isempty(removed_pip_pkgs) && !shared
@@ -522,14 +525,14 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed)
                 dry_run && return
                 changed = true
-                _resolve_conda_install(io, conda_env, specs, channels)
+                _resolve_conda_install(io, conda_env, specs, channels, reason)
             end
             if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
                 dry_run && return
                 changed = true
                 _resolve_pip_install(io, pip_specs, load_path)
             end
-            changed || _log(io, "Dependencies already up to date")
+            changed || _log(io, "Dependencies already up to date, reason=$reason")
         else
             # the state is too dirty, recreate the conda environment from scratch
             dry_run && return
@@ -544,7 +547,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
                 end
             end
             # create conda environment
-            _resolve_conda_install(io, conda_env, specs, channels; create=create)
+            _resolve_conda_install(io, conda_env, specs, channels, reason; create=create)
             # install pip packages
             isempty(pip_specs) || _resolve_pip_install(io, pip_specs, load_path)
         end
