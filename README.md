@@ -53,8 +53,8 @@ These functions are intended to be used interactively when the Pkg REPL is not a
 (e.g. if you are in a notebook):
 
 - `status()` shows the Conda dependencies of the current project.
-- `add(pkg; version="", channel="")` adds/replaces a dependency.
-- `rm(pkg)` removes a dependency.
+- `add(pkg; version="", channel="")` adds/replaces a dependency or a vector of dependencies.
+- `rm(pkg)` removes a dependency or a vector of dependencies.
 - `add_channel(channel)` adds a channel.
 - `rm_channel(channel)` removes a channel.
 - `add_pip(pkg; version="")` adds/replaces a pip dependency.

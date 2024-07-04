@@ -54,11 +54,23 @@ end
     end
     @test occursin("v1.16.0", status()) == !isnull
 
+    # install multiple packages
+    CondaPkg.add(["numpy", "scipy", "matplotlib", "h5py"])
+    @test occursin("numpy", status())
+    @test occursin("scipy", status())
+    @test occursin("matplotlib", status())
+    @test occursin("h5py", status())
+
     # remove package
+    CondaPkg.rm(["numpy", "scipy", "matplotlib", "h5py"])
     CondaPkg.rm("six")
     @test !occursin("six", status())
     CondaPkg.withenv() do
         isnull || @test_throws Exception run(`python -c "import six"`)
+        isnull || @test_throws Exception run(`python -c "import numpy"`)
+        isnull || @test_throws Exception run(`python -c "import scipy"`)
+        isnull || @test_throws Exception run(`python -c "import matplotlib"`)
+        isnull || @test_throws Exception run(`python -c "import h5py"`)
     end
 end
 

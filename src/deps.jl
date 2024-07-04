@@ -212,10 +212,16 @@ function status(; io::IO=stderr)
     end
 end
 
-function add(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), kw...)
+# Do nothing for existing specs
+_to_spec(s::Union{PkgSpec,PipPkgSpec,ChannelSpec}; channel="") = s
+# Convert strings to PkgSpec
+_to_spec(s::AbstractString; channel="") = PkgSpec(s; channel)
+
+function add(pkgs::AbstractVector; channel="", resolve=true, file=cur_deps_file(), kw...)
     toml = read_deps(; file)
+
     for pkg in pkgs
-        add!(toml, pkg)
+        add!(toml, _to_spec(pkg; channel))
     end
     write_deps(toml; file)
     STATE.resolved = false
@@ -271,7 +277,7 @@ end
 function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), kw...)
     toml = read_deps(; file)
     for pkg in pkgs
-        rm!(toml, pkg)
+        rm!(toml, _to_spec(pkg))
     end
     write_deps(toml; file)
     STATE.resolved = false
@@ -309,6 +315,7 @@ end
 
 """
     add(pkg; version="", channel="", build="", resolve=true)
+    add([pkg1, pkg2, ...]; channel="", resolve=true)
 
 Adds a dependency to the current environment.
 """
@@ -316,6 +323,7 @@ add(pkg::AbstractString; version="", channel="", build="", kw...) = add(PkgSpec(
 
 """
     rm(pkg; resolve=true)
+    rm([pkg1, pkg2, ...]; resolve=true)
 
 Removes a dependency from the current environment.
 """
