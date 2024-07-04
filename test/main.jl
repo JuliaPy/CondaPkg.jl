@@ -54,6 +54,26 @@ end
     end
     @test occursin("v1.16.0", status()) == !isnull
 
+    # remove package
+    CondaPkg.rm("six")
+    @test !occursin("six", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import six"`)
+    end
+end
+
+@testitem "install/remove multiple python packages" begin
+    include("setup.jl")
+    CondaPkg.add("python", version="==3.10.2")
+    # verify package isn't already installed
+    @test !occursin("numpy", status())
+    @test !occursin("scipy", status())
+    @test !occursin("matplotlib", status())
+    @test !occursin("h5py", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import six"`)
+    end
+
     # install multiple packages
     CondaPkg.add(["numpy", "scipy", "matplotlib", "h5py"])
     @test occursin("numpy", status())
@@ -61,12 +81,13 @@ end
     @test occursin("matplotlib", status())
     @test occursin("h5py", status())
 
-    # remove package
+    # remove multiple packages
     CondaPkg.rm(["numpy", "scipy", "matplotlib", "h5py"])
-    CondaPkg.rm("six")
-    @test !occursin("six", status())
+    @test !occursin("numpy", status())
+    @test !occursin("scipy", status())
+    @test !occursin("matplotlib", status())
+    @test !occursin("h5py", status())
     CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import six"`)
         isnull || @test_throws Exception run(`python -c "import numpy"`)
         isnull || @test_throws Exception run(`python -c "import scipy"`)
         isnull || @test_throws Exception run(`python -c "import matplotlib"`)
