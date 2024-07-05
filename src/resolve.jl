@@ -308,6 +308,10 @@ function _resolve_conda_remove(io, conda_env, pkgs)
     nothing
 end
 
+function _uv_available()
+    isfile(joinpath(envdir(), "bin", "uv"))
+end
+
 function _resolve_pip_install(io, pip_specs, load_path)
     args = String[]
     for spec in pip_specs
@@ -327,9 +331,16 @@ function _resolve_pip_install(io, pip_specs, load_path)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            pip = which("pip")
-            cmd = `$pip install $vrb $args`
-            _run(io, cmd, "Installing Pip packages", flags=flags)
+            if _uv_available()
+                uv = which("uv")
+                cmd = `$uv pip install -- $vrb $args`
+                _log(io, "Using UV for pip package installation")
+            else
+                pip = which("pip")
+                cmd = `$pip install $vrb $args`
+                _log(io, "UV not found, using pip for package installation")
+            end
+            _run(io, cmd, "Installing pip packages", flags=flags)
         end
     finally
         STATE.resolved = false
@@ -346,9 +357,16 @@ function _resolve_pip_remove(io, pkgs, load_path)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            pip = which("pip")
-            cmd = `$pip uninstall $vrb -y $pkgs`
-            _run(io, cmd, "Removing Pip packages", flags=flags)
+            if _uv_available()
+                uv = which("uv")
+                cmd = `$uv pip uninstall $vrb $pkgs`
+                _log(io, "Using UV for pip package removal")
+            else
+                pip = which("pip")
+                cmd = `$pip uninstall $vrb -y $pkgs`
+                _log(io, "UV not found, using pip for package removal")
+            end
+            _run(io, cmd, "Removing pip packages", flags=flags)
         end
     finally
         STATE.resolved = false

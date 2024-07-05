@@ -88,6 +88,35 @@ end
     end
 end
 
+@testitem "uv install/remove python package" begin
+    include("setup.jl")
+    CondaPkg.add("python", version="==3.10.2", resolve=false)
+    CondaPkg.add("uv", version="=0.2")
+    # verify package isn't already installed
+    @test !occursin("six", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import six"`)
+    end
+
+    # install package
+    CondaPkg.add_pip("six", version="==1.16.0")
+    sleep(5)
+    @test occursin("six", status())
+    @test occursin("(==1.16.0)", status())
+    CondaPkg.withenv() do
+        isnull || run(`python -c "import six"`)
+    end
+    @test occursin("v1.16.0", status()) == !isnull
+
+    # remove package
+    CondaPkg.rm_pip("six")
+    @test !occursin("six", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import six"`)
+    end
+    CondaPkg.rm("uv")
+end
+
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
