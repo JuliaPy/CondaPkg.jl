@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* Pip packages are now installed using [`uv`](https://pypi.org/project/uv/) if it is installed.
+
 ## 0.2.22 (2023-10-20)
 * `pkg> conda run conda ...` now runs whatever conda executable CondaPkg is configured with.
 
