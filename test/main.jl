@@ -63,28 +63,33 @@ end
 end
 
 @testitem "pip install/remove python package" begin
-    include("setup.jl")
-    CondaPkg.add("python", version="==3.10.2")
-    # verify package isn't already installed
-    @test !occursin("six", status())
-    CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import six"`)
-    end
+    @testset "using $kind" for kind in ["pip", "uv"]
+        include("setup.jl")
+        CondaPkg.add("python", version="==3.10.2")
+        if kind == "uv"
+            CondaPkg.add("uv")
+        end
+        # verify package isn't already installed
+        @test !occursin("six", status())
+        CondaPkg.withenv() do
+            isnull || @test_throws Exception run(`python -c "import six"`)
+        end
 
-    # install package
-    CondaPkg.add_pip("six", version="==1.16.0")
-    @test occursin("six", status())
-    @test occursin("(==1.16.0)", status())
-    CondaPkg.withenv() do
-        isnull || run(`python -c "import six"`)
-    end
-    @test occursin("v1.16.0", status()) == !isnull
+        # install package
+        CondaPkg.add_pip("six", version="==1.16.0")
+        @test occursin("six", status())
+        @test occursin("(==1.16.0)", status())
+        CondaPkg.withenv() do
+            isnull || run(`python -c "import six"`)
+        end
+        @test occursin("v1.16.0", status()) == !isnull
 
-    # remove package
-    CondaPkg.rm_pip("six")
-    @test !occursin("six", status())
-    CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import six"`)
+        # remove package
+        CondaPkg.rm_pip("six")
+        @test !occursin("six", status())
+        CondaPkg.withenv() do
+            isnull || @test_throws Exception run(`python -c "import six"`)
+        end
     end
 end
 

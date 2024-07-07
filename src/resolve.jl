@@ -308,6 +308,18 @@ function _resolve_conda_remove(io, conda_env, pkgs)
     nothing
 end
 
+function _which_pip()
+    uv = which("uv")
+    if uv !== nothing
+        return `$uv pip`, :uv
+    end
+    pip = which("pip")
+    if pip !== nothing
+        return `$pip`, :pip
+    end
+    error("expecting pip (or uv) to be installed")
+end
+
 function _resolve_pip_install(io, pip_specs, load_path)
     args = String[]
     for spec in pip_specs
@@ -327,7 +339,7 @@ function _resolve_pip_install(io, pip_specs, load_path)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            pip = which("pip")
+            pip, _ = _which_pip()
             cmd = `$pip install $vrb $args`
             _run(io, cmd, "Installing Pip packages", flags=flags)
         end
@@ -346,8 +358,12 @@ function _resolve_pip_remove(io, pkgs, load_path)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            pip = which("pip")
-            cmd = `$pip uninstall $vrb -y $pkgs`
+            pip, kind = _which_pip()
+            if kind == :uv
+                cmd = `$pip uninstall $vrb $pkgs`
+            else
+                cmd = `$pip uninstall $vrb -y $pkgs`
+            end
             _run(io, cmd, "Removing Pip packages", flags=flags)
         end
     finally
