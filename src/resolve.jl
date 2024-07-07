@@ -362,7 +362,7 @@ function _resolve_pip_remove(io, pkgs, load_path)
             if kind == :uv
                 cmd = `$pip uninstall $vrb $pkgs`
             else
-                cmd = `$pip install $vrb -y $pkgs`
+                cmd = `$pip uninstall $vrb -y $pkgs`
             end
             _run(io, cmd, "Removing Pip packages", flags=flags)
         end
