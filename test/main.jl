@@ -66,32 +66,25 @@ end
     include("setup.jl")
     CondaPkg.add("python", version="==3.10.2")
     # verify package isn't already installed
-    @test !occursin("numpy", status())
-    @test !occursin("scipy", status())
-    @test !occursin("matplotlib", status())
-    @test !occursin("h5py", status())
+    @test !occursin("jsonlines ", status())
+    @test !occursin("cowpy", status())
     CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import six"`)
+        isnull || @test_throws Exception run(`python -c "import jsonlines"`)
+        isnull || @test_throws Exception run(`python -c "import cowpy"`)
     end
 
     # install multiple packages
-    CondaPkg.add(["numpy", "scipy", "matplotlib", "h5py"])
-    @test occursin("numpy", status())
-    @test occursin("scipy", status())
-    @test occursin("matplotlib", status())
-    @test occursin("h5py", status())
+    CondaPkg.add(["jsonlines", "cowpy"])
+    @test occursin("jsonlines", status())
+    @test occursin("cowpy", status())
 
     # remove multiple packages
-    CondaPkg.rm(["numpy", "scipy", "matplotlib", "h5py"])
-    @test !occursin("numpy", status())
-    @test !occursin("scipy", status())
-    @test !occursin("matplotlib", status())
-    @test !occursin("h5py", status())
+    CondaPkg.rm(["jsonlines", "cowpy"])
+    @test !occursin("jsonlines ", status())
+    @test !occursin("cowpy", status())
     CondaPkg.withenv() do
         isnull || @test_throws Exception run(`python -c "import numpy"`)
-        isnull || @test_throws Exception run(`python -c "import scipy"`)
-        isnull || @test_throws Exception run(`python -c "import matplotlib"`)
-        isnull || @test_throws Exception run(`python -c "import h5py"`)
+        isnull || @test_throws Exception run(`python -c "import cowpy"`))
     end
 end
 
