@@ -83,7 +83,7 @@ end
     @test !occursin("jsonlines ", status())
     @test !occursin("cowpy", status())
     CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import numpy"`)
+        isnull || @test_throws Exception run(`python -c "import jsonlines"`))
         isnull || @test_throws Exception run(`python -c "import cowpy"`))
     end
 end
