@@ -62,6 +62,32 @@ end
     end
 end
 
+@testitem "install/remove multiple python packages" begin
+    include("setup.jl")
+    CondaPkg.add("python", version="==3.10.2")
+    # verify package isn't already installed
+    @test !occursin("jsonlines ", status())
+    @test !occursin("cowpy", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import jsonlines"`)
+        isnull || @test_throws Exception run(`python -c "import cowpy"`)
+    end
+
+    # install multiple packages
+    CondaPkg.add(["jsonlines", "cowpy"])
+    @test occursin("jsonlines", status())
+    @test occursin("cowpy", status())
+
+    # remove multiple packages
+    CondaPkg.rm(["jsonlines", "cowpy"])
+    @test !occursin("jsonlines ", status())
+    @test !occursin("cowpy", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import jsonlines"`)
+        isnull || @test_throws Exception run(`python -c "import cowpy"`)
+    end
+end
+
 @testitem "pip install/remove python package" begin
     @testset "using $kind" for kind in ["pip", "uv"]
         include("setup.jl")
