@@ -96,6 +96,21 @@ function _compatible_libstdcxx_ng_version()
     end
 end
 
+"""
+Find the version that aligns with the installed `OpenSSL_jll` version, if any.
+"""
+function _compatible_openssl_version()
+    project = Pkg.project()
+    open_ssl_uuid = get(project.dependencies, "OpenSSL_jll", nothing)
+    if isnothing(open_ssl_uuid)
+        return
+    end
+    dependencies = Pkg.dependencies()
+    openssl_version = dependencies[open_ssl_uuid].version
+    bound = ">=$openssl_version,<=$(openssl_version.major).$(openssl_version.minor+1)"
+    bound
+end
+
 function _resolve_find_dependencies(io, load_path)
     packages = Dict{String,Dict{String,PkgSpec}}() # name -> depsfile -> spec
     channels = ChannelSpec[]
@@ -120,6 +135,11 @@ function _resolve_find_dependencies(io, load_path)
                     for pkg in pkgs
                         if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
                             version = _compatible_libstdcxx_ng_version()
+                            version === nothing && continue
+                            pkg = PkgSpec(pkg; version)
+                        end
+                        if pkg.name == "openssl" && pkg.version == "<=julia"
+                            version = _compatible_openssl_version()
                             version === nothing && continue
                             pkg = PkgSpec(pkg; version)
                         end
