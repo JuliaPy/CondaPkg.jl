@@ -1,10 +1,11 @@
 module CondaPkg
 
-if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@compiler_options"))
+if isdefined(Base, :Experimental) &&
+   isdefined(Base.Experimental, Symbol("@compiler_options"))
     # Without this, resolve() takes a couple of seconds, with, it takes 0.1 seconds.
     # Maybe with better structured code or precompilation it's not necessary.
     # Note: compile=min makes --code-coverage not work
-    @eval Base.Experimental.@compiler_options optimize=0 infer=false #compile=min
+    @eval Base.Experimental.@compiler_options optimize = 0 infer = false #compile=min
 end
 
 import Base: @kwdef
@@ -39,7 +40,7 @@ end
 
 const STATE = State()
 
-function getpref(::Type{T}, prefname, envname, default=nothing) where T
+function getpref(::Type{T}, prefname, envname, default = nothing) where {T}
     ans = @load_preference(prefname, nothing)
     ans === nothing || return checkpref(T, ans)::T
     ans = get(ENV, envname, "")
@@ -47,10 +48,12 @@ function getpref(::Type{T}, prefname, envname, default=nothing) where T
     return default
 end
 
-checkpref(::Type{T}, x) where T = convert(T, x)
+checkpref(::Type{T}, x) where {T} = convert(T, x)
 checkpref(::Type{String}, x::AbstractString) = convert(String, x)
-checkpref(::Type{T}, x::AbstractString) where T = parse(T, x)
-checkpref(::Type{Bool}, x::AbstractString) = x in ("yes", "true") ? true : x in ("no", "false") ? false : error("expecting true or false, got $(repr(x))")
+checkpref(::Type{T}, x::AbstractString) where {T} = parse(T, x)
+checkpref(::Type{Bool}, x::AbstractString) =
+    x in ("yes", "true") ? true :
+    x in ("no", "false") ? false : error("expecting true or false, got $(repr(x))")
 
 include("backend.jl")
 include("spec.jl")

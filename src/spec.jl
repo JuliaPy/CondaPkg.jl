@@ -3,29 +3,44 @@ This file defines the types `PkgSpec`, `ChannelSpec` and `PipPkgSpec`, plus rela
 validation and normalisation functions.
 """
 
-is_valid_string(name; allow_regex=false, allow_glob=false) = ('\'' ∉ name) && ('"' ∉ name) && (allow_regex || !(startswith(name, "^") && endswith(name, "\$"))) && (allow_glob || '*' ∉ name)
+is_valid_string(name; allow_regex = false, allow_glob = false) =
+    ('\'' ∉ name) &&
+    ('"' ∉ name) &&
+    (allow_regex || !(startswith(name, "^") && endswith(name, "\$"))) &&
+    (allow_glob || '*' ∉ name)
 
 struct PkgSpec
     name::String
     version::String
     channel::String
     build::String
-    function PkgSpec(name; version="", channel="", build="")
+    function PkgSpec(name; version = "", channel = "", build = "")
         name = validate_pkg(name)
         version = validate_version(version)
-        channel = validate_channel(channel, allow_empty=true)
+        channel = validate_channel(channel, allow_empty = true)
         build = validate_build(build)
         new(name, version, channel, build)
     end
 end
 
 # return a modified version of the given spec
-function PkgSpec(old::PkgSpec; name=old.name, version=old.version, channel=old.channel, build=old.build)
+function PkgSpec(
+    old::PkgSpec;
+    name = old.name,
+    version = old.version,
+    channel = old.channel,
+    build = old.build,
+)
     return PkgSpec(name; version, channel, build)
 end
 
-Base.:(==)(x::PkgSpec, y::PkgSpec) = (x.name == y.name) && (x.version == y.version) && (x.channel == y.channel) && (x.build == y.build)
-Base.hash(x::PkgSpec, h::UInt) = hash(x.build, hash(x.channel, hash(x.version, hash(x.name, h))))
+Base.:(==)(x::PkgSpec, y::PkgSpec) =
+    (x.name == y.name) &&
+    (x.version == y.version) &&
+    (x.channel == y.channel) &&
+    (x.build == y.build)
+Base.hash(x::PkgSpec, h::UInt) =
+    hash(x.build, hash(x.channel, hash(x.version, hash(x.name, h))))
 
 is_valid_pkg(name) = occursin(r"^\s*[-_.a-zA-Z0-9]+\s*$", name) && is_valid_string(name)
 
@@ -38,7 +53,8 @@ validate_pkg(name) =
         error("invalid package: $(repr(name))")
     end
 
-is_valid_version(ver) = occursin(r"^\s*($|[!<>=0-9])", ver) && is_valid_string(ver; allow_glob=true)
+is_valid_version(ver) =
+    occursin(r"^\s*($|[!<>=0-9])", ver) && is_valid_string(ver; allow_glob = true)
 
 normalise_version(ver) = strip(ver)
 
@@ -82,7 +98,8 @@ end
 Base.:(==)(x::ChannelSpec, y::ChannelSpec) = (x.name == y.name)
 Base.hash(x::ChannelSpec, h::UInt) = hash(x.name, h)
 
-is_valid_channel(name; allow_empty=false) = (allow_empty || !isempty(strip(name))) && is_valid_string(name)
+is_valid_channel(name; allow_empty = false) =
+    (allow_empty || !isempty(strip(name))) && is_valid_string(name)
 
 normalise_channel(name) = strip(name)
 
@@ -99,7 +116,7 @@ struct PipPkgSpec
     name::String
     version::String
     binary::String
-    function PipPkgSpec(name; version="", binary="")
+    function PipPkgSpec(name; version = "", binary = "")
         name = validate_pip_pkg(name)
         version = validate_pip_version(version)
         binary = validate_pip_binary(binary)
@@ -107,12 +124,13 @@ struct PipPkgSpec
     end
 end
 
-Base.:(==)(x::PipPkgSpec, y::PipPkgSpec) = (x.name == y.name) && (x.version == y.version) && (x.binary == y.binary)
+Base.:(==)(x::PipPkgSpec, y::PipPkgSpec) =
+    (x.name == y.name) && (x.version == y.version) && (x.binary == y.binary)
 Base.hash(x::PipPkgSpec, h::UInt) = hash(x.binary, hash(x.version, hash(x.name, h)))
 
 is_valid_pip_pkg(name) = occursin(r"^\s*[-_.A-Za-z0-9]+\s*$", name)
 
-normalise_pip_pkg(name) = replace(lowercase(strip(name)), r"[-._]+"=>"-")
+normalise_pip_pkg(name) = replace(lowercase(strip(name)), r"[-._]+" => "-")
 
 validate_pip_pkg(name) =
     if is_valid_pip_pkg(name)

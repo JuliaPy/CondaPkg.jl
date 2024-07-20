@@ -55,7 +55,7 @@ end
 @testitem "run" begin
     include("setup.jl")
     if !isnull
-        CondaPkg.add("python", version="==3.10.2")
+        CondaPkg.add("python", version = "==3.10.2")
         fn = tempname()
         # run python --version and check the output
         open(fn, "w") do io
@@ -68,7 +68,7 @@ end
         # tests that conda and mamba both run whatever CondaPkg runs
         for cmd in ["conda", "mamba"]
             open(fn, "w") do io
-                redirect_stdout(io) do 
+                redirect_stdout(io) do
                     CondaPkg.PkgREPL.run(["conda", "--help"])
                 end
             end

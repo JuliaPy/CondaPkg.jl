@@ -79,7 +79,14 @@ The directories containing binaries in the Conda environment.
 function bindirs()
     e = envdir()
     if Sys.iswindows()
-        ("$e", "$e\\Library\\mingw-w64\\bin", "$e\\Library\\usr\\bin", "$e\\Library\\bin", "$e\\Scripts", "$e\\bin")
+        (
+            "$e",
+            "$e\\Library\\mingw-w64\\bin",
+            "$e\\Library\\usr\\bin",
+            "$e\\Library\\bin",
+            "$e\\Scripts",
+            "$e\\bin",
+        )
     else
         ("$e/bin", "$e/condabin")
     end
@@ -111,10 +118,10 @@ end
 
 Remove unused packages and caches.
 """
-function gc(; io::IO=stderr)
+function gc(; io::IO = stderr)
     backend() == :Null && return
     resolve()
-    cmd = conda_cmd(`clean -y --all`, io=io)
+    cmd = conda_cmd(`clean -y --all`, io = io)
     _run(io, cmd, "Removing unused caches")
     return
 end

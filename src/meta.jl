@@ -46,7 +46,7 @@ end
 function read_meta(io::IO, ::Type{Vector{T}}) where {T}
     len = read(io, Int)
     ans = Vector{T}()
-    for _ in 1:len
+    for _ = 1:len
         item = read_meta(io, T)
         push!(ans, item)
     end
@@ -60,7 +60,7 @@ function read_meta(io::IO, ::Type{PkgSpec})
     version = read_meta(io, String)
     channel = read_meta(io, String)
     build = read_meta(io, String)
-    PkgSpec(name, version=version, channel=channel, build=build)
+    PkgSpec(name, version = version, channel = channel, build = build)
 end
 function read_meta(io::IO, ::Type{ChannelSpec})
     name = read_meta(io, String)
@@ -70,7 +70,7 @@ function read_meta(io::IO, ::Type{PipPkgSpec})
     name = read_meta(io, String)
     version = read_meta(io, String)
     binary = read_meta(io, String)
-    PipPkgSpec(name, version=version, binary=binary)
+    PipPkgSpec(name, version = version, binary = binary)
 end
 
 function write_meta(io::IO, meta::Meta)

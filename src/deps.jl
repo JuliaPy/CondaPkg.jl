@@ -13,11 +13,11 @@ function cur_deps_file()
     joinpath(e, "CondaPkg.toml")
 end
 
-function read_deps(; file=cur_deps_file())
+function read_deps(; file = cur_deps_file())
     isfile(file) ? TOML.parsefile(file) : Dict{String,Any}()
 end
 
-function write_deps(toml; file=cur_deps_file())
+function write_deps(toml; file = cur_deps_file())
     if isempty(toml)
         if isfile(file)
             Base.rm(file)
@@ -56,7 +56,7 @@ function parse_deps(toml)
             else
                 error("deps must be String or Dict, got $(typeof(dep))")
             end
-            pkg = PkgSpec(name, version=version, channel=channel, build=build)
+            pkg = PkgSpec(name, version = version, channel = channel, build = build)
             push!(packages, pkg)
         end
     end
@@ -94,14 +94,14 @@ function parse_deps(toml)
                 else
                     error("pip.deps must be String or Dict, got $(typeof(dep))")
                 end
-                pkg = PipPkgSpec(name, version=version, binary=binary)
+                pkg = PipPkgSpec(name, version = version, binary = binary)
                 push!(pip_packages, pkg)
             end
         end
     end
 
     # done
-    return (packages=packages, channels=channels, pip_packages=pip_packages)
+    return (packages = packages, channels = channels, pip_packages = pip_packages)
 end
 
 function read_parsed_deps(file)
@@ -129,7 +129,7 @@ Show the status of the current environment.
 
 This does not include dependencies from nested environments.
 """
-function status(; io::IO=stderr)
+function status(; io::IO = stderr)
     # collect information
     dfile = cur_deps_file()
     resolved = is_resolved()
@@ -140,35 +140,35 @@ function status(; io::IO=stderr)
     blank = isempty(pkgs) && isempty(channels) && isempty(pippkgs)
 
     # print status
-    printstyled(io, "CondaPkg Status", color=:light_green)
-    printstyled(io, " ", dfile, bold=true)
+    printstyled(io, "CondaPkg Status", color = :light_green)
+    printstyled(io, " ", dfile, bold = true)
     if blank
         print(io, " (empty)")
     end
     println(io)
     if !resolved
-        printstyled(io, "Not Resolved", color=:yellow)
+        printstyled(io, "Not Resolved", color = :yellow)
         println(io, " (resolve first for more information)")
     end
     if isnull
-        printstyled(io, "Using the Null backend", color=:yellow)
+        printstyled(io, "Using the Null backend", color = :yellow)
         println(io, " (dependencies shown here are not being managed)")
     end
     if resolved
-        printstyled(io, "Environment", bold=true, color=:cyan)
+        printstyled(io, "Environment", bold = true, color = :cyan)
         println(io)
         println(io, "  ", STATE.conda_env)
     end
     if !isempty(pkgs)
-        printstyled(io, "Packages", bold=true, color=:cyan)
+        printstyled(io, "Packages", bold = true, color = :cyan)
         println(io)
-        sort!(pkgs, by=x->x.name)
+        sort!(pkgs, by = x -> x.name)
         for pkg in pkgs
             print(io, "  ", pkg.name)
             if curpkgs !== nothing
                 curpkg = get(curpkgs, pkg.name, nothing)
                 if curpkg === nothing
-                    printstyled(io, " uninstalled", color=:red)
+                    printstyled(io, " uninstalled", color = :red)
                 else
                     print(io, " v", curpkg.version)
                 end
@@ -177,28 +177,29 @@ function status(; io::IO=stderr)
             pkg.version == "" || push!(specparts, pkg.version)
             pkg.channel == "" || push!(specparts, "channel=$(pkg.channel)")
             pkg.build == "" || push!(specparts, "build=$(pkg.build)")
-            isempty(specparts) || printstyled(io, " (", join(specparts, ", "), ")", color=:light_black)
+            isempty(specparts) ||
+                printstyled(io, " (", join(specparts, ", "), ")", color = :light_black)
             println(io)
         end
     end
     if !isempty(channels)
-        printstyled(io, "Channels", bold=true, color=:cyan)
+        printstyled(io, "Channels", bold = true, color = :cyan)
         println(io)
-        sort!(channels, by=x->x.name)
+        sort!(channels, by = x -> x.name)
         for chan in channels
             println(io, "  ", chan.name)
         end
     end
     if !isempty(pippkgs)
-        printstyled(io, "Pip packages", bold=true, color=:cyan)
+        printstyled(io, "Pip packages", bold = true, color = :cyan)
         println(io)
-        sort!(pippkgs, by=x->x.name)
+        sort!(pippkgs, by = x -> x.name)
         for pkg in pippkgs
             print(io, "  ", pkg.name)
             if curpippkgs !== nothing
                 curpkg = get(curpippkgs, pkg.name, nothing)
                 if curpkg === nothing
-                    printstyled(io, " uninstalled", color=:red)
+                    printstyled(io, " uninstalled", color = :red)
                 else
                     print(io, " v", curpkg.version)
                 end
@@ -206,18 +207,25 @@ function status(; io::IO=stderr)
             specparts = String[]
             pkg.version == "" || push!(specparts, pkg.version)
             pkg.binary == "" || push!(specparts, "$(pkg.binary)-binary")
-            isempty(specparts) || printstyled(io, " (", join(specparts, ", "), ")", color=:light_black)
+            isempty(specparts) ||
+                printstyled(io, " (", join(specparts, ", "), ")", color = :light_black)
             println(io)
         end
     end
 end
 
 # Do nothing for existing specs
-_to_spec(s::Union{PkgSpec,PipPkgSpec,ChannelSpec}; channel="") = s
+_to_spec(s::Union{PkgSpec,PipPkgSpec,ChannelSpec}; channel = "") = s
 # Convert strings to PkgSpec
-_to_spec(s::AbstractString; channel="") = PkgSpec(s; channel)
+_to_spec(s::AbstractString; channel = "") = PkgSpec(s; channel)
 
-function add(pkgs::AbstractVector; channel="", resolve=true, file=cur_deps_file(), kw...)
+function add(
+    pkgs::AbstractVector;
+    channel = "",
+    resolve = true,
+    file = cur_deps_file(),
+    kw...,
+)
     toml = read_deps(; file)
 
     for pkg in pkgs
@@ -274,7 +282,7 @@ function add!(toml, pkg::PipPkgSpec)
     end
 end
 
-function rm(pkgs::AbstractVector; resolve=true, file=cur_deps_file(), kw...)
+function rm(pkgs::AbstractVector; resolve = true, file = cur_deps_file(), kw...)
     toml = read_deps(; file)
     for pkg in pkgs
         rm!(toml, _to_spec(pkg))
@@ -319,7 +327,8 @@ end
 
 Adds a dependency to the current environment.
 """
-add(pkg::AbstractString; version="", channel="", build="", kw...) = add(PkgSpec(pkg, version=version, channel=channel, build=build); kw...)
+add(pkg::AbstractString; version = "", channel = "", build = "", kw...) =
+    add(PkgSpec(pkg, version = version, channel = channel, build = build); kw...)
 
 """
     rm(pkg; resolve=true)
@@ -353,7 +362,8 @@ Adds a pip dependency to the current environment.
     Use conda dependencies instead if at all possible. Pip does not handle version
     conflicts gracefully, so it is possible to get incompatible versions.
 """
-add_pip(pkg::AbstractString; version="", binary="", kw...) = add(PipPkgSpec(pkg, version=version, binary=binary); kw...)
+add_pip(pkg::AbstractString; version = "", binary = "", kw...) =
+    add(PipPkgSpec(pkg, version = version, binary = binary); kw...)
 
 """
     rm_pip(pkg; resolve=true)

@@ -28,9 +28,10 @@ end
 @testitem "install python" begin
     include("setup.jl")
     @test !occursin("python", status())
-    CondaPkg.add("python", version="==3.10.2")
+    CondaPkg.add("python", version = "==3.10.2")
     isnull || CondaPkg.withenv() do
-        pythonpath = joinpath(CondaPkg.envdir(), Sys.iswindows() ? "python.exe" : "bin/python")
+        pythonpath =
+            joinpath(CondaPkg.envdir(), Sys.iswindows() ? "python.exe" : "bin/python")
         @test isfile(pythonpath)
     end
     @test occursin("python", status())
@@ -38,7 +39,7 @@ end
 
 @testitem "install/remove python package" begin
     include("setup.jl")
-    CondaPkg.add("python", version="==3.10.2")
+    CondaPkg.add("python", version = "==3.10.2")
     # verify package isn't already installed
     @test !occursin("six", status())
     CondaPkg.withenv() do
@@ -46,7 +47,7 @@ end
     end
 
     # install package
-    CondaPkg.add("six", version="==1.16.0")
+    CondaPkg.add("six", version = "==1.16.0")
     @test occursin("six", status())
     @test occursin("(==1.16.0)", status())
     CondaPkg.withenv() do
@@ -64,7 +65,7 @@ end
 
 @testitem "install/remove multiple python packages" begin
     include("setup.jl")
-    CondaPkg.add("python", version="==3.10.2")
+    CondaPkg.add("python", version = "==3.10.2")
     # verify package isn't already installed
     @test !occursin("jsonlines ", status())
     @test !occursin("cowpy", status())
@@ -91,7 +92,7 @@ end
 @testitem "pip install/remove python package" begin
     @testset "using $kind" for kind in ["pip", "uv"]
         include("setup.jl")
-        CondaPkg.add("python", version="==3.10.2")
+        CondaPkg.add("python", version = "==3.10.2")
         if kind == "uv"
             CondaPkg.add("uv")
         end
@@ -102,7 +103,7 @@ end
         end
 
         # install package
-        CondaPkg.add_pip("six", version="==1.16.0")
+        CondaPkg.add_pip("six", version = "==1.16.0")
         @test occursin("six", status())
         @test occursin("(==1.16.0)", status())
         CondaPkg.withenv() do
@@ -122,32 +123,32 @@ end
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
-        CondaPkg.add("curl", resolve=false)
-        CondaPkg.resolve(force=true)
+        CondaPkg.add("curl", resolve = false)
+        CondaPkg.resolve(force = true)
         curl_path = CondaPkg.which("curl")
         @test curl_path !== nothing
         @test isfile(curl_path)
-        CondaPkg.rm("curl", resolve=false)
-        CondaPkg.resolve(force=true)
+        CondaPkg.rm("curl", resolve = false)
+        CondaPkg.resolve(force = true)
         @test !isfile(curl_path)
     end
 end
 
 @testitem "install/remove libstdcxx_ng" begin
     include("setup.jl")
-    CondaPkg.add("libstdcxx-ng", version="<=julia", resolve=false)
-    CondaPkg.resolve(force=true)
-    CondaPkg.rm("libstdcxx-ng", resolve=false)
-    CondaPkg.resolve(force=true)
+    CondaPkg.add("libstdcxx-ng", version = "<=julia", resolve = false)
+    CondaPkg.resolve(force = true)
+    CondaPkg.rm("libstdcxx-ng", resolve = false)
+    CondaPkg.resolve(force = true)
     @test true
 end
 
 @testitem "install/remove opensll" begin
     include("setup.jl")
-    CondaPkg.add("openssl", version="<=julia", resolve=false)
-    CondaPkg.resolve(force=true)
-    CondaPkg.rm("openssl", resolve=false)
-    CondaPkg.resolve(force=true)
+    CondaPkg.add("openssl", version = "<=julia", resolve = false)
+    CondaPkg.resolve(force = true)
+    CondaPkg.rm("openssl", resolve = false)
+    CondaPkg.resolve(force = true)
     @test true
 end
 
@@ -159,16 +160,16 @@ end
         CondaPkg.resolve()
         @test !occursin("ca-certificates", status())
         # add a package to specs and install it
-        CondaPkg.add("ca-certificates"; interactive=true, force=true)  # force: spurious windows failures
+        CondaPkg.add("ca-certificates"; interactive = true, force = true)  # force: spurious windows failures
         @test occursin("ca-certificates", status())
         CondaPkg.withenv() do
-            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
+            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "", "ssl", "cacert.pem"))
         end
         # remove a package from specs, it must remain installed because we use a shared centralized env
-        CondaPkg.rm("ca-certificates"; interactive=true, force=true)
+        CondaPkg.rm("ca-certificates"; interactive = true, force = true)
         @test !occursin("ca-certificates", status())  # removed from specs ...
         CondaPkg.withenv() do  # ... but still installed (shared env might be used by specs from alternate julia versions)
-            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "",  "ssl", "cacert.pem"))
+            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "", "ssl", "cacert.pem"))
         end
     end
 end
@@ -176,12 +177,13 @@ end
 @testitem "shared env" begin
     include("setup.jl")
     isnull || withenv("JULIA_CONDAPKG_ENV" => "@my_env") do
-        CondaPkg.add("python"; force=true)
-        @test CondaPkg.envdir() == joinpath(Base.DEPOT_PATH[1], "conda_environments", "my_env")
+        CondaPkg.add("python"; force = true)
+        @test CondaPkg.envdir() ==
+              joinpath(Base.DEPOT_PATH[1], "conda_environments", "my_env")
         @test isfile(CondaPkg.envdir(Sys.iswindows() ? "python.exe" : "bin/python"))
     end
     isnull || withenv("JULIA_CONDAPKG_ENV" => "@/some/absolute/path") do
-        @test_throws ErrorException CondaPkg.add("python"; force=true)
+        @test_throws ErrorException CondaPkg.add("python"; force = true)
     end
 end
 
@@ -201,8 +203,8 @@ end
     include("setup.jl")
     @test_throws Exception CondaPkg.add("!invalid!package!")
     @test_throws Exception CondaPkg.add_pip("!invalid!package!")
-    @test_throws Exception CondaPkg.add("valid-package", version="*invalid*version*")
-    @test_throws Exception CondaPkg.add_pip("valid-package", version="*invalid*version*")
+    @test_throws Exception CondaPkg.add("valid-package", version = "*invalid*version*")
+    @test_throws Exception CondaPkg.add_pip("valid-package", version = "*invalid*version*")
     @test_throws Exception CondaPkg.add_channel("")
     @test !occursin("valid", status())
 end

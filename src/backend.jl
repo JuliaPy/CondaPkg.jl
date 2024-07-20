@@ -34,14 +34,16 @@ function backend()
     STATE.backend
 end
 
-function conda_cmd(args=``; io::IO=stderr)
+function conda_cmd(args = ``; io::IO = stderr)
     b = backend()
     if b == :MicroMamba
-        MicroMamba.cmd(args, io=io)
+        MicroMamba.cmd(args, io = io)
     elseif b in (:System, :Current)
         `$(STATE.condaexe) $args`
     elseif b == :Null
-        error("Can not run conda command when backend is Null. Manage conda actions outside of julia.")
+        error(
+            "Can not run conda command when backend is Null. Manage conda actions outside of julia.",
+        )
     else
         @assert false
     end

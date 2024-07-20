@@ -13,7 +13,8 @@ function _resolve_top_env(load_path)
             break
         end
     end
-    top_env == "" && error("no environment in the LOAD_PATH ($load_path) depends on CondaPkg")
+    top_env == "" &&
+        error("no environment in the LOAD_PATH ($load_path) depends on CondaPkg")
     top_env
 end
 
@@ -133,7 +134,7 @@ function _resolve_find_dependencies(io, load_path)
     orig_project = Pkg.project().path
     try
         for proj in load_path
-            Pkg.activate(proj; io=devnull)
+            Pkg.activate(proj; io = devnull)
             for env in [proj; [p.source for p in values(Pkg.dependencies())]]
                 dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
                 fn = joinpath(dir, "CondaPkg.toml")
@@ -170,7 +171,7 @@ function _resolve_find_dependencies(io, load_path)
             end
         end
     finally
-        Pkg.activate(orig_project; io=devnull)
+        Pkg.activate(orig_project; io = devnull)
     end
     if isempty(channels)
         push!(channels, ChannelSpec("conda-forge"))
@@ -189,22 +190,26 @@ function _resolve_merge_packages(packages, channels)
             append!(candidate_channels, (c.name for c in channels))
             filter!(c -> c in ("conda-forge", "anaconda", "pkgs/main"), candidate_channels)
             if isempty(candidate_channels)
-                error("can currently only install cpython from conda-forge, anaconda or pkgs/main channel")
+                error(
+                    "can currently only install cpython from conda-forge, anaconda or pkgs/main channel",
+                )
             end
             channel = first(candidate_channels)
             for (fn, pkg) in collect(pkgs)
                 if pkg.build == "**cpython**"
                     if pkg.channel == ""
-                        pkg = PkgSpec(pkg, channel=channel)
+                        pkg = PkgSpec(pkg, channel = channel)
                     end
                     if pkg.channel == "conda-forge"
                         build = "*cpython*"
                     elseif pkg.channel in ("anaconda", "pkgs/main")
                         build = ""
                     else
-                        error("can currently only install cpython from conda-forge, anaconda or pkgs/main channel")
+                        error(
+                            "can currently only install cpython from conda-forge, anaconda or pkgs/main channel",
+                        )
                     end
-                    pkg = PkgSpec(pkg, build=build)
+                    pkg = PkgSpec(pkg, build = build)
                     pkgs[fn] = pkg
                 end
             end
@@ -214,7 +219,7 @@ function _resolve_merge_packages(packages, channels)
             push!(specs, pkg)
         end
     end
-    sort!(unique!(specs), by=x->x.name)
+    sort!(unique!(specs), by = x -> x.name)
 end
 
 function abspathurl(args...)
@@ -251,7 +256,9 @@ function _resolve_merge_pip_packages(packages)
                 if binary in ("", pkg.binary)
                     binary = pkg.binary
                 else
-                    error("$(binary)-binary and $(pkg.binary)-binary both specified for pip package '$name'")
+                    error(
+                        "$(binary)-binary and $(pkg.binary)-binary both specified for pip package '$name'",
+                    )
                 end
             end
         end
@@ -260,14 +267,17 @@ function _resolve_merge_pip_packages(packages)
         if isempty(urls)
             version = join(versions, ",")
         elseif isempty(versions)
-            length(urls) == 1 || error("multiple direct references ('@ ...') given for pip package '$name'")
+            length(urls) == 1 ||
+                error("multiple direct references ('@ ...') given for pip package '$name'")
             version = "@ $(urls[1])"
         else
-            error("direct references ('@ ...') and version specifiers both given for pip package '$name'")
+            error(
+                "direct references ('@ ...') and version specifiers both given for pip package '$name'",
+            )
         end
-        push!(specs, PipPkgSpec(name, version=version, binary=binary))
+        push!(specs, PipPkgSpec(name, version = version, binary = binary))
     end
-    sort!(specs, by=x->x.name)
+    sort!(specs, by = x -> x.name)
 end
 
 function _resolve_diff(old_specs, new_specs)
@@ -283,9 +293,11 @@ function _resolve_diff(old_specs, new_specs)
     # find changes
     removed = collect(String, setdiff(keys(old_dict), keys(new_dict)))
     added = collect(String, setdiff(keys(new_dict), keys(old_dict)))
-    changed = String[k for k in intersect(keys(old_dict), keys(new_dict)) if old_dict[k] != new_dict[k]]
+    changed = String[
+        k for k in intersect(keys(old_dict), keys(new_dict)) if old_dict[k] != new_dict[k]
+    ]
     # don't remove pip, this avoids some flip-flopping when removing pip packages
-    filter!(x->x!="pip", removed)
+    filter!(x -> x != "pip", removed)
     return (removed, changed, added)
 end
 
@@ -296,7 +308,9 @@ function _resolve_pip_diff(old_specs, new_specs)
     # find changes
     removed = collect(String, setdiff(keys(old_dict), keys(new_dict)))
     added = collect(String, setdiff(keys(new_dict), keys(old_dict)))
-    changed = String[k for k in intersect(keys(old_dict), keys(new_dict)) if old_dict[k] != new_dict[k]]
+    changed = String[
+        k for k in intersect(keys(old_dict), keys(new_dict)) if old_dict[k] != new_dict[k]
+    ]
     return (removed, changed, added)
 end
 
@@ -306,18 +320,18 @@ end
 
 function _verbosity_flags()
     n = _verbosity()
-    n < 0 ? ["-"*"q"^(-n)] : n > 0 ? ["-"*"v"^n] : String[]
+    n < 0 ? ["-" * "q"^(-n)] : n > 0 ? ["-" * "v"^n] : String[]
 end
 
 function _resolve_conda_remove_all(io, conda_env)
     vrb = _verbosity_flags()
-    cmd = conda_cmd(`remove $vrb -y -p $conda_env --all`, io=io)
+    cmd = conda_cmd(`remove $vrb -y -p $conda_env --all`, io = io)
     flags = append!(["-y", "--all"], vrb)
-    _run(io, cmd, "Removing environment", flags=flags)
+    _run(io, cmd, "Removing environment", flags = flags)
     nothing
 end
 
-function _resolve_conda_install(io, conda_env, specs, channels; create=false)
+function _resolve_conda_install(io, conda_env, specs, channels; create = false)
     (length(specs) == 0 && !create) && return  # installing 0 packages is invalid
     args = String[]
     for spec in specs
@@ -327,17 +341,20 @@ function _resolve_conda_install(io, conda_env, specs, channels; create=false)
         push!(args, "-c", specstr(channel))
     end
     vrb = _verbosity_flags()
-    cmd = conda_cmd(`$(create ? "create" : "install") $vrb -y -p $conda_env --override-channels --no-channel-priority $args`, io=io)
+    cmd = conda_cmd(
+        `$(create ? "create" : "install") $vrb -y -p $conda_env --override-channels --no-channel-priority $args`,
+        io = io,
+    )
     flags = append!(["-y", "--override-channels", "--no-channel-priority"], vrb)
-    _run(io, cmd, create ? "Creating environment" : "Installing packages", flags=flags)
+    _run(io, cmd, create ? "Creating environment" : "Installing packages", flags = flags)
     nothing
 end
 
 function _resolve_conda_remove(io, conda_env, pkgs)
     vrb = _verbosity_flags()
-    cmd = conda_cmd(`remove $vrb -y -p $conda_env $pkgs`, io=io)
+    cmd = conda_cmd(`remove $vrb -y -p $conda_env $pkgs`, io = io)
     flags = append!(["-y"], vrb)
-    _run(io, cmd, "Removing packages", flags=flags)
+    _run(io, cmd, "Removing packages", flags = flags)
     nothing
 end
 
@@ -374,7 +391,7 @@ function _resolve_pip_install(io, pip_specs, load_path)
         withenv() do
             pip, _ = _which_pip()
             cmd = `$pip install $vrb $args`
-            _run(io, cmd, "Installing Pip packages", flags=flags)
+            _run(io, cmd, "Installing Pip packages", flags = flags)
         end
     finally
         STATE.resolved = false
@@ -397,7 +414,7 @@ function _resolve_pip_remove(io, pkgs, load_path)
             else
                 cmd = `$pip uninstall $vrb -y $pkgs`
             end
-            _run(io, cmd, "Removing Pip packages", flags=flags)
+            _run(io, cmd, "Removing Pip packages", flags = flags)
         end
     finally
         STATE.resolved = false
@@ -406,8 +423,8 @@ function _resolve_pip_remove(io, pkgs, load_path)
     nothing
 end
 
-function _log(printfunc::Function, io::IO, args...; label="CondaPkg", opts...)
-    printstyled(io, lpad(label, 12), " ", color=:green, bold=true)
+function _log(printfunc::Function, io::IO, args...; label = "CondaPkg", opts...)
+    printstyled(io, lpad(label, 12), " ", color = :green, bold = true)
     printfunc(io, args...; opts...)
     println(io)
     flush(io)
@@ -432,15 +449,15 @@ function _cmdlines(cmd, flags)
     lines
 end
 
-function _run(io::IO, cmd::Cmd, args...; flags=String[])
+function _run(io::IO, cmd::Cmd, args...; flags = String[])
     _log(io, args...)
     if _verbosity() ≥ 0
         lines = _cmdlines(cmd, flags)
         for (i, line) in enumerate(lines)
-            pre = i==length(lines) ? "└ " : "│ "
-            _log(io, label="") do io
+            pre = i == length(lines) ? "└ " : "│ "
+            _log(io, label = "") do io
                 print(io, pre)
-                printstyled(io, line, color=:light_black)
+                printstyled(io, line, color = :light_black)
             end
         end
     end
@@ -451,7 +468,12 @@ function offline()
     getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
 end
 
-function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dry_run::Bool=false)
+function resolve(;
+    force::Bool = false,
+    io::IO = stderr,
+    interactive::Bool = false,
+    dry_run::Bool = false,
+)
     # if frozen, do nothing
     STATE.frozen && return
     # if backend is Null, assume resolved
@@ -476,7 +498,9 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     conda_env = getpref(String, "env", "JULIA_CONDAPKG_ENV", "")
     if back === :Current
         conda_env = get(ENV, "CONDA_PREFIX", "")
-        conda_env != "" || error("CondaPkg is using the Current backend, but you are not in a Conda environment")
+        conda_env != "" || error(
+            "CondaPkg is using the Current backend, but you are not in a Conda environment",
+        )
         shared = true
     elseif conda_env == ""
         conda_env = joinpath(meta_dir, "env")
@@ -484,12 +508,14 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     elseif startswith(conda_env, "@")
         conda_env_name = conda_env[2:end]
         conda_env_name == "" && error("shared env name cannot be empty")
-        any(c -> c in ('\\', '/', '@', '#'), conda_env_name) && error("shared env name cannot include special characters")
+        any(c -> c in ('\\', '/', '@', '#'), conda_env_name) &&
+            error("shared env name cannot include special characters")
         conda_env = joinpath(Base.DEPOT_PATH[1], "conda_environments", conda_env_name)
         shared = true
     else
         isabspath(conda_env) || error("shared env must be an absolute path")
-        occursin(".CondaPkg", conda_env) && error("shared env must not be an existing .CondaPkg, select another directory")
+        occursin(".CondaPkg", conda_env) &&
+            error("shared env must not be an existing .CondaPkg, select another directory")
         shared = true
     end
     STATE.conda_env = conda_env
@@ -499,10 +525,10 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
     # grap a file lock so only one process can resolve this environment at a time
     mkpath(meta_dir)
     lock = try
-        Pidfile.mkpidlock(lock_file; wait=false)
+        Pidfile.mkpidlock(lock_file; wait = false)
     catch
         @info "CondaPkg: Waiting for lock to be freed. You may delete this file if no other process is resolving." lock_file
-        Pidfile.mkpidlock(lock_file; wait=true)
+        Pidfile.mkpidlock(lock_file; wait = true)
     end
     try
         # skip resolving if nothing has changed since the metadata was updated
@@ -512,17 +538,19 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             return
         end
         # find all dependencies
-        (packages, channels, pip_packages, extra_path) = _resolve_find_dependencies(io, load_path)
+        (packages, channels, pip_packages, extra_path) =
+            _resolve_find_dependencies(io, load_path)
         # install pip if there are pip packages to install
         if !isempty(pip_packages) && !haskey(packages, "pip")
-            get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] = PkgSpec("pip", version=">=22.0.0")
+            get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] =
+                PkgSpec("pip", version = ">=22.0.0")
             if !any(c.name in ("conda-forge", "anaconda") for c in channels)
                 push!(channels, ChannelSpec("conda-forge"))
             end
         end
         # sort channels
         # (in the future we might prioritise them)
-        sort!(unique!(channels), by=c->c.name)
+        sort!(unique!(channels), by = c -> c.name)
         # merge dependencies
         specs = _resolve_merge_packages(packages, channels)
         # merge pip dependencies
@@ -538,20 +566,30 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             added_pip_pkgs = unique!(String[x.name for x in pip_specs])
         else
             removed_pkgs, changed_pkgs, added_pkgs = _resolve_diff(meta.packages, specs)
-            removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs = _resolve_pip_diff(meta.pip_packages, pip_specs)
+            removed_pip_pkgs, changed_pip_pkgs, added_pip_pkgs =
+                _resolve_pip_diff(meta.pip_packages, pip_specs)
         end
         changes = sort([
-            (i>3 ? "$pkg (pip)" : pkg, mod1(i, 3))
-            for (i, pkgs) in enumerate([added_pkgs, changed_pkgs, removed_pkgs, added_pip_pkgs, changed_pip_pkgs, removed_pip_pkgs])
-            for pkg in pkgs
+            (i > 3 ? "$pkg (pip)" : pkg, mod1(i, 3)) for (i, pkgs) in enumerate([
+                added_pkgs,
+                changed_pkgs,
+                removed_pkgs,
+                added_pip_pkgs,
+                changed_pip_pkgs,
+                removed_pip_pkgs,
+            ]) for pkg in pkgs
         ])
         dry_run |= offline()
         if !isempty(changes)
-            _log(io, dry_run ? "Offline mode, these changes are not resolved" : "Resolving changes")
+            _log(
+                io,
+                dry_run ? "Offline mode, these changes are not resolved" :
+                "Resolving changes",
+            )
             for (pkg, i) in changes
-                char = i==1 ? "+" : i==2 ? "~" : "-"
-                color = i==1 ? :green : i==2 ? :yellow : :red
-                _log(io, char, " ", pkg, label="", color=color)
+                char = i == 1 ? "+" : i == 2 ? "~" : "-"
+                color = i == 1 ? :green : i == 2 ? :yellow : :red
+                _log(io, char, " ", pkg, label = "", color = color)
             end
         end
         # install/uninstall packages
@@ -568,12 +606,18 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
                 changed = true
                 _resolve_conda_remove(io, conda_env, removed_pkgs)
             end
-            if !isempty(specs) && (!isempty(added_pkgs) || !isempty(changed_pkgs) || (meta.channels != channels) || changed)
+            if !isempty(specs) && (
+                !isempty(added_pkgs) ||
+                !isempty(changed_pkgs) ||
+                (meta.channels != channels) ||
+                changed
+            )
                 dry_run && return
                 changed = true
                 _resolve_conda_install(io, conda_env, specs, channels)
             end
-            if !isempty(pip_specs) && (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
+            if !isempty(pip_specs) &&
+               (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
                 dry_run && return
                 changed = true
                 _resolve_pip_install(io, pip_specs, load_path)
@@ -593,7 +637,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
                 end
             end
             # create conda environment
-            _resolve_conda_install(io, conda_env, specs, channels; create=create)
+            _resolve_conda_install(io, conda_env, specs, channels; create = create)
             # install pip packages
             isempty(pip_specs) || _resolve_pip_install(io, pip_specs, load_path)
         end
@@ -608,7 +652,7 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
             channels = channels,
             pip_packages = pip_specs,
         )
-        open(io->write_meta(io, meta), meta_file, "w")
+        open(io -> write_meta(io, meta), meta_file, "w")
         # all done
         STATE.resolved = true
         return
@@ -618,10 +662,10 @@ function resolve(; force::Bool=false, io::IO=stderr, interactive::Bool=false, dr
 end
 
 function is_resolved()
-    resolve(io=devnull, dry_run=true)
+    resolve(io = devnull, dry_run = true)
     STATE.resolved
 end
 
 function update()
-    resolve(force=true, interactive=true)
+    resolve(force = true, interactive = true)
 end
