@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.23 (2024-07-20)
 * Pip packages are now installed using [`uv`](https://pypi.org/project/uv/) if it is installed.
 * Special handling of `openssl` for compatibility with `OpenSSL_jll` if it is installed.
 
