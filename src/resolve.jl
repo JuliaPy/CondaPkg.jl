@@ -96,6 +96,34 @@ function _compatible_libstdcxx_ng_version()
     end
 end
 
+"""
+    _compatible_openssl_version()
+
+Find the version that aligns with the installed `OpenSSL_jll` version, if any.
+
+See https://www.openssl.org/policies/releasestrat.html.
+"""
+function _compatible_openssl_version()
+    deps = Pkg.dependencies()
+    uuid = Base.UUID("458c3c95-2e84-50aa-8efc-19380b2a3a95")
+    dep = get(deps, uuid, nothing)
+    if (dep === nothing) || (dep.name != "OpenSSL_jll")
+        return nothing
+    end
+    version = dep.version
+    if version === nothing
+        return nothing
+    end
+    @debug "found OpenSSL_jll $version"
+    if version.major >= 3
+        # from v3, minor releases are ABI-compatible
+        return ">=$(version.major), <$(version.major).$(version.minor+1)"
+    else
+        # before this, only patch releases are ABI-compatible
+        return ">=$(version.major).$(version.minor), <$(version.major).$(version.minor).$(version.patch+1)"
+    end
+end
+
 function _resolve_find_dependencies(io, load_path)
     packages = Dict{String,Dict{String,PkgSpec}}() # name -> depsfile -> spec
     channels = ChannelSpec[]
@@ -120,6 +148,11 @@ function _resolve_find_dependencies(io, load_path)
                     for pkg in pkgs
                         if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
                             version = _compatible_libstdcxx_ng_version()
+                            version === nothing && continue
+                            pkg = PkgSpec(pkg; version)
+                        end
+                        if pkg.name == "openssl" && pkg.version == "<=julia"
+                            version = _compatible_openssl_version()
                             version === nothing && continue
                             pkg = PkgSpec(pkg; version)
                         end

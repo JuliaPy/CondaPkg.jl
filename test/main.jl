@@ -142,6 +142,15 @@ end
     @test true
 end
 
+@testitem "install/remove opensll" begin
+    include("setup.jl")
+    CondaPkg.add("openssl", version="<=julia", resolve=false)
+    CondaPkg.resolve(force=true)
+    CondaPkg.rm("openssl", resolve=false)
+    CondaPkg.resolve(force=true)
+    @test true
+end
+
 @testitem "external conda env" begin
     include("setup.jl")
     dn = string(tempname(), backend, Sys.KERNEL, VERSION)
