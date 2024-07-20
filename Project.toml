@@ -23,8 +23,9 @@ TOML = "1"
 julia = "1.6"
 
 [extras]
+OpenSSL_jll = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Test", "TestItemRunner"]
+test = ["OpenSSL_jll", "Test", "TestItemRunner"]
