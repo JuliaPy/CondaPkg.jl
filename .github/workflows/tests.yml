@@ -50,7 +50,7 @@ jobs:
       - uses: cjdoris/julia-downgrade-compat-action@v1
         if: ${{ matrix.version == '1.6' }}
         with:
-          skip: Markdown,Pkg,TOML
+          skip: Markdown,Pkg,TOML,Aqua,Test,TestItemRunner,OpenSSL_jll
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
