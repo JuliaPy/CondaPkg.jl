@@ -358,16 +358,26 @@ function _resolve_conda_remove(io, conda_env, pkgs)
     nothing
 end
 
-function _pip_cmd(backend::Symbol)
+function _pip_cmd(backend::Symbol, cmd::Cmd)
     if backend == :uv
         uv = which("uv")
         uv === nothing && error("uv not installed")
-        return `$uv pip`
+        ans = `$uv pip $(cmd[1])`
+        if cmd[1] in ("install", "uninstall")
+            ans = `$ans --prefix $(envdir())`
+        end
+        ans = `$ans $(cmd[2:end])`
+        return ans
     else
         @assert backend == :pip
         pip = which("pip")
         pip === nothing && error("pip not installed")
-        return `$pip`
+        ans = `$pip $(cmd[1])`
+        if cmd[1] == "uninstall"
+            ans = `$ans -y`
+        end
+        ans = `$ans $(cmd[2:end])`
+        return ans
     end
 end
 
@@ -390,8 +400,7 @@ function _resolve_pip_install(io, pip_specs, load_path, backend)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            pip = _pip_cmd(backend)
-            cmd = `$pip install $vrb $args`
+            cmd = _pip_cmd(backend, `install $vrb $args`)
             _run(io, cmd, "Installing Pip packages", flags = flags)
         end
     finally
@@ -409,12 +418,7 @@ function _resolve_pip_remove(io, pkgs, load_path, backend)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            pip = _pip_cmd(backend)
-            if backend == :uv
-                cmd = `$pip uninstall $vrb $pkgs`
-            else
-                cmd = `$pip uninstall $vrb -y $pkgs`
-            end
+            cmd = _pip_cmd(backend, `uninstall $vrb $pkgs`)
             _run(io, cmd, "Removing Pip packages", flags = flags)
         end
     finally
