@@ -358,19 +358,20 @@ function _resolve_conda_remove(io, conda_env, pkgs)
     nothing
 end
 
-function _which_pip()
-    uv = which("uv")
-    if uv !== nothing
-        return `$uv pip`, :uv
+function _pip_cmd(backend::Symbol)
+    if backend == :uv
+        uv = which("uv")
+        uv === nothing && error("uv not installed")
+        return `$uv pip`
+    else
+        @assert backend == :pip
+        pip = which("pip")
+        pip === nothing && error("pip not installed")
+        return `$pip`
     end
-    pip = which("pip")
-    if pip !== nothing
-        return `$pip`, :pip
-    end
-    error("expecting pip (or uv) to be installed")
 end
 
-function _resolve_pip_install(io, pip_specs, load_path)
+function _resolve_pip_install(io, pip_specs, load_path, backend)
     args = String[]
     for spec in pip_specs
         if spec.binary == "only"
@@ -389,7 +390,7 @@ function _resolve_pip_install(io, pip_specs, load_path)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            pip, _ = _which_pip()
+            pip = _pip_cmd(backend)
             cmd = `$pip install $vrb $args`
             _run(io, cmd, "Installing Pip packages", flags = flags)
         end
@@ -400,7 +401,7 @@ function _resolve_pip_install(io, pip_specs, load_path)
     nothing
 end
 
-function _resolve_pip_remove(io, pkgs, load_path)
+function _resolve_pip_remove(io, pkgs, load_path, backend)
     vrb = _verbosity_flags()
     flags = append!(["-y"], vrb)
     old_load_path = STATE.load_path
@@ -408,8 +409,8 @@ function _resolve_pip_remove(io, pkgs, load_path)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            pip, kind = _which_pip()
-            if kind == :uv
+            pip = _pip_cmd(backend)
+            if backend == :uv
                 cmd = `$pip uninstall $vrb $pkgs`
             else
                 cmd = `$pip uninstall $vrb -y $pkgs`
@@ -466,6 +467,17 @@ end
 
 function offline()
     getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
+end
+
+function _pip_backend()
+    b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
+    if b == "pip"
+        :pip
+    elseif b == "uv"
+        :uv
+    else
+        error("pip_backend must be pip or uv, got $b")
+    end
 end
 
 function resolve(;
@@ -541,11 +553,25 @@ function resolve(;
         (packages, channels, pip_packages, extra_path) =
             _resolve_find_dependencies(io, load_path)
         # install pip if there are pip packages to install
-        if !isempty(pip_packages) && !haskey(packages, "pip")
-            get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] =
-                PkgSpec("pip", version = ">=22.0.0")
-            if !any(c.name in ("conda-forge", "anaconda") for c in channels)
-                push!(channels, ChannelSpec("conda-forge"))
+        pip_backend = _pip_backend()
+        if !isempty(pip_packages)
+            if pip_backend == :pip
+                if !haskey(packages, "pip")
+                    if !any(c.name in ("conda-forge", "anaconda") for c in channels)
+                        push!(channels, ChannelSpec("conda-forge"))
+                    end
+                end
+                get!(Dict{String,PkgSpec}, packages, "pip")["<internal>"] =
+                    PkgSpec("pip", version = ">=22.0.0")
+            else
+                @assert pip_backend == :uv
+                if !haskey(packages, "uv")
+                    if !any(c.name in ("conda-forge",) for c in channels)
+                        push!(channels, ChannelSpec("conda-forge"))
+                    end
+                end
+                get!(Dict{String,PkgSpec}, packages, "uv")["<internal>"] =
+                    PkgSpec("uv", version = ">=0.4")
             end
         end
         # sort channels
@@ -599,7 +625,7 @@ function resolve(;
             if !isempty(removed_pip_pkgs) && !shared
                 dry_run && return
                 changed = true
-                _resolve_pip_remove(io, removed_pip_pkgs, load_path)
+                _resolve_pip_remove(io, removed_pip_pkgs, load_path, pip_backend)
             end
             if !isempty(removed_pkgs) && !shared
                 dry_run && return
@@ -620,7 +646,7 @@ function resolve(;
                (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
                 dry_run && return
                 changed = true
-                _resolve_pip_install(io, pip_specs, load_path)
+                _resolve_pip_install(io, pip_specs, load_path, pip_backend)
             end
             changed || _log(io, "Dependencies already up to date")
         else
@@ -639,7 +665,8 @@ function resolve(;
             # create conda environment
             _resolve_conda_install(io, conda_env, specs, channels; create = create)
             # install pip packages
-            isempty(pip_specs) || _resolve_pip_install(io, pip_specs, load_path)
+            isempty(pip_specs) ||
+                _resolve_pip_install(io, pip_specs, load_path, pip_backend)
         end
         # save metadata
         meta = Meta(
