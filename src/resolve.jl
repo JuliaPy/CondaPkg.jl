@@ -118,7 +118,7 @@ function _compatible_openssl_version()
     @debug "found OpenSSL_jll $version"
     if version.major >= 3
         # from v3, minor releases are ABI-compatible
-        return ">=$(version.major), <$(version.major).$(version.minor+1)"
+        return ">=$(version.major), <$(version.major+1)"
     else
         # before this, only patch releases are ABI-compatible
         return ">=$(version.major).$(version.minor), <$(version.major).$(version.minor).$(version.patch+1)"
