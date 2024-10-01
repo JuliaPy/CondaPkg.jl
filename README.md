@@ -158,6 +158,7 @@ in more detail.
 | `offline` | `JULIA_CONDAPKG_OFFLINE` | When `true`, work in offline mode. |
 | `env` | `JULIA_CONDAPKG_ENV` | Path to the Conda environment to use. |
 | `verbosity` | `JULIA_CONDAPKG_VERBOSITY` | One of `-1`, `0`, `1` or `2`. |
+| `pip_backend` | `JULIA_CONDAPKG_PIP_BACKEND` | One of `pip` or `uv`. |
 
 The easiest way to set these preferences is with the
 [`PreferenceTools`](https://github.com/cjdoris/PreferenceTools.jl)
@@ -218,6 +219,13 @@ You can control the verbosity of any `conda` or `pip` commands executed by setti
 - `-1` is quiet mode.
 - `0` is normal mode (the default).
 - `1`, `2`, etc. are verbose modes, useful for debugging.
+
+### Pip Backends
+
+You can control which package manager is used to install pip dependencies by setting the
+`pip_backend` preference to one of:
+- `pip`
+- `uv` (the default).
 
 ## Frequently Asked Questions
 
