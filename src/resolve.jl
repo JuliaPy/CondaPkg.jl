@@ -574,6 +574,11 @@ function resolve(;
                 end
                 get!(Dict{String,PkgSpec}, packages, "uv")["<internal>"] =
                     PkgSpec("uv", version = ">=0.4")
+                if !haskey(packages, "python")
+                    # uv will not detect the conda environment if python is not installed
+                    get!(Dict{String,PkgSpec}, packages, "python")["<internal>"] =
+                        PkgSpec("python")
+                end
             end
         end
         # sort channels
