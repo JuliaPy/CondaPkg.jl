@@ -27,22 +27,42 @@ function _resolve_env_is_clean(conda_env, meta)
 end
 
 function _resolve_can_skip_1(conda_env, load_path, meta_file)
-    isdir(conda_env) || return false
-    isfile(meta_file) || return false
+    if !isdir(conda_env)
+        @debug "conda env does not exist" conda_env
+        return false
+    end
+    if !isfile(meta_file)
+        @debug "meta file does not exist" meta_file
+        return false
+    end
     meta = open(read_meta, meta_file)
-    meta !== nothing || return false
-    meta.version == VERSION || return false
-    meta.load_path == load_path || return false
-    meta.conda_env == conda_env || return false
+    if meta === nothing
+        @debug "meta file was not readable" meta_file
+        return false
+    end
+    if meta.version != VERSION
+        @debug "meta version has changed" meta.version VERSION
+        return false
+    end
+    if meta.load_path != load_path
+        @debug "load path has changed" meta.load_path load_path
+        return false
+    end
+    if meta.conda_env != conda_env
+        @debug "conda env has changed" meta.conda_env conda_env
+        return false
+    end
     timestamp = max(meta.timestamp, stat(meta_file).mtime)
     for env in [meta.load_path; meta.extra_path]
         dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
         if isdir(dir)
             if stat(dir).mtime > timestamp
+                @debug "environment has changed" env dir timestamp
                 return false
             else
                 fn = joinpath(dir, "CondaPkg.toml")
                 if isfile(fn) && stat(fn).mtime > timestamp
+                    @debug "environment has changed" env fn timestamp
                     return false
                 end
             end
@@ -493,6 +513,7 @@ function resolve(;
     # if backend is Null, assume resolved
     back = backend()
     if back === :Null
+        @debug "using the null backend"
         interactive && _log(io, "Using the Null backend, nothing to do")
         STATE.resolved = true
         return
@@ -501,6 +522,7 @@ function resolve(;
     # this is a very fast check which avoids touching the file system
     load_path = Base.load_path()
     if !force && STATE.resolved && STATE.load_path == load_path
+        @debug "already resolved (fast path)"
         interactive && _log(io, "Dependencies already up to date (resolved)")
         return
     end
@@ -547,6 +569,7 @@ function resolve(;
     try
         # skip resolving if nothing has changed since the metadata was updated
         if !force && _resolve_can_skip_1(conda_env, load_path, meta_file)
+            @debug "already resolved"
             STATE.resolved = true
             interactive && _log(io, "Dependencies already up to date")
             return
