@@ -20,3 +20,5 @@ CondaPkg.STATE.meta_dir = ""
 CondaPkg.STATE.frozen = false
 CondaPkg.STATE.conda_env = ""
 CondaPkg.STATE.shared = false
+
+ENV["JULIA_DEBUG"] = "CondaPkg"
