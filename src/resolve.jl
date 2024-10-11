@@ -560,11 +560,13 @@ function resolve(;
     lock_file = joinpath(meta_dir, "lock")
     # grap a file lock so only one process can resolve this environment at a time
     mkpath(meta_dir)
-    lock = try
-        unsafe_skip_resolve() || Pidfile.mkpidlock(lock_file; wait = false)
-    catch
-        @info "CondaPkg: Waiting for lock to be freed. You may delete this file if no other process is resolving." lock_file
-        Pidfile.mkpidlock(lock_file; wait = true)
+    if unsafe_skip_resolve()
+        lock = try
+            Pidfile.mkpidlock(lock_file; wait = false)
+        catch
+            @info "CondaPkg: Waiting for lock to be freed. You may delete this file if no other process is resolving." lock_file
+            Pidfile.mkpidlock(lock_file; wait = true)
+        end
     end
     try
         # skip resolving if nothing has changed since the metadata was updated
@@ -714,7 +716,7 @@ function resolve(;
         STATE.resolved = true
         return
     finally
-        close(lock)
+        unsafe_skip_resolve() || close(lock)
     end
 end
 
