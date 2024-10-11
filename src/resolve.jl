@@ -521,7 +521,7 @@ function resolve(;
     # skip resolving if already resolved and LOAD_PATH unchanged
     # this is a very fast check which avoids touching the file system
     load_path = Base.load_path()
-    if !force && STATE.resolved && STATE.load_path == load_path
+    if (!force && STATE.resolved && STATE.load_path == load_path) || unsafe_skip_resolve()
         @debug "already resolved (fast path)"
         interactive && _log(io, "Dependencies already up to date (resolved)")
         return
@@ -725,4 +725,8 @@ end
 
 function update()
     resolve(force = true, interactive = true)
+end
+
+function unsafe_skip_resolve()
+    getpref(Bool, "unsafe_skip_resolve", "JULIA_CONDAPKG_UNSAFE_SKIP_RESOLVE", false)
 end
