@@ -560,7 +560,7 @@ function resolve(;
     lock_file = joinpath(meta_dir, "lock")
     # grap a file lock so only one process can resolve this environment at a time
     mkpath(meta_dir)
-    if unsafe_skip_resolve()
+    if !unsafe_skip_resolve()
         lock = try
             Pidfile.mkpidlock(lock_file; wait = false)
         catch
