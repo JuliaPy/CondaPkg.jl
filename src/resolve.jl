@@ -521,7 +521,7 @@ function resolve(;
     # skip resolving if already resolved and LOAD_PATH unchanged
     # this is a very fast check which avoids touching the file system
     load_path = Base.load_path()
-    if (!force && STATE.resolved && STATE.load_path == load_path) || unsafe_skip_resolve()
+    if !force && STATE.resolved && STATE.load_path == load_path
         @debug "already resolved (fast path)"
         interactive && _log(io, "Dependencies already up to date (resolved)")
         return
@@ -561,7 +561,7 @@ function resolve(;
     # grap a file lock so only one process can resolve this environment at a time
     mkpath(meta_dir)
     lock = try
-        Pidfile.mkpidlock(lock_file; wait = false)
+        unsafe_skip_resolve() || Pidfile.mkpidlock(lock_file; wait = false)
     catch
         @info "CondaPkg: Waiting for lock to be freed. You may delete this file if no other process is resolving." lock_file
         Pidfile.mkpidlock(lock_file; wait = true)
