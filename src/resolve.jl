@@ -559,8 +559,8 @@ function resolve(;
     meta_file = joinpath(meta_dir, "meta")
     lock_file = joinpath(meta_dir, "lock")
     # grap a file lock so only one process can resolve this environment at a time
-    mkpath(meta_dir)
     if !unsafe_skip_resolve()
+        mkpath(meta_dir)
         lock = try
             Pidfile.mkpidlock(lock_file; wait = false)
         catch
@@ -570,7 +570,8 @@ function resolve(;
     end
     try
         # skip resolving if nothing has changed since the metadata was updated
-        if !force && _resolve_can_skip_1(conda_env, load_path, meta_file)
+        if (!force && _resolve_can_skip_1(conda_env, load_path, meta_file)) ||
+           unsafe_skip_resolve()
             @debug "already resolved"
             STATE.resolved = true
             interactive && _log(io, "Dependencies already up to date")
