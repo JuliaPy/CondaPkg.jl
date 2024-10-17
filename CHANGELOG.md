@@ -2,6 +2,7 @@
 
 ## Unreleased
 * Add `pip_backend` preference.
+* Add `JULIA_CONDAPKG_UNSAFE_PARALLEL` environment variable to (unsafe) skip resolving, which is necessary to load in parallel or in read only environments.
 
 ## 0.2.23 (2024-07-20)
 * Pip packages are now installed using [`uv`](https://pypi.org/project/uv/) if it is installed.

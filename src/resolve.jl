@@ -491,6 +491,10 @@ function offline()
     getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
 end
 
+function unsafe_parallel()
+    getpref(Bool, "unsafe_parallel", "JULIA_CONDAPKG_UNSAFE_PARALLEL", false)
+end
+
 function _pip_backend()
     b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
     if b == "pip"
@@ -558,17 +562,20 @@ function resolve(;
     STATE.shared = shared
     meta_file = joinpath(meta_dir, "meta")
     lock_file = joinpath(meta_dir, "lock")
-    # grap a file lock so only one process can resolve this environment at a time
-    mkpath(meta_dir)
-    lock = try
-        Pidfile.mkpidlock(lock_file; wait = false)
-    catch
-        @info "CondaPkg: Waiting for lock to be freed. You may delete this file if no other process is resolving." lock_file
-        Pidfile.mkpidlock(lock_file; wait = true)
+    if !unsafe_parallel()
+        # grap a file lock so only one process can resolve this environment at a time
+        mkpath(meta_dir)
+        lock = try
+            Pidfile.mkpidlock(lock_file; wait = false)
+        catch
+            @info "CondaPkg: Waiting for lock to be freed. You may delete this file if no other process is resolving." lock_file
+            Pidfile.mkpidlock(lock_file; wait = true)
+        end
     end
     try
         # skip resolving if nothing has changed since the metadata was updated
-        if !force && _resolve_can_skip_1(conda_env, load_path, meta_file)
+        if (!force && _resolve_can_skip_1(conda_env, load_path, meta_file)) ||
+           unsafe_parallel()
             @debug "already resolved"
             STATE.resolved = true
             interactive && _log(io, "Dependencies already up to date")
@@ -714,7 +721,7 @@ function resolve(;
         STATE.resolved = true
         return
     finally
-        close(lock)
+        unsafe_parallel() || close(lock)
     end
 end
 
