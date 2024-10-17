@@ -491,6 +491,10 @@ function offline()
     getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
 end
 
+function unsafe_parallel()
+    getpref(Bool, "unsafe_parallel", "JULIA_CONDAPKG_UNSAFE_PARALLEL", false)
+end
+
 function _pip_backend()
     b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
     if b == "pip"
@@ -558,8 +562,8 @@ function resolve(;
     STATE.shared = shared
     meta_file = joinpath(meta_dir, "meta")
     lock_file = joinpath(meta_dir, "lock")
-    # grap a file lock so only one process can resolve this environment at a time
-    if !unsafe_skip_resolve()
+    if !unsafe_parallel()
+        # grap a file lock so only one process can resolve this environment at a time
         mkpath(meta_dir)
         lock = try
             Pidfile.mkpidlock(lock_file; wait = false)
@@ -571,7 +575,7 @@ function resolve(;
     try
         # skip resolving if nothing has changed since the metadata was updated
         if (!force && _resolve_can_skip_1(conda_env, load_path, meta_file)) ||
-           unsafe_skip_resolve()
+           unsafe_parallel()
             @debug "already resolved"
             STATE.resolved = true
             interactive && _log(io, "Dependencies already up to date")
@@ -717,7 +721,7 @@ function resolve(;
         STATE.resolved = true
         return
     finally
-        unsafe_skip_resolve() || close(lock)
+        unsafe_parallel() || close(lock)
     end
 end
 
@@ -728,8 +732,4 @@ end
 
 function update()
     resolve(force = true, interactive = true)
-end
-
-function unsafe_skip_resolve()
-    getpref(Bool, "unsafe_skip_resolve", "JULIA_CONDAPKG_UNSAFE_SKIP_RESOLVE", false)
 end
