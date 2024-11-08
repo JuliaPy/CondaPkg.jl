@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.24 (2024-11-08)
 * Add `pip_backend` preference to choose between `pip` and `uv`.
 * Add `libstdcxx_ng_version` preference to override automatic version bounds.
 * Add `openssl_version` preference to override automatic version bounds.
