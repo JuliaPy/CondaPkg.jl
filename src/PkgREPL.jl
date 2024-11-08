@@ -41,8 +41,7 @@ $
     name = m.captures[1]
     extras = split(something(m.captures[3], ""), ",", keepempty = false)
     version = something(m.captures[4], "")
-    spec = CondaPkg.PipPkgSpec(name, version = version, binary = binary, extras = extras)
-    @show spec
+    CondaPkg.PipPkgSpec(name, version = version, binary = binary, extras = extras)
 end
 
 function parse_channel(x::String)
