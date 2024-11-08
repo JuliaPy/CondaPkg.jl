@@ -104,20 +104,31 @@ Version of libstdcxx-ng compatible with the libstdc++ loaded into Julia.
 Specifying the package "libstdcxx-ng" with version "<=julia" will replace the version with
 this one. This should be used by anything which embeds Python into the Julia process - for
 instance it is used by PythonCall.
+
+Overridden by the `libstdcxx_ng_version` preference.
 """
 function _compatible_libstdcxx_ng_version()
+    bound =
+        getpref(String, "libstdcxx_ng_version", "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION", "")
+    if bound == "ignore"
+        return nothing
+    elseif bound != ""
+        return bound
+    end
     if !Sys.islinux()
-        return
+        return nothing
     end
     loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version()
     if loaded_libstdcxx_version === nothing
-        return
+        return nothing
     end
+    @debug "found libstdcxx $(loaded_libstdcxx_version)"
     for (version, bound) in _compatible_libstdcxx_ng_versions
         if loaded_libstdcxx_version ≥ version
             return bound
         end
     end
+    return nothing
 end
 
 """
@@ -126,8 +137,16 @@ end
 Find the version that aligns with the installed `OpenSSL_jll` version, if any.
 
 See https://www.openssl.org/policies/releasestrat.html.
+
+Overridden by the `openssl_version` preference.
 """
 function _compatible_openssl_version()
+    bound = getpref(String, "openssl_version", "JULIA_CONDAPKG_OPENSSL_VERSION", "")
+    if bound == "ignore"
+        return nothing
+    elseif bound != ""
+        return bound
+    end
     deps = Pkg.dependencies()
     uuid = Base.UUID("458c3c95-2e84-50aa-8efc-19380b2a3a95")
     dep = get(deps, uuid, nothing)

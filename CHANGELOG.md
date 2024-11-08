@@ -2,6 +2,8 @@
 
 ## Unreleased
 * Add `pip_backend` preference.
+* Add `libstdcxx_ng_version` preference.
+* Add `openssl_version` preference.
 
 ## 0.2.23 (2024-07-20)
 * Pip packages are now installed using [`uv`](https://pypi.org/project/uv/) if it is installed.

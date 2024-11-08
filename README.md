@@ -159,6 +159,8 @@ in more detail.
 | `env` | `JULIA_CONDAPKG_ENV` | Path to the Conda environment to use. |
 | `verbosity` | `JULIA_CONDAPKG_VERBOSITY` | One of `-1`, `0`, `1` or `2`. |
 | `pip_backend` | `JULIA_CONDAPKG_PIP_BACKEND` | One of `pip` or `uv`. |
+| `libstdcxx_ng_version` | `JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION` | Either `ignore` or a version specifier. |
+| `openssl_version` | `JULIA_CONDAPKG_OPENSSL_VERSION` | Either `ignore` or a version specifier. |
 
 The easiest way to set these preferences is with the
 [`PreferenceTools`](https://github.com/cjdoris/PreferenceTools.jl)
@@ -226,6 +228,23 @@ You can control which package manager is used to install pip dependencies by set
 `pip_backend` preference to one of:
 - `pip`
 - `uv` (the default).
+
+### Compatibility between Julia and Conda packages
+
+If you use both a Julia package and a Conda package which both use the same underlying
+shared library, there can be compatibility issues if they are at different versions.
+
+To alleviate this, CondaPkg handles some packages specially. For the following Conda
+packages, if the version is set to `<=julia`, then a version of that package compatible
+with the corresponding Julia package will be installed.
+- `libstdcxx-ng`: Compatible with libstdcxx in `Base`.
+- `openssl`: Compatible with `OpenSSL_jll` (if installed).
+
+You can override this behaviour with the `libstdcxx_ng_version` and `openssl_version`
+preferences. These can be set to one of:
+- A (non-empty) specific Conda version specifier.
+- `ignore` to ignore the compatibility constraint entirely.
+- Unset or the empty string for the default behaviour.
 
 ## Frequently Asked Questions
 
