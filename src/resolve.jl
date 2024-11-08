@@ -77,8 +77,11 @@ _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 # B is a compatible bound for libstdcxx_ng.
 # See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
 # See https://gcc.gnu.org/develop.html#timeline.
+# Last updated: 2024-11-08
 const _compatible_libstdcxx_ng_versions = [
-    (v"3.4.31", ">=3.4,<=13.1"),
+    (v"3.4.33", ">=3.4,<14.3"),
+    (v"3.4.32", ">=3.4,<14.0"),
+    (v"3.4.31", ">=3.4,<13.2"),
     (v"3.4.30", ">=3.4,<13.0"),
     (v"3.4.29", ">=3.4,<12.0"),
     (v"3.4.28", ">=3.4,<11.0"),
