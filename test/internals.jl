@@ -59,3 +59,67 @@ end
         @test CondaPkg.abspathurl("/Foo/bar.TXT") == "file:///Foo/bar.TXT"
     end
 end
+
+@testitem "_compatible_libstdcxx_ng_version" begin
+    include("setup.jl")
+    key = "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION"
+    orig_bound = pop!(ENV, key, nothing)
+    try
+        @testset "$new_bound" for new_bound in [nothing, "", "foo"]
+            if new_bound === nothing
+                delete!(ENV, key)
+            else
+                ENV[key] = new_bound
+            end
+            bound = CondaPkg._compatible_libstdcxx_ng_version()
+            if new_bound === nothing || new_bound == ""
+                if Sys.islinux()
+                    if bound !== nothing
+                        @test bound isa String
+                        @test startswith(bound, ">=")
+                    end
+                else
+                    @test bound === nothing
+                end
+            else
+                @test bound == new_bound
+            end
+        end
+    finally
+        if orig_bound === nothing
+            delete!(ENV, key)
+        else
+            ENV[key] = orig_bound
+        end
+    end
+end
+
+@testitem "_compatible_openssl_version" begin
+    include("setup.jl")
+    key = "JULIA_CONDAPKG_OPENSSL_VERSION"
+    orig_bound = pop!(ENV, key, nothing)
+    try
+        @testset "$new_bound" for new_bound in [nothing, "", "foo"]
+            if new_bound === nothing
+                delete!(ENV, key)
+            else
+                ENV[key] = new_bound
+            end
+            bound = CondaPkg._compatible_openssl_version()
+            if new_bound === nothing || new_bound == ""
+                if bound !== nothing
+                    @test bound isa String
+                    @test startswith(bound, ">=")
+                end
+            else
+                @test bound == new_bound
+            end
+        end
+    finally
+        if orig_bound === nothing
+            delete!(ENV, key)
+        else
+            ENV[key] = orig_bound
+        end
+    end
+end

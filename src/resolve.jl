@@ -77,8 +77,11 @@ _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 # B is a compatible bound for libstdcxx_ng.
 # See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
 # See https://gcc.gnu.org/develop.html#timeline.
+# Last updated: 2024-11-08
 const _compatible_libstdcxx_ng_versions = [
-    (v"3.4.31", ">=3.4,<=13.1"),
+    (v"3.4.33", ">=3.4,<14.3"),
+    (v"3.4.32", ">=3.4,<14.0"),
+    (v"3.4.31", ">=3.4,<13.2"),
     (v"3.4.30", ">=3.4,<13.0"),
     (v"3.4.29", ">=3.4,<12.0"),
     (v"3.4.28", ">=3.4,<11.0"),
@@ -101,20 +104,31 @@ Version of libstdcxx-ng compatible with the libstdc++ loaded into Julia.
 Specifying the package "libstdcxx-ng" with version "<=julia" will replace the version with
 this one. This should be used by anything which embeds Python into the Julia process - for
 instance it is used by PythonCall.
+
+Overridden by the `libstdcxx_ng_version` preference.
 """
 function _compatible_libstdcxx_ng_version()
+    bound =
+        getpref(String, "libstdcxx_ng_version", "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION", "")
+    if bound == "ignore"
+        return nothing
+    elseif bound != ""
+        return bound
+    end
     if !Sys.islinux()
-        return
+        return nothing
     end
     loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version()
     if loaded_libstdcxx_version === nothing
-        return
+        return nothing
     end
+    @debug "found libstdcxx $(loaded_libstdcxx_version)"
     for (version, bound) in _compatible_libstdcxx_ng_versions
         if loaded_libstdcxx_version ≥ version
             return bound
         end
     end
+    return nothing
 end
 
 """
@@ -123,8 +137,16 @@ end
 Find the version that aligns with the installed `OpenSSL_jll` version, if any.
 
 See https://www.openssl.org/policies/releasestrat.html.
+
+Overridden by the `openssl_version` preference.
 """
 function _compatible_openssl_version()
+    bound = getpref(String, "openssl_version", "JULIA_CONDAPKG_OPENSSL_VERSION", "")
+    if bound == "ignore"
+        return nothing
+    elseif bound != ""
+        return bound
+    end
     deps = Pkg.dependencies()
     uuid = Base.UUID("458c3c95-2e84-50aa-8efc-19380b2a3a95")
     dep = get(deps, uuid, nothing)
