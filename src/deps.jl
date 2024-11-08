@@ -212,6 +212,9 @@ function status(; io::IO = stderr)
             specparts = String[]
             pkg.version == "" || push!(specparts, pkg.version)
             pkg.binary == "" || push!(specparts, "$(pkg.binary)-binary")
+            if !isempty(pkg.extras)
+                push!(specparts, "[$(join(pkg.extras, ", "))]")
+            end
             isempty(specparts) ||
                 printstyled(io, " (", join(specparts, ", "), ")", color = :light_black)
             println(io)
