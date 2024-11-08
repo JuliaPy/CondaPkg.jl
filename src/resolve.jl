@@ -188,7 +188,6 @@ function _resolve_find_dependencies(io, load_path)
                     end
                     _log(io, "Found dependencies: $fn")
                     pkgs, chans, pippkgs = read_parsed_deps(fn)
-                    @debug "found dependencies" pkgs chans pippkgs
                     for pkg in pkgs
                         if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
                             version = _compatible_libstdcxx_ng_version()
@@ -436,7 +435,6 @@ function _resolve_pip_install(io, pip_specs, load_path, backend)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            @debug "pip install" get(ENV, "CONDA_PREFIX", "")
             pip = _pip_cmd(backend)
             cmd = `$pip install $vrb $args`
             _run(io, cmd, "Installing Pip packages", flags = flags)
@@ -456,7 +454,6 @@ function _resolve_pip_remove(io, pkgs, load_path, backend)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            @debug "pip uninstall" get(ENV, "CONDA_PREFIX", "")
             pip = _pip_cmd(backend)
             if backend == :uv
                 cmd = `$pip uninstall $vrb $pkgs`
