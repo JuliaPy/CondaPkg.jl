@@ -1,9 +1,10 @@
 # Changelog
 
 ## Unreleased
-* Add `pip_backend` preference.
-* Add `libstdcxx_ng_version` preference.
-* Add `openssl_version` preference.
+* Add `pip_backend` preference to choose between `pip` and `uv`.
+* Add `libstdcxx_ng_version` preference to override automatic version bounds.
+* Add `openssl_version` preference to override automatic version bounds.
+* Pip packages now support extras.
 
 ## 0.2.23 (2024-07-20)
 * Pip packages are now installed using [`uv`](https://pypi.org/project/uv/) if it is installed.

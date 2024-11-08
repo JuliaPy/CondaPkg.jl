@@ -116,17 +116,23 @@ struct PipPkgSpec
     name::String
     version::String
     binary::String
-    function PipPkgSpec(name; version = "", binary = "")
+    extras::Vector{String}
+    function PipPkgSpec(name; version = "", binary = "", extras = String[])
         name = validate_pip_pkg(name)
         version = validate_pip_version(version)
         binary = validate_pip_binary(binary)
-        new(name, version, binary)
+        extras = validate_pip_extras(extras)
+        new(name, version, binary, extras)
     end
 end
 
 Base.:(==)(x::PipPkgSpec, y::PipPkgSpec) =
-    (x.name == y.name) && (x.version == y.version) && (x.binary == y.binary)
-Base.hash(x::PipPkgSpec, h::UInt) = hash(x.binary, hash(x.version, hash(x.name, h)))
+    (x.name == y.name) &&
+    (x.version == y.version) &&
+    (x.binary == y.binary) &&
+    (x.extras == y.extras)
+Base.hash(x::PipPkgSpec, h::UInt) =
+    hash(x.extras, hash(x.binary, hash(x.version, hash(x.name, h))))
 
 is_valid_pip_pkg(name) = occursin(r"^\s*[-_.A-Za-z0-9]+\s*$", name)
 
@@ -161,4 +167,26 @@ validate_pip_binary(x) =
         error("invalid pip binary: $(repr(x)) (expecting \"only\" or \"no\")")
     end
 
-specstr(x::PipPkgSpec) = x.version == "" ? x.name : string(x.name, " ", x.version)
+validate_pip_extras(x) = sort!(unique!(map(validate_pip_extra, convert(Vector{String}, x))))
+
+is_valid_pip_extra(x) = is_valid_pip_pkg(x)
+
+normalise_pip_extra(x) = normalise_pip_pkg(x)
+
+validate_pip_extra(x) =
+    if is_valid_pip_extra(x)
+        return normalise_pip_extra(x)
+    else
+        error("invalid pip extra: $(repr(x))")
+    end
+
+function specstr(x::PipPkgSpec)
+    parts = String[x.name]
+    if !isempty(x.extras)
+        push!(parts, " [", join(x.extras, ", "), "]")
+    end
+    if x.version != ""
+        push!(parts, " ", x.version)
+    end
+    return join(parts)
+end

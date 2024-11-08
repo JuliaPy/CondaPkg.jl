@@ -21,11 +21,14 @@ end
 
 @testitem "add/rm pip package" begin
     include("setup.jl")
-    CondaPkg.PkgREPL.pip_add(["six==1.16.0"])
+    CondaPkg.PkgREPL.pip_add(["six==1.16.0", "pydantic[email]==2.9.2"])
     @test occursin("six", status())
     @test occursin("(==1.16.0)", status())
-    CondaPkg.PkgREPL.pip_rm(["six"])
+    @test occursin("pydantic", status())
+    @test occursin("(==2.9.2)", status())
+    CondaPkg.PkgREPL.pip_rm(["six", "pydantic"])
     @test !occursin("six", status())
+    @test !occursin("pydantic", status())
 end
 
 @testitem "status" begin

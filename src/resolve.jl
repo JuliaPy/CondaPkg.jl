@@ -188,6 +188,7 @@ function _resolve_find_dependencies(io, load_path)
                     end
                     _log(io, "Found dependencies: $fn")
                     pkgs, chans, pippkgs = read_parsed_deps(fn)
+                    @debug "found dependencies" pkgs chans pippkgs
                     for pkg in pkgs
                         if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
                             version = _compatible_libstdcxx_ng_version()
@@ -283,6 +284,7 @@ function _resolve_merge_pip_packages(packages)
         versions = String[]
         urls = String[]
         binary = ""
+        extras = String[]
         for (fn, pkg) in pkgs
             @assert pkg.name == name
             if startswith(pkg.version, "@")
@@ -303,9 +305,11 @@ function _resolve_merge_pip_packages(packages)
                     )
                 end
             end
+            append!(extras, pkg.extras)
         end
         sort!(unique!(urls))
         sort!(unique!(versions))
+        sort!(unique!(extras))
         if isempty(urls)
             version = join(versions, ",")
         elseif isempty(versions)
@@ -317,7 +321,7 @@ function _resolve_merge_pip_packages(packages)
                 "direct references ('@ ...') and version specifiers both given for pip package '$name'",
             )
         end
-        push!(specs, PipPkgSpec(name, version = version, binary = binary))
+        push!(specs, PipPkgSpec(name, version = version, binary = binary, extras = extras))
     end
     sort!(specs, by = x -> x.name)
 end
