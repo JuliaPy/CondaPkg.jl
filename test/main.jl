@@ -144,7 +144,7 @@ end
     # install package with extras
     CondaPkg.add_pip("pydantic", version = "==2.9.2", extras = ["email"])
     @test occursin("pydantic", status())
-    @test occursin("(==2.9.2)", status())
+    @test occursin("(==2.9.2, [email])", status())
     CondaPkg.withenv() do
         isnull || run(`python -c "import pydantic"`)
         isnull || run(`python -c "import email_validator"`)

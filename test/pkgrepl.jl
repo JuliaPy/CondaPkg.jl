@@ -25,7 +25,7 @@ end
     @test occursin("six", status())
     @test occursin("(==1.16.0)", status())
     @test occursin("pydantic", status())
-    @test occursin("(==2.9.2)", status())
+    @test occursin("(==2.9.2, [email])", status())
     CondaPkg.PkgREPL.pip_rm(["six", "pydantic"])
     @test !occursin("six", status())
     @test !occursin("pydantic", status())
