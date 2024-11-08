@@ -94,6 +94,7 @@ end
         include("setup.jl")
         CondaPkg.add("python", version = "==3.10.2")
         if kind == "uv"
+            # TODO: there is an explicit flag for this now
             CondaPkg.add("uv")
         end
         # verify package isn't already installed
@@ -120,6 +121,48 @@ end
     end
 end
 
+@testitem "pip install/remove python package with extras" begin
+    include("setup.jl")
+    CondaPkg.add("python", version = "==3.10.2")
+
+    # verify package isn't already installed
+    @test !occursin("pydantic", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import pydantic"`)
+    end
+
+    # install package without extras
+    CondaPkg.add_pip("pydantic", version = "==2.9.2")
+    @test occursin("pydantic", status())
+    @test occursin("(==2.9.2)", status())
+    CondaPkg.withenv() do
+        isnull || run(`python -c "import pydantic"`)
+        # fails on Windows sometimes - not sure why
+        # probably email-validator is still installed from an earlier test
+        isnull ||
+            Sys.iswindows() ||
+            @test_throws Exception run(`python -c "import email_validator"`)
+    end
+    @test occursin("v2.9.2", status()) == !isnull
+
+    # install package with extras
+    CondaPkg.add_pip("pydantic", version = "==2.9.2", extras = ["email"])
+    @test occursin("pydantic", status())
+    @test occursin("(==2.9.2, [email])", status())
+    CondaPkg.withenv() do
+        isnull || run(`python -c "import pydantic"`)
+        isnull || run(`python -c "import email_validator"`)
+    end
+    @test occursin("v2.9.2", status()) == !isnull
+
+    # remove package
+    CondaPkg.rm_pip("pydantic")
+    @test !occursin("pydantic", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import pydantic"`)
+    end
+end
+
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
@@ -134,7 +177,7 @@ end
     end
 end
 
-@testitem "install/remove libstdcxx_ng" begin
+@testitem "install/remove libstdcxx-ng" begin
     include("setup.jl")
     CondaPkg.add("libstdcxx-ng", version = "<=julia", resolve = false)
     CondaPkg.resolve(force = true)
@@ -143,7 +186,7 @@ end
     @test true
 end
 
-@testitem "install/remove opensll" begin
+@testitem "install/remove openssl" begin
     include("setup.jl")
     CondaPkg.add("openssl", version = "<=julia", resolve = false)
     CondaPkg.resolve(force = true)

@@ -79,6 +79,7 @@ function parse_deps(toml)
             for (name, dep) in pip_deps
                 version = ""
                 binary = ""
+                extras = String[]
                 if dep isa AbstractString
                     version = _convert(String, dep)
                 elseif dep isa AbstractDict
@@ -87,14 +88,18 @@ function parse_deps(toml)
                             version = _convert(String, v)
                         elseif k == "binary"
                             binary = _convert(String, v)
+                        elseif k == "extras"
+                            extras = _convert(Vector{String}, v)
                         else
-                            error("pip.deps keys must be 'version' or 'binary', got '$k'")
+                            error(
+                                "pip.deps keys must be 'version', 'extras' or 'binary', got '$k'",
+                            )
                         end
                     end
                 else
                     error("pip.deps must be String or Dict, got $(typeof(dep))")
                 end
-                pkg = PipPkgSpec(name, version = version, binary = binary)
+                pkg = PipPkgSpec(name, version = version, binary = binary, extras = extras)
                 push!(pip_packages, pkg)
             end
         end
@@ -207,6 +212,9 @@ function status(; io::IO = stderr)
             specparts = String[]
             pkg.version == "" || push!(specparts, pkg.version)
             pkg.binary == "" || push!(specparts, "$(pkg.binary)-binary")
+            if !isempty(pkg.extras)
+                push!(specparts, "[$(join(pkg.extras, ", "))]")
+            end
             isempty(specparts) ||
                 printstyled(io, " (", join(specparts, ", "), ")", color = :light_black)
             println(io)
@@ -274,6 +282,9 @@ function add!(toml, pkg::PipPkgSpec)
     end
     if pkg.binary != ""
         dep["binary"] = pkg.binary
+    end
+    if !isempty(pkg.extras)
+        dep["extras"] = pkg.extras
     end
     if issubset(keys(dep), ["version"])
         deps[pkg.name] = pkg.version
@@ -353,7 +364,7 @@ Removes a channel from the current environment.
 rm_channel(channel::AbstractString; kw...) = rm(ChannelSpec(channel); kw...)
 
 """
-    add_pip(pkg; version="", binary="", resolve=true)
+    add_pip(pkg; version="", binary="", extras=[], resolve=true)
 
 Adds a pip dependency to the current environment.
 
@@ -362,8 +373,8 @@ Adds a pip dependency to the current environment.
     Use conda dependencies instead if at all possible. Pip does not handle version
     conflicts gracefully, so it is possible to get incompatible versions.
 """
-add_pip(pkg::AbstractString; version = "", binary = "", kw...) =
-    add(PipPkgSpec(pkg, version = version, binary = binary); kw...)
+add_pip(pkg::AbstractString; version = "", binary = "", extras = String[], kw...) =
+    add(PipPkgSpec(pkg, version = version, binary = binary, extras = extras); kw...)
 
 """
     rm_pip(pkg; resolve=true)

@@ -283,6 +283,7 @@ function _resolve_merge_pip_packages(packages)
         versions = String[]
         urls = String[]
         binary = ""
+        extras = String[]
         for (fn, pkg) in pkgs
             @assert pkg.name == name
             if startswith(pkg.version, "@")
@@ -303,9 +304,11 @@ function _resolve_merge_pip_packages(packages)
                     )
                 end
             end
+            append!(extras, pkg.extras)
         end
         sort!(unique!(urls))
         sort!(unique!(versions))
+        sort!(unique!(extras))
         if isempty(urls)
             version = join(versions, ",")
         elseif isempty(versions)
@@ -317,7 +320,7 @@ function _resolve_merge_pip_packages(packages)
                 "direct references ('@ ...') and version specifiers both given for pip package '$name'",
             )
         end
-        push!(specs, PipPkgSpec(name, version = version, binary = binary))
+        push!(specs, PipPkgSpec(name, version = version, binary = binary, extras = extras))
     end
     sort!(specs, by = x -> x.name)
 end
@@ -432,7 +435,6 @@ function _resolve_pip_install(io, pip_specs, load_path, backend)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            @debug "pip install" get(ENV, "CONDA_PREFIX", "")
             pip = _pip_cmd(backend)
             cmd = `$pip install $vrb $args`
             _run(io, cmd, "Installing Pip packages", flags = flags)
@@ -452,7 +454,6 @@ function _resolve_pip_remove(io, pkgs, load_path, backend)
         STATE.resolved = true
         STATE.load_path = load_path
         withenv() do
-            @debug "pip uninstall" get(ENV, "CONDA_PREFIX", "")
             pip = _pip_cmd(backend)
             if backend == :uv
                 cmd = `$pip uninstall $vrb $pkgs`

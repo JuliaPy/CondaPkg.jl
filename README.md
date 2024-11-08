@@ -85,9 +85,10 @@ six = ""
 some-remote-package = "@ https://example.com/foo.zip"
 some-local-package = "@ ./foo.zip"
 
-[pip.deps.nmslib]
+[pip.deps.pydantic]
 # Long syntax to specify other fields
 version = "~=2.1"
+extras = ["email", "timezone"]
 binary = "no"  # or "only"
 ```
 
@@ -137,12 +138,15 @@ By default, packages are installed from the `conda-forge` channel.
 
 ### Pip packages
 
-Direct references such as `foo@http://example.com/foo.zip` are allowed. As a special case
-if the URL starts with `.` then it is interpreted as a path relative to the directory
-containing the `CondaPkg.toml` file.
+Direct references such as `pkg> conda pip_add foo@http://example.com/foo.zip` are allowed.
+As a special case if the URL starts with `.` then it is interpreted as a path relative
+to the directory containing the `CondaPkg.toml` file.
 
-Additionally the binary mode specifies whether to only use binary distributions ("only") or
-to never use them ("no").
+The binary mode specifies whether to only use binary distributions ("only") or to never
+use them ("no").
+
+Extras (also known as optional dependencies) can be installed like
+`pkg> conda pip_add foo[some-extra,another-extra]`.
 
 ### Preferences
 

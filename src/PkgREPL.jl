@@ -31,6 +31,7 @@ function parse_pip_pkg(x::String; binary::String = "")
         r"""
 ^
 ([-_.A-Za-z0-9]+)
+(\[([^\]]*)\])?
 ([~!<>=@].*)?
 $
 """x,
@@ -38,8 +39,9 @@ $
     )
     m === nothing && error("invalid pip package: $x")
     name = m.captures[1]
-    version = something(m.captures[2], "")
-    CondaPkg.PipPkgSpec(name, version = version, binary = binary)
+    extras = split(something(m.captures[3], ""), ",", keepempty = false)
+    version = something(m.captures[4], "")
+    CondaPkg.PipPkgSpec(name, version = version, binary = binary, extras = extras)
 end
 
 function parse_channel(x::String)
@@ -204,8 +206,9 @@ Add Pip packages to the environment.
 
 ```
 pkg> conda pip_add build
-pkg> conda pip_add build~=0.7          # version range
-pkg> conda pip_add --binary=no nmslib  # always build from source
+pkg> conda pip_add build~=0.7                # version range
+pkg> conda pip_add pydantic[email,timezone]  # extras
+pkg> conda pip_add --binary=no nmslib        # always build from source
 ```
 """)
 
