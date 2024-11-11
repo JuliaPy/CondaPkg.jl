@@ -114,15 +114,31 @@ function read_parsed_deps(file)
 end
 
 function current_packages()
-    cmd = conda_cmd(`list -p $(envdir()) --json`)
-    pkglist = JSON3.read(cmd)
+    b = backend()
+    if b in CONDA_BACKENDS
+        cmd = conda_cmd(`list -p $(envdir()) --json`)
+        pkglist = JSON3.read(cmd)
+    elseif b in PIXI_BACKENDS
+        cmd =
+            pixi_cmd(`list --manifest-path $(joinpath(STATE.meta_dir, "pixi.toml")) --json`)
+        pkglist = JSON3.read(cmd)
+        pkglist = [pkg for pkg in pkglist if pkg.kind == "conda"]
+    end
     Dict(normalise_pkg(pkg.name) => pkg for pkg in pkglist)
 end
 
 function current_pip_packages()
-    pkglist = withenv() do
-        cmd = `$(which("pip")) list --format=json`
-        JSON3.read(cmd)
+    b = backend()
+    if b in CONDA_BACKENDS
+        pkglist = withenv() do
+            cmd = `$(which("pip")) list --format=json`
+            JSON3.read(cmd)
+        end
+    elseif b in PIXI_BACKENDS
+        cmd =
+            pixi_cmd(`list --manifest-path $(joinpath(STATE.meta_dir, "pixi.toml")) --json`)
+        pkglist = JSON3.read(cmd)
+        pkglist = [pkg for pkg in pkglist if pkg.kind == "pypi"]
     end
     Dict(normalise_pip_pkg(pkg.name) => pkg for pkg in pkglist)
 end
