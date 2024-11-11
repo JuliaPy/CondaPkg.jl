@@ -767,7 +767,7 @@ function resolve(;
                         "channels" => String[specstr(channel) for channel in channels],
                         "channel-priority" => "disabled",
                     ),
-                    # TODO: dedupe dependencies
+                    # TODO: deduplicate dependencies
                     "dependencies" =>
                         Dict{String,Any}(spec.name => pixispec(spec) for spec in specs),
                 )
@@ -775,7 +775,14 @@ function resolve(;
                     pixitoml["pypi-dependencies"] =
                         Dict{String,Any}(spec.name => pixispec(spec) for spec in pip_specs)
                 end
-                # TODO: warn if binary=only/no set
+                for spec in pip_specs
+                    if spec.binary != ""
+                        _log(
+                            io,
+                            "Warning: $b backend ignoring binary=$(spec.binary) for $(spec.name)",
+                        )
+                    end
+                end
                 pixitomlstr = sprint(TOML.print, pixitoml)
                 write(pixitomlpath, pixitomlstr)
                 _log(io, "Wrote $pixitomlpath")
