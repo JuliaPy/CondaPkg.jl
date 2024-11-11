@@ -338,8 +338,11 @@ const gc_spec = Pkg.REPLMode.CommandSpec(
 function run(args)
     try
         CondaPkg.withenv() do
-            if args[1] == "conda"
+            b = CondaPkg.backend()
+            if b in CondaPkg.CONDA_BACKENDS && args[1] == "conda"
                 Base.run(CondaPkg.conda_cmd(args[2:end]))
+            elseif b in CondaPkg.PIXI_BACKENDS && args[1] == "pixi"
+                Base.run(CondaPkg.pixi_cmd(args[2:end]))
             else
                 Base.run(Cmd(args))
             end

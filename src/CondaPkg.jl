@@ -29,6 +29,7 @@ end
     # backend
     backend::Symbol = :NotSet
     condaexe::String = ""
+    pixiexe::String = ""
     # resolve
     resolved::Bool = false
     load_path::Vector{String} = String[]

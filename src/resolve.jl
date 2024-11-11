@@ -52,6 +52,10 @@ function _resolve_can_skip_1(conda_env, load_path, meta_file)
         @debug "conda env has changed" meta.conda_env conda_env
         return false
     end
+    if meta.backend != backend()
+        @debug "backend has changed" meta.backend backend()
+        return false
+    end
     timestamp = max(meta.timestamp, stat(meta_file).mtime)
     for env in [meta.load_path; meta.extra_path]
         dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
@@ -495,17 +499,22 @@ function _cmdlines(cmd, flags)
     lines
 end
 
+function _logblock(io::IO, lines; kw...)
+    lines = collect(String, lines)
+    for (i, line) in enumerate(lines)
+        pre = i == length(lines) ? "└ " : "│ "
+        _log(io, label = "") do io
+            print(io, pre)
+            printstyled(io, line; kw...)
+        end
+    end
+end
+
 function _run(io::IO, cmd::Cmd, args...; flags = String[])
     _log(io, args...)
     if _verbosity() ≥ 0
         lines = _cmdlines(cmd, flags)
-        for (i, line) in enumerate(lines)
-            pre = i == length(lines) ? "└ " : "│ "
-            _log(io, label = "") do io
-                print(io, pre)
-                printstyled(io, line, color = :light_black)
-            end
-        end
+        _logblock(io, lines, color = :light_black)
     end
     run(cmd)
 end
@@ -562,8 +571,16 @@ function resolve(;
         )
         shared = true
     elseif conda_env == ""
-        conda_env = joinpath(meta_dir, "env")
+        if back in CONDA_BACKENDS
+            conda_env = joinpath(meta_dir, "env")
+        elseif back in PIXI_BACKENDS
+            conda_env = joinpath(meta_dir, ".pixi", "envs", "default")
+        else
+            error("this is a bug")
+        end
         shared = false
+    elseif !(back in CONDA_BACKENDS)
+        error("cannot set env preference with $back backend")
     elseif startswith(conda_env, "@")
         conda_env_name = conda_env[2:end]
         conda_env_name == "" && error("shared env name cannot be empty")
@@ -671,55 +688,106 @@ function resolve(;
                 _log(io, char, " ", pkg, label = "", color = color)
             end
         end
-        # install/uninstall packages
-        if !force && meta !== nothing && _resolve_env_is_clean(conda_env, meta)
-            # the state is sufficiently clean that we can modify the existing conda environment
-            changed = false
-            if !isempty(removed_pip_pkgs) && !shared
-                dry_run && return
-                changed = true
-                _resolve_pip_remove(io, removed_pip_pkgs, load_path, pip_backend)
-            end
-            if !isempty(removed_pkgs) && !shared
-                dry_run && return
-                changed = true
-                _resolve_conda_remove(io, conda_env, removed_pkgs)
-            end
-            if !isempty(specs) && (
-                !isempty(added_pkgs) ||
-                !isempty(changed_pkgs) ||
-                (meta.channels != channels) ||
-                changed
-            )
-                dry_run && return
-                changed = true
-                _resolve_conda_install(io, conda_env, specs, channels)
-            end
-            if !isempty(pip_specs) &&
-               (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
-                dry_run && return
-                changed = true
-                _resolve_pip_install(io, pip_specs, load_path, pip_backend)
-            end
-            changed || _log(io, "Dependencies already up to date")
-        else
-            # the state is too dirty, recreate the conda environment from scratch
-            dry_run && return
-            # remove environment
-            mkpath(meta_dir)
-            create = true
-            if isdir(conda_env)
-                if shared
-                    create = false
-                else
-                    _resolve_conda_remove_all(io, conda_env)
+        if back in CONDA_BACKENDS
+            # install/uninstall packages
+            if !force && meta !== nothing && _resolve_env_is_clean(conda_env, meta)
+                # the state is sufficiently clean that we can modify the existing conda environment
+                changed = false
+                if !isempty(removed_pip_pkgs) && !shared
+                    dry_run && return
+                    changed = true
+                    _resolve_pip_remove(io, removed_pip_pkgs, load_path, pip_backend)
                 end
+                if !isempty(removed_pkgs) && !shared
+                    dry_run && return
+                    changed = true
+                    _resolve_conda_remove(io, conda_env, removed_pkgs)
+                end
+                if !isempty(specs) && (
+                    !isempty(added_pkgs) ||
+                    !isempty(changed_pkgs) ||
+                    (meta.channels != channels) ||
+                    changed
+                )
+                    dry_run && return
+                    changed = true
+                    _resolve_conda_install(io, conda_env, specs, channels)
+                end
+                if !isempty(pip_specs) &&
+                   (!isempty(added_pip_pkgs) || !isempty(changed_pip_pkgs) || changed)
+                    dry_run && return
+                    changed = true
+                    _resolve_pip_install(io, pip_specs, load_path, pip_backend)
+                end
+                changed || _log(io, "Dependencies already up to date")
+            else
+                # the state is too dirty, recreate the conda environment from scratch
+                dry_run && return
+                # remove environment
+                mkpath(meta_dir)
+                create = true
+                if isdir(conda_env)
+                    if shared
+                        create = false
+                    else
+                        _resolve_conda_remove_all(io, conda_env)
+                    end
+                end
+                # create conda environment
+                _resolve_conda_install(io, conda_env, specs, channels; create = create)
+                # install pip packages
+                isempty(pip_specs) ||
+                    _resolve_pip_install(io, pip_specs, load_path, pip_backend)
             end
-            # create conda environment
-            _resolve_conda_install(io, conda_env, specs, channels; create = create)
-            # install pip packages
-            isempty(pip_specs) ||
-                _resolve_pip_install(io, pip_specs, load_path, pip_backend)
+        elseif back in PIXI_BACKENDS
+            cd(meta_dir) do
+                # remove existing files that might confuse pixi
+                for file in ["pixi.toml", "pixi.lock", "pyproject.toml"]
+                    path = joinpath(meta_dir, file)
+                    if ispath(path)
+                        Base.rm(path)
+                    end
+                end
+                # initialise pixi
+                _run(
+                    io,
+                    pixi_cmd(`init --format pixi $meta_dir`),
+                    "Initialising pixi",
+                    flags = ["--quiet"],
+                )
+                # load pixi.toml
+                pixitomlpath = joinpath(meta_dir, "pixi.toml")
+                pixitoml = open(TOML.parse, pixitomlpath)
+                # new pixi.toml
+                pixitoml = Dict{String,Any}(
+                    "project" => Dict{String,Any}(
+                        "name" => ".CondaPkg",
+                        "description" => "automatically generated by CondaPkg.jl",
+                        "platforms" => pixitoml["project"]["platforms"],
+                        "channels" => String[specstr(channel) for channel in channels],
+                        "channel-priority" => "disabled",
+                    ),
+                    # TODO: dedupe dependencies
+                    "dependencies" =>
+                        Dict{String,Any}(spec.name => pixispec(spec) for spec in specs),
+                )
+                if !isempty(pip_specs)
+                    pixitoml["pypi-dependencies"] =
+                        Dict{String,Any}(spec.name => pixispec(spec) for spec in pip_specs)
+                end
+                # TODO: warn if binary=only/no set
+                pixitomlstr = sprint(TOML.print, pixitoml)
+                write(pixitomlpath, pixitomlstr)
+                _log(io, "Wrote $pixitomlpath")
+                _logblock(io, eachline(pixitomlpath), color = :light_black)
+                _run(
+                    io,
+                    pixi_cmd(`update --manifest-path $pixitomlpath`),
+                    "Installing packages",
+                )
+            end
+        else
+            error("this is a bug")
         end
         # save metadata
         meta = Meta(
@@ -728,6 +796,7 @@ function resolve(;
             load_path = load_path,
             extra_path = extra_path,
             version = VERSION,
+            backend = back,
             packages = specs,
             channels = channels,
             pip_packages = pip_specs,

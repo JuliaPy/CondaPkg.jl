@@ -119,9 +119,13 @@ end
 Remove unused packages and caches.
 """
 function gc(; io::IO = stderr)
-    backend() == :Null && return
-    resolve()
-    cmd = conda_cmd(`clean -y --all`, io = io)
-    _run(io, cmd, "Removing unused caches")
+    b = backend()
+    if b in CONDA_BACKENDS
+        resolve()
+        cmd = conda_cmd(`clean -y --all`, io = io)
+        _run(io, cmd, "Removing unused caches")
+    else
+        _log(io, "GC does nothing with the $b backend.")
+    end
     return
 end

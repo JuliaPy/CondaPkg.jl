@@ -87,6 +87,22 @@ function specstr(x::PkgSpec)
     string(x.name, suffix)
 end
 
+function pixispec(x::PkgSpec)
+    spec = Dict{String,Any}()
+    spec["version"] = x.version == "" ? "*" : x.version
+    if x.build != ""
+        spec["build"] = x.build
+    end
+    if x.channel != ""
+        spec["channel"] = x.channel
+    end
+    if length(spec) == 1
+        spec["version"]
+    else
+        spec
+    end
+end
+
 struct ChannelSpec
     name::String
     function ChannelSpec(name)
@@ -189,4 +205,17 @@ function specstr(x::PipPkgSpec)
         push!(parts, " ", x.version)
     end
     return join(parts)
+end
+
+function pixispec(x::PipPkgSpec)
+    spec = Dict{String,Any}()
+    spec["version"] = x.version == "" ? "*" : x.version
+    if !isempty(x.extras)
+        spec["extras"] = x.extras
+    end
+    if length(spec) == 1
+        spec["version"]
+    else
+        spec
+    end
 end

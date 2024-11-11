@@ -14,6 +14,7 @@ const isnull = backend == "Null"
 rm(CondaPkg.cur_deps_file(), force = true)
 CondaPkg.STATE.backend = :NotSet
 CondaPkg.STATE.condaexe = ""
+CondaPkg.STATE.pixiexe = ""
 CondaPkg.STATE.resolved = false
 CondaPkg.STATE.load_path = String[]
 CondaPkg.STATE.meta_dir = ""
