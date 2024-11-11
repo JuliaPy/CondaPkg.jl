@@ -740,6 +740,7 @@ function resolve(;
                     _resolve_pip_install(io, pip_specs, load_path, pip_backend)
             end
         elseif back in PIXI_BACKENDS
+            dry_run && return
             cd(meta_dir) do
                 # remove existing files that might confuse pixi
                 for file in ["pixi.toml", "pixi.lock", "pyproject.toml"]
