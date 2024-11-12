@@ -9,6 +9,7 @@ status() = sprint(io -> CondaPkg.status(io = io))
 const backend = get(ENV, "JULIA_CONDAPKG_BACKEND", "MicroMamba")
 
 const isnull = backend == "Null"
+const ispixi = backend == "SystemPixi"
 
 # reset the package state (so tests are independent of the order they are run)
 rm(CondaPkg.cur_deps_file(), force = true)
