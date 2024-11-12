@@ -209,11 +209,32 @@ end
 
 function pixispec(x::PipPkgSpec)
     spec = Dict{String,Any}()
-    spec["version"] = x.version == "" ? "*" : x.version
+    if startswith(x.version, "@")
+        url = strip(x.version[2:end])
+        if startswith(url, "git+")
+            url = url[5:end]
+            if (m = match(r"^(.*?)@([^/@]*)$", url); m !== nothing)
+                spec["git"] = m.captures[1]
+                rev = m.captures[2]
+                if (m = match(r"^([^#]*)#(.*)$", rev); m !== nothing)
+                    # spec["tag"] = m.captures[1]
+                    spec["rev"] = m.captures[2]
+                else
+                    spec["rev"] = rev
+                end
+            else
+                spec["git"] = url
+            end
+        else
+            spec["url"] = url
+        end
+    else
+        spec["version"] = x.version == "" ? "*" : x.version
+    end
     if !isempty(x.extras)
         spec["extras"] = x.extras
     end
-    if length(spec) == 1
+    if length(spec) == 1 && haskey(spec, "version")
         spec["version"]
     else
         spec
