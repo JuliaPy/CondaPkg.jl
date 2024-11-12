@@ -746,6 +746,12 @@ function resolve(;
                 Base.rm(joinpath(meta_dir, "pixi.toml"), force = true)
                 Base.rm(joinpath(meta_dir, "pyproject.toml"), force = true)
                 force && Base.rm(joinpath(meta_dir, "pixi.lock"), force = true)
+                # write .pixi/config.toml
+                configtomlpath = joinpath(meta_dir, ".pixi", "config.toml")
+                configtoml = Dict{String,Any}("detached-environments" => false)
+                configtomlstr = sprint(TOML.print, configtoml)
+                mkpath(dirname(configtomlpath))
+                write(configtomlpath, configtomlstr)
                 # initialise pixi
                 _run(
                     io,
