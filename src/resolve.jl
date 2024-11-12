@@ -743,12 +743,9 @@ function resolve(;
             dry_run && return
             cd(meta_dir) do
                 # remove existing files that might confuse pixi
-                for file in ["pixi.toml", "pixi.lock", "pyproject.toml"]
-                    path = joinpath(meta_dir, file)
-                    if ispath(path)
-                        Base.rm(path)
-                    end
-                end
+                Base.rm(joinpath(meta_dir, "pixi.toml"), force = true)
+                Base.rm(joinpath(meta_dir, "pyproject.toml"), force = true)
+                force && Base.rm(joinpath(meta_dir, "pixi.lock"), force = true)
                 # initialise pixi
                 _run(
                     io,
@@ -790,7 +787,9 @@ function resolve(;
                 _logblock(io, eachline(pixitomlpath), color = :light_black)
                 _run(
                     io,
-                    pixi_cmd(`update --manifest-path $pixitomlpath`),
+                    pixi_cmd(
+                        `$(force ? "update" : "install") --manifest-path $pixitomlpath`,
+                    ),
                     "Installing packages",
                 )
             end
