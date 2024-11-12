@@ -157,7 +157,7 @@ in more detail.
 
 | Preference | Environment variable | Description |
 | ---------- | -------------------- | ----------- |
-| `backend` | `JULIA_CONDAPKG_BACKEND` | One of `MicroMamba`, `System`, `Current` or `Null` |
+| `backend` | `JULIA_CONDAPKG_BACKEND` | One of `MicroMamba`, `System`, `Current`, `SystemPixi` or `Null` |
 | `exe` | `JULIA_CONDAPKG_EXE` | Path to the Conda executable. |
 | `offline` | `JULIA_CONDAPKG_OFFLINE` | When `true`, work in offline mode. |
 | `env` | `JULIA_CONDAPKG_ENV` | Path to the Conda environment to use. |
@@ -184,6 +184,8 @@ by setting the `backend` preference to one of the following values:
   [MicroMamba.jl](https://github.com/JuliaPy/MicroMamba.jl).
 - `System`: Use a pre-installed Conda. If the `exe` preference is set, that is used.
   Otherwise we look for `conda`, `mamba` or `micromamba` in your `PATH`.
+- `SystemPixi`: Use a pre-installed [Pixi](https://pixi.sh). If the `exe` preference
+  is set, that is used. Otherwise we look for `pixi` in your `PATH`.
 - `Current`: Use the currently activated Conda environment instead of creating a new one.
   This backend will only ever install packages, never uninstall. The Conda executable used
   is the same as for the System backend. Similar to the default behaviour of

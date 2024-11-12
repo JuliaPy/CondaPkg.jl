@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* Add `SystemPixi` backend to allow using [Pixi](https://pixi.sh/latest/) to install packages.
+
 ## 0.2.24 (2024-11-08)
 * Add `pip_backend` preference to choose between `pip` and `uv`.
 * Add `libstdcxx_ng_version` preference to override automatic version bounds.
