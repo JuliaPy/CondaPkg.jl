@@ -115,14 +115,14 @@ end
 
 function current_packages()
     cmd = conda_cmd(`list -p $(envdir()) --json`)
-    pkglist = JSON3.read(cmd)
+    pkglist = YAML.read(cmd)
     Dict(normalise_pkg(pkg.name) => pkg for pkg in pkglist)
 end
 
 function current_pip_packages()
     pkglist = withenv() do
         cmd = `$(which("pip")) list --format=json`
-        JSON3.read(cmd)
+        YAML.read(cmd)
     end
     Dict(normalise_pip_pkg(pkg.name) => pkg for pkg in pkglist)
 end
