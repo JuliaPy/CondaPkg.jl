@@ -15,8 +15,8 @@ function activate!(e)
     path_sep = Sys.iswindows() ? ';' : ':'
     new_path = join(bindirs(), path_sep)
     if backend() == :MicroMamba
-        e["MAMBA_ROOT_PREFIX"] = MicroMamba.root_dir()
-        new_path = "$(new_path)$(path_sep)$(dirname(MicroMamba.executable()))"
+        e["MAMBA_ROOT_PREFIX"] = invokelatest(MicroMamba.root_dir)::String
+        new_path = "$(new_path)$(path_sep)$(dirname(invokelatest(MicroMamba.executable)::String))"
     end
     if old_path != ""
         new_path = "$(new_path)$(path_sep)$(old_path)"

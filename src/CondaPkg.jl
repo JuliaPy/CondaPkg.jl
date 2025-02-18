@@ -8,15 +8,30 @@ if isdefined(Base, :Experimental) &&
     @eval Base.Experimental.@compiler_options optimize = 0 infer = false #compile=min
 end
 
-import Base: @kwdef
-import JSON3
-import Pidfile
-import Preferences: @load_preference
-import Pkg
-import TOML
+using Base: @kwdef
+using JSON3: JSON3
+using Pidfile: Pidfile
+using Preferences: @load_preference
+using Pkg: Pkg
+using Scratch: @get_scratch!
+using TOML: TOML
 
-if @load_preference("backend", "MicroMamba") == "MicroMamba"
-    import MicroMamba
+# these are loaded lazily to avoid downloading the JLLs unless they are needed
+MICROMAMBA_MODULE = Ref{Module}()
+PIXI_JLL_MODULE = Ref{Module}()
+
+function micromamba_module()
+    if !isassigned(MICROMAMBA_MODULE)
+        MICROMAMBA_MODULE[] = Base.require(CondaPkg, :MicroMamba)
+    end
+    MICROMAMBA_MODULE[]
+end
+
+function pixi_jll_module()
+    if !isassigned(PIXI_JLL_MODULE)
+        PIXI_JLL_MODULE[] = Base.require(CondaPkg, :pixi_jll)
+    end
+    PIXI_JLL_MODULE[]
 end
 
 let toml = TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))

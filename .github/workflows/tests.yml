@@ -30,7 +30,7 @@ jobs:
         arch:
           - x64
         backend:
-          - MicroMamba
+          - Pixi
         include:
           - version: '1'
             os: ubuntu-latest
@@ -40,6 +40,10 @@ jobs:
             os: ubuntu-latest
             arch: x64
             backend: 'Null'
+          - version: '1'
+            os: ubuntu-latest
+            arch: x64
+            backend: MicroMamba
           - version: '1'
             os: ubuntu-latest
             arch: x64

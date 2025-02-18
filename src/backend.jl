@@ -1,23 +1,41 @@
 """All valid backends."""
-const ALL_BACKENDS = (:MicroMamba, :Null, :System, :Current, :SystemPixi)
+const ALL_BACKENDS = (:MicroMamba, :Null, :System, :Current, :Pixi, :SystemPixi)
 
 """All backends that use a Conda/Mamba installer."""
 const CONDA_BACKENDS = (:MicroMamba, :System, :Current)
 
 """All backends that use a Pixi installer."""
-const PIXI_BACKENDS = (:SystemPixi,)
+const PIXI_BACKENDS = (:Pixi, :SystemPixi)
 
 function backend()
     if STATE.backend == :NotSet
         backend = getpref(String, "backend", "JULIA_CONDAPKG_BACKEND", "")
         exe = getpref(String, "exe", "JULIA_CONDAPKG_EXE", "")
         if backend == ""
-            backend = exe == "" ? "MicroMamba" : "System"
+            if exe == ""
+                if invokelatest(pixi_jll_module().is_available)::Bool
+                    backend = "Pixi"
+                elseif invokelatest(micromamba_module().is_available)::Bool
+                    backend = "MicroMamba"
+                else
+                    error(
+                        "neither pixi nor micromamba is automatically available on your system",
+                    )
+                end
+            else
+                if occursin("pixi", lowercase(basename(exe)))
+                    backend = "SystemPixi"
+                else
+                    backend = "System"
+                end
+            end
         end
         if backend == "MicroMamba"
             STATE.backend = :MicroMamba
         elseif backend == "Null"
             STATE.backend = :Null
+        elseif backend == "Pixi"
+            STATE.backend = :Pixi
         elseif backend == "System" || backend == "Current"
             ok = false
             for exe in (exe == "" ? ["micromamba", "mamba", "conda"] : [exe])
@@ -37,7 +55,6 @@ function backend()
                 end
             end
         elseif backend == "SystemPixi"
-            ok = false
             exe2 = Sys.which(exe == "" ? "pixi" : exe)
             if exe2 === nothing
                 if exe == ""
@@ -59,7 +76,7 @@ end
 function conda_cmd(args = ``; io::IO = stderr)
     b = backend()
     if b == :MicroMamba
-        MicroMamba.cmd(args, io = io)
+        invokelatest(micromamba_module().cmd, args, io = io)::Cmd
     elseif b in CONDA_BACKENDS
         STATE.condaexe == "" && error("this is a bug")
         `$(STATE.condaexe) $args`
@@ -68,9 +85,23 @@ function conda_cmd(args = ``; io::IO = stderr)
     end
 end
 
+default_pixi_cache_dir() = @get_scratch!("pixi_cache")
+
 function pixi_cmd(args = ``; io::IO = stderr)
     b = backend()
-    if b in PIXI_BACKENDS
+    if b == :Pixi
+        pixiexe = invokelatest(pixi_jll_module().pixi)::Cmd
+        if !haskey(ENV, "PIXI_CACHE_DIR") && !haskey(ENV, "RATTLER_CACHE_DIR")
+            # if the cache dirs are not set, use a scratch dir
+            pixi_cache_dir = default_pixi_cache_dir()
+            pixiexe = addenv(
+                pixiexe,
+                "PIXI_CACHE_DIR" => pixi_cache_dir,
+                "RATTLER_CACHE_DIR" => pixi_cache_dir,
+            )
+        end
+        `$pixiexe $args`
+    elseif b in PIXI_BACKENDS
         STATE.pixiexe == "" && error("this is a bug")
         `$(STATE.pixiexe) $args`
     else
