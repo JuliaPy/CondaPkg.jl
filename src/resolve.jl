@@ -260,12 +260,44 @@ function _resolve_merge_packages(packages, channels)
                 end
             end
         end
-        for pkg in values(pkgs)
+        # now merge packages with the same name
+        version = ""
+        channel = ""
+        build = ""
+        for (fn, pkg) in pkgs
             @assert pkg.name == name
-            push!(specs, pkg)
+            if pkg.version != ""
+                if version == ""
+                    version = pkg.version
+                else
+                    version = _resolve_merge_versions(version, pkg.version)
+                end
+            end
+            if pkg.channel != ""
+                if channel == ""
+                    channel = pkg.channel
+                elseif channel != pkg.channel
+                    error("multiple channels specified for package '$name'")
+                end
+            end
+            if pkg.build != ""
+                if build == ""
+                    build = pkg.build
+                elseif build != pkg.build
+                    error("multiple builds specified for package '$name'")
+                end
+            end
         end
+        push!(specs, PkgSpec(name, version = version, channel = channel, build = build))
     end
-    sort!(unique!(specs), by = x -> x.name)
+    sort!(specs, by = x -> x.name)
+end
+
+function _resolve_merge_versions(v1, v2)
+    parts1 = split(v1, "|")
+    parts2 = split(v2, "|")
+    parts = ["$(strip(part1)), $(strip(part2))" for part1 in parts1 for part2 in parts2]
+    join(parts, " | ")
 end
 
 function abspathurl(args...)
@@ -771,7 +803,6 @@ function resolve(;
                         "channels" => String[specstr(channel) for channel in channels],
                         "channel-priority" => "disabled",
                     ),
-                    # TODO: deduplicate dependencies
                     "dependencies" =>
                         Dict{String,Any}(spec.name => pixispec(spec) for spec in specs),
                 )
