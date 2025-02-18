@@ -11,9 +11,12 @@ function backend()
     if STATE.backend == :NotSet
         backend = getpref(String, "backend", "JULIA_CONDAPKG_BACKEND", "")
         exe = getpref(String, "exe", "JULIA_CONDAPKG_EXE", "")
+        env = getpref(String, "env", "JULIA_CONDAPKG_ENV", "")
         if backend == ""
             if exe == ""
-                if invokelatest(pixi_jll_module().is_available)::Bool
+                if env == "" && invokelatest(pixi_jll_module().is_available)::Bool
+                    # cannot currently use pixi backend if env preference is set
+                    # (see resolve())
                     backend = "Pixi"
                 elseif invokelatest(micromamba_module().is_available)::Bool
                     backend = "MicroMamba"
