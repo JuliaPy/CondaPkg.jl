@@ -360,7 +360,7 @@ conda run cmd ...
 Run the given command in the Conda environment.
 
 You can do `conda run conda ...` to run whichever conda (or mamba or micromamba) executable
-that CondaPkg uses.
+that CondaPkg uses. Or in a pixi backend, do `conda run pixi ...` to run the pixi executable.
 """)
 
 const run_spec = Pkg.REPLMode.CommandSpec(
