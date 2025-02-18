@@ -166,14 +166,17 @@ end
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
-        CondaPkg.add("curl", resolve = false)
+        CondaPkg.add("uv", resolve = false)
         CondaPkg.resolve(force = true)
-        curl_path = CondaPkg.which("curl")
-        @test curl_path !== nothing
-        @test isfile(curl_path)
-        CondaPkg.rm("curl", resolve = false)
+        exe_path = CondaPkg.which("uv")
+        @test exe_path !== nothing
+        @test isfile(exe_path)
+        CondaPkg.rm("uv", resolve = false)
         CondaPkg.resolve(force = true)
-        @test !isfile(curl_path)
+        if !ispixi
+            # pixi doesn't seem to remove unused packages??
+            @test !isfile(exe_path)
+        end
     end
 end
 

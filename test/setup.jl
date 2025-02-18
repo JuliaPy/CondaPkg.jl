@@ -6,7 +6,7 @@ ENV["JULIA_CONDAPKG_VERBOSITY"] = "0"
 
 status() = sprint(io -> CondaPkg.status(io = io))
 
-const backend = get(ENV, "JULIA_CONDAPKG_BACKEND", "MicroMamba")
+const backend = get(ENV, "JULIA_CONDAPKG_BACKEND", "Pixi")
 
 const isnull = backend == "Null"
 const ispixi = backend == "SystemPixi" || backend == "Pixi"
