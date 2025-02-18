@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.25 (2025-02-18)
 * Add `Pixi` and `SystemPixi` backends to allow using [Pixi](https://pixi.sh/latest/) to install packages.
 * The `Pixi` backend is now the default on systems which have it available.
 
