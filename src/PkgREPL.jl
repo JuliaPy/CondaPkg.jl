@@ -338,8 +338,11 @@ const gc_spec = Pkg.REPLMode.CommandSpec(
 function run(args)
     try
         CondaPkg.withenv() do
-            if args[1] == "conda"
+            b = CondaPkg.backend()
+            if b in CondaPkg.CONDA_BACKENDS && args[1] == "conda"
                 Base.run(CondaPkg.conda_cmd(args[2:end]))
+            elseif b in CondaPkg.PIXI_BACKENDS && args[1] == "pixi"
+                Base.run(CondaPkg.pixi_cmd(args[2:end]))
             else
                 Base.run(Cmd(args))
             end
@@ -357,7 +360,7 @@ conda run cmd ...
 Run the given command in the Conda environment.
 
 You can do `conda run conda ...` to run whichever conda (or mamba or micromamba) executable
-that CondaPkg uses.
+that CondaPkg uses. Or in a pixi backend, do `conda run pixi ...` to run the pixi executable.
 """)
 
 const run_spec = Pkg.REPLMode.CommandSpec(

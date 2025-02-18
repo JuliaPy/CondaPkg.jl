@@ -69,14 +69,12 @@ end
         @test contains(read(fn, String), "3.10.2")
         # run conda --help and check the output
         # tests that conda and mamba both run whatever CondaPkg runs
-        for cmd in ["conda", "mamba"]
-            open(fn, "w") do io
-                redirect_stdout(io) do
-                    CondaPkg.PkgREPL.run(["conda", "--help"])
-                end
+        open(fn, "w") do io
+            redirect_stdout(io) do
+                CondaPkg.PkgREPL.run([ispixi ? "pixi" : "conda", "--help"])
             end
-            @test contains(read(fn, String), "--help")
-            @test contains(read(fn, String), "--version")
         end
+        @test contains(read(fn, String), "--help")
+        @test contains(read(fn, String), "--version")
     end
 end

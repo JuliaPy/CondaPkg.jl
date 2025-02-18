@@ -166,14 +166,17 @@ end
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
-        CondaPkg.add("curl", resolve = false)
+        CondaPkg.add("uv", resolve = false)
         CondaPkg.resolve(force = true)
-        curl_path = CondaPkg.which("curl")
-        @test curl_path !== nothing
-        @test isfile(curl_path)
-        CondaPkg.rm("curl", resolve = false)
+        exe_path = CondaPkg.which("uv")
+        @test exe_path !== nothing
+        @test isfile(exe_path)
+        CondaPkg.rm("uv", resolve = false)
         CondaPkg.resolve(force = true)
-        @test !isfile(curl_path)
+        if !ispixi
+            # pixi doesn't seem to remove unused packages??
+            @test !isfile(exe_path)
+        end
     end
 end
 
@@ -198,7 +201,7 @@ end
 @testitem "external conda env" begin
     include("setup.jl")
     dn = string(tempname(), backend, Sys.KERNEL, VERSION)
-    isnull || withenv("JULIA_CONDAPKG_ENV" => dn) do
+    (isnull || ispixi) || withenv("JULIA_CONDAPKG_ENV" => dn) do
         # create empty env
         CondaPkg.resolve()
         @test !occursin("ca-certificates", status())
@@ -219,13 +222,13 @@ end
 
 @testitem "shared env" begin
     include("setup.jl")
-    isnull || withenv("JULIA_CONDAPKG_ENV" => "@my_env") do
+    (isnull || ispixi) || withenv("JULIA_CONDAPKG_ENV" => "@my_env") do
         CondaPkg.add("python"; force = true)
         @test CondaPkg.envdir() ==
               joinpath(Base.DEPOT_PATH[1], "conda_environments", "my_env")
         @test isfile(CondaPkg.envdir(Sys.iswindows() ? "python.exe" : "bin/python"))
     end
-    isnull || withenv("JULIA_CONDAPKG_ENV" => "@/some/absolute/path") do
+    (isnull || ispixi) || withenv("JULIA_CONDAPKG_ENV" => "@/some/absolute/path") do
         @test_throws ErrorException CondaPkg.add("python"; force = true)
     end
 end

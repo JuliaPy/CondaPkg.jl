@@ -157,8 +157,8 @@ in more detail.
 
 | Preference | Environment variable | Description |
 | ---------- | -------------------- | ----------- |
-| `backend` | `JULIA_CONDAPKG_BACKEND` | One of `MicroMamba`, `System`, `Current` or `Null` |
-| `exe` | `JULIA_CONDAPKG_EXE` | Path to the Conda executable. |
+| `backend` | `JULIA_CONDAPKG_BACKEND` | One of `MicroMamba`, `Pixi`, `System`, `Current`, `SystemPixi` or `Null` |
+| `exe` | `JULIA_CONDAPKG_EXE` | Path to the Conda/Mamba/MicroMamba/Pixi executable. |
 | `offline` | `JULIA_CONDAPKG_OFFLINE` | When `true`, work in offline mode. |
 | `env` | `JULIA_CONDAPKG_ENV` | Path to the Conda environment to use. |
 | `verbosity` | `JULIA_CONDAPKG_VERBOSITY` | One of `-1`, `0`, `1` or `2`. |
@@ -182,8 +182,13 @@ of Conda is used to manage the Conda environments. You can explicitly select a b
 by setting the `backend` preference to one of the following values:
 - `MicroMamba`: Uses MicroMamba from the package
   [MicroMamba.jl](https://github.com/JuliaPy/MicroMamba.jl).
+- `Pixi`: Uses [Pixi](https://pixi.sh) from
+  [pixi_jll](https://github.com/JuliaBinaryWrappers/pixi_jll.jl) to manage the Conda
+  environments.
 - `System`: Use a pre-installed Conda. If the `exe` preference is set, that is used.
   Otherwise we look for `conda`, `mamba` or `micromamba` in your `PATH`.
+- `SystemPixi`: Use a pre-installed [Pixi](https://pixi.sh). If the `exe` preference
+  is set, that is used. Otherwise we look for `pixi` in your `PATH`.
 - `Current`: Use the currently activated Conda environment instead of creating a new one.
   This backend will only ever install packages, never uninstall. The Conda executable used
   is the same as for the System backend. Similar to the default behaviour of
@@ -192,10 +197,11 @@ by setting the `backend` preference to one of the following values:
   Conda environment that already satisfies the dependencies of your project. It is up to you
   to ensure any required packages are installed.
 
-The default backend is an implementation detail, but is currently `MicroMamba`.
+The default backend is an implementation detail, but is currently `Pixi` or `MicroMamba`,
+depending on your system.
 
-If you set the `exe` preference but not the `backend` preference then the `System` backend
-is used.
+If you set the `exe` preference but not the `backend` preference then the `System` or
+`SystemPixi` backend is used.
 
 ### Offline mode
 

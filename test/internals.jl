@@ -60,6 +60,19 @@ end
     end
 end
 
+@testitem "_resolve_merge_versions" begin
+    include("setup.jl")
+    @testset "$(case.v1) $(case.v2)" for case in [
+        (v1 = "1.2.3", v2 = "1.2.3", expected = "1.2.3, 1.2.3"),
+        (v1 = "1.2.3", v2 = "1.2.4", expected = "1.2.3, 1.2.4"),
+        (v1 = "1.2.3", v2 = ">=1.2,<2", expected = "1.2.3, >=1.2,<2"),
+        (v1 = ">=1.2,<2", v2 = ">=2.1,<3", expected = ">=1.2,<2, >=2.1,<3"),
+        (v1 = "1|2", v2 = "2|3", expected = "1, 2 | 1, 3 | 2, 2 | 2, 3"),
+    ]
+        @test CondaPkg._resolve_merge_versions(case.v1, case.v2) == case.expected
+    end
+end
+
 @testitem "_compatible_libstdcxx_ng_version" begin
     include("setup.jl")
     key = "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION"

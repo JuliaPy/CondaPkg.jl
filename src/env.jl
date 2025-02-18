@@ -15,8 +15,8 @@ function activate!(e)
     path_sep = Sys.iswindows() ? ';' : ':'
     new_path = join(bindirs(), path_sep)
     if backend() == :MicroMamba
-        e["MAMBA_ROOT_PREFIX"] = MicroMamba.root_dir()
-        new_path = "$(new_path)$(path_sep)$(dirname(MicroMamba.executable()))"
+        e["MAMBA_ROOT_PREFIX"] = invokelatest(micromamba_module().root_dir)::String
+        new_path = "$(new_path)$(path_sep)$(dirname(invokelatest(micromamba_module().executable)::String))"
     end
     if old_path != ""
         new_path = "$(new_path)$(path_sep)$(old_path)"
@@ -119,9 +119,13 @@ end
 Remove unused packages and caches.
 """
 function gc(; io::IO = stderr)
-    backend() == :Null && return
-    resolve()
-    cmd = conda_cmd(`clean -y --all`, io = io)
-    _run(io, cmd, "Removing unused caches")
+    b = backend()
+    if b in CONDA_BACKENDS
+        resolve()
+        cmd = conda_cmd(`clean -y --all`, io = io)
+        _run(io, cmd, "Removing unused caches")
+    else
+        _log(io, "GC does nothing with the $b backend.")
+    end
     return
 end
