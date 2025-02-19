@@ -185,9 +185,10 @@ function _extract_ordered_channels(
     result
 end
 
-function _resolve_order_channels(channels::Vector{ChannelSpec}, order::Vector{String})
+function _resolve_order_channels!(channels::Vector{ChannelSpec}, order::Vector{String})
     # Convert channels to dict for easier manipulation - this automatically deduplicates
     channel_dict = Dict(c.name => c for c in channels)
+    empty!(channels)
 
     # Hard-coded extra orderings
     extra_before = ["conda-forge", "anaconda", "pkgs/main"]
@@ -217,13 +218,65 @@ function _resolve_order_channels(channels::Vector{ChannelSpec}, order::Vector{St
     remaining_channels = sort!(collect(ChannelSpec, values(channel_dict)), by = c -> c.name)
 
     # Concatenate all the channels
-    vcat(
-        before_channels,
-        extra_before_channels,
-        remaining_channels,
-        extra_after_channels,
-        after_channels,
-    )
+    append!(channels, before_channels)
+    append!(channels, extra_before_channels)
+    append!(channels, remaining_channels)
+    append!(channels, extra_after_channels)
+    append!(channels, after_channels)
+
+    channels
+end
+
+function _resolve_map_channels!(
+    channels::Vector{ChannelSpec},
+    packages::Dict{String,Dict{String,PkgSpec}},
+    mapping::Dict{String,String},
+)
+    isempty(mapping) && return channels
+
+    # Apply mapping to each global channel in-place
+    for i in eachindex(channels)
+        if haskey(mapping, channels[i].name)
+            channels[i] = ChannelSpec(mapping[channels[i].name])
+        end
+    end
+
+    # Apply mapping to package-specific channels
+    for (name, pkgs) in packages
+        for (fn, spec) in pkgs
+            if !isempty(spec.channel) && haskey(mapping, spec.channel)
+                pkgs[fn] = PkgSpec(spec, channel = mapping[spec.channel])
+            end
+        end
+    end
+end
+
+function _resolve_check_allowed_channels(
+    io::IO,
+    packages,
+    channels,
+    allowed_channels::Union{Nothing,Set{String}},
+)
+    allowed_channels === nothing && return
+
+    # Check package-specific channels
+    for (name, pkgs) in packages
+        for (fn, spec) in pkgs
+            if !isempty(spec.channel) && spec.channel ∉ allowed_channels
+                error(
+                    "Package '$name' in $fn requires channel '$(spec.channel)' which is not in allowed channels list",
+                )
+            end
+        end
+    end
+
+    # Check global channels
+    disallowed = filter(c -> c.name ∉ allowed_channels, channels)
+    if !isempty(disallowed)
+        error(
+            "The following channels are not in the allowed list: $(join(map(c->c.name, disallowed), ", "))",
+        )
+    end
 end
 
 function _resolve_find_dependencies(io, load_path)
@@ -617,30 +670,6 @@ function _run(io::IO, cmd::Cmd, args...; flags = String[])
     run(cmd)
 end
 
-function _resolve_check_allowed_channels(io::IO, packages, channels)
-    allowed = getpref_allowed_channels()
-    allowed === nothing && return
-
-    # Check package-specific channels
-    for (name, pkgs) in packages
-        for (fn, spec) in pkgs
-            if !isempty(spec.channel) && spec.channel ∉ allowed
-                error(
-                    "Package '$name' in $fn requires channel '$(spec.channel)' which is not in allowed channels list",
-                )
-            end
-        end
-    end
-
-    # Check global channels
-    disallowed = filter(c -> c.name ∉ allowed, channels)
-    if !isempty(disallowed)
-        error(
-            "The following channels are not in the allowed list: $(join(map(c->c.name, disallowed), ", "))",
-        )
-    end
-end
-
 function resolve(;
     force::Bool = false,
     io::IO = stderr,
@@ -726,10 +755,13 @@ function resolve(;
             _resolve_find_dependencies(io, load_path)
 
         # validate channels against allowed list
-        _resolve_check_allowed_channels(io, packages, channels)
+        _resolve_check_allowed_channels(io, packages, channels, getpref_allowed_channels())
 
         # order channels according to preferences
-        channels = _resolve_order_channels(channels, getpref_channel_order())
+        _resolve_order_channels!(channels, getpref_channel_order())
+
+        # apply channel mapping
+        _resolve_map_channels!(channels, packages, getpref_channel_mapping())
 
         # install pip if there are pip packages to install
         pip_backend = getpref_pip_backend()

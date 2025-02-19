@@ -166,6 +166,7 @@ in more detail.
 | `allowed_channels` | `JULIA_CONDAPKG_ALLOWED_CHANNELS` | List of allowed Conda channels. |
 | `channel_priority` | `JULIA_CONDAPKG_CHANNEL_PRIORITY` | One of `strict`, `flexible` (default) or `disabled`. |
 | `channel_order` | `JULIA_CONDAPKG_CHANNEL_ORDER` | List specifying channel order, with optional `...` for other channels. |
+| `channel_mapping` | `JULIA_CONDAPKG_CHANNEL_MAPPING` | Map of channel names to rename (old->new). |
 | `libstdcxx_ng_version` | `JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION` | Either `ignore` or a version specifier. |
 | `openssl_version` | `JULIA_CONDAPKG_OPENSSL_VERSION` | Either `ignore` or a version specifier. |
 
@@ -299,6 +300,19 @@ preferences. These can be set to one of:
 - A (non-empty) specific Conda version specifier.
 - `ignore` to ignore the compatibility constraint entirely.
 - Unset or the empty string for the default behaviour.
+
+### Channel Mapping
+
+You can map channel names to new names using the `channel_mapping` preference. This is useful when working with corporate proxies or mirrors. The mapping can be specified in several formats:
+
+- As a dictionary: `channel_mapping=Dict("old1" => "new1", "old2" => "new2")`
+- As a space-separated string: `channel_mapping="old1->new1 old2->new2"`
+- As a list of strings: `channel_mapping=["old1->new1", "old2->new2"]`
+
+For example, to map conda-forge to a corporate mirror:
+```
+pkg> preference add CondaPkg channel_mapping=conda-forge->corporate-conda-mirror
+```
 
 ## Frequently Asked Questions
 

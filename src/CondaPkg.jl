@@ -78,7 +78,15 @@ checkpref(::Type{T}, x::AbstractString) where {T} = parse(T, x)
 checkpref(::Type{Bool}, x::AbstractString) =
     x in ("yes", "true") ? true :
     x in ("no", "false") ? false : error("expecting true or false, got $(repr(x))")
-checkpref(::Type{Vector{String}}, x::AbstractString) = split(x)
+checkpref(::Type{Vector{String}}, x::AbstractString) = collect(String, split(x))
+checkpref(::Type{Dict{String,String}}, x::AbstractString) =
+    checkpref(Dict{String,String}, split(x))
+checkpref(::Type{Pair{String,String}}, x::AbstractString) =
+    let (x1, x2) = split(x, "->", limit = 2)
+        Pair{String,String}(x1, x2)
+    end
+checkpref(::Type{Dict{String,String}}, x::AbstractVector) =
+    Dict{String,String}(checkpref(Pair{String,String}, p) for p in x)
 
 # Specific preference functions
 getpref_backend() = getpref(String, "backend", "JULIA_CONDAPKG_BACKEND", "")
@@ -129,6 +137,25 @@ function getpref_allowed_channels()
     else
         Set(validate_channel(c) for c in channels)
     end
+end
+
+function getpref_channel_mapping()
+    mapping = getpref(
+        Dict{String,String},
+        "channel_mapping",
+        "JULIA_CONDAPKG_CHANNEL_MAPPING",
+        Dict{String,String}(),
+    )
+
+    # Validate all channel names
+    validated = Dict{String,String}()
+    for (old, new) in mapping
+        old_validated = validate_channel(old)
+        new_validated = validate_channel(new)
+        validated[old_validated] = new_validated
+    end
+
+    validated
 end
 
 include("backend.jl")
