@@ -164,6 +164,8 @@ in more detail.
 | `verbosity` | `JULIA_CONDAPKG_VERBOSITY` | One of `-1`, `0`, `1` or `2`. |
 | `pip_backend` | `JULIA_CONDAPKG_PIP_BACKEND` | One of `pip` or `uv`. |
 | `allowed_channels` | `JULIA_CONDAPKG_ALLOWED_CHANNELS` | List of allowed Conda channels. |
+| `channel_priority` | `JULIA_CONDAPKG_CHANNEL_PRIORITY` | One of `strict`, `flexible` (default) or `disabled`. |
+| `channel_order` | `JULIA_CONDAPKG_CHANNEL_ORDER` | List specifying channel order, with optional `...` for other channels. |
 | `libstdcxx_ng_version` | `JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION` | Either `ignore` or a version specifier. |
 | `openssl_version` | `JULIA_CONDAPKG_OPENSSL_VERSION` | Either `ignore` or a version specifier. |
 
@@ -259,6 +261,27 @@ When this preference is set:
 - This applies to both package-specific channels (e.g. `some-channel::some-package`) and global channels.
 
 If the preference is not set, all channels are allowed.
+
+### Channel Priority and Ordering
+
+You can control how channels are prioritized using the `channel_priority` preference:
+- `flexible` (default): Packages from lower-priority channels can satisfy dependencies as long as they are newer than those in higher-priority channels.
+- `strict`: Only packages from the highest-priority channel that contains the package will be considered.
+- `disabled`: Channel priority is ignored.
+
+You can control the order of channels using the `channel_order` preference. This is a list of channel names that specifies the order in which channels should be considered. For example:
+```
+pkg> preference add CondaPkg channel_order=conda-forge,anaconda,...,pytorch
+```
+
+The special entry `...` indicates where any other channels should go. If not specified, other channels go at the end. So `[foo, bar]` is equivalent to `[foo, bar, ...]`.
+
+You can instead set it as an environment variable using a space-separated list:
+```
+julia> ENV["JULIA_CONDAPKG_CHANNEL_ORDER"] = "conda-forge anaconda ... pytorch"
+```
+
+Note that when using the Pixi backend, `flexible` priority is not supported and will be treated as `strict`.
 
 ### Compatibility between Julia and Conda packages
 

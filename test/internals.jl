@@ -152,3 +152,97 @@ end
     channels = [CondaPkg.ChannelSpec("conda-forge"), CondaPkg.ChannelSpec("anaconda")]
     @test nothing === CondaPkg._resolve_check_allowed_channels(devnull, packages, channels)
 end
+
+@testitem "_resolve_order_channels" begin
+    include("setup.jl")
+
+    # Test cases for channel ordering
+    cases = [
+        # Basic ordering: empty order uses defaults
+        (channels = ["b", "a", "c"], order = String[], expected = ["a", "b", "c"]),
+
+        # Basic ordering: explicit complete order
+        (channels = ["b", "a", "c"], order = ["c", "a", "b"], expected = ["c", "a", "b"]),
+
+        # Basic ordering: partial order
+        (channels = ["b", "a", "c"], order = ["c"], expected = ["c", "a", "b"]),
+        (channels = ["b", "a", "c"], order = ["b", "c"], expected = ["b", "c", "a"]),
+
+        # Ellipsis handling: in middle
+        (
+            channels = ["b", "a", "c", "d"],
+            order = ["c", "...", "a"],
+            expected = ["c", "b", "d", "a"],
+        ),
+
+        # Ellipsis handling: at start
+        (
+            channels = ["b", "a", "c", "d"],
+            order = ["...", "a", "b"],
+            expected = ["c", "d", "a", "b"],
+        ),
+
+        # Ellipsis handling: at end
+        (
+            channels = ["b", "a", "c", "d"],
+            order = ["d", "b", "..."],
+            expected = ["d", "b", "a", "c"],
+        ),
+
+        # Special channels: conda-forge prioritized
+        (
+            channels = ["b", "conda-forge", "a"],
+            order = String[],
+            expected = ["conda-forge", "a", "b"],
+        ),
+
+        # Special channels: all special channels present
+        (
+            channels = ["b", "conda-forge", "anaconda", "pkgs/main", "a"],
+            order = String[],
+            expected = ["conda-forge", "anaconda", "pkgs/main", "a", "b"],
+        ),
+
+        # Special channels: override with explicit order
+        (
+            channels = ["conda-forge", "a", "b"],
+            order = ["...", "b", "conda-forge"],
+            expected = ["a", "b", "conda-forge"],
+        ),
+
+        # Special channels: override with explicit order and all special channels present
+        (
+            channels = ["b", "conda-forge", "a", "pkgs/main", "anaconda"],
+            order = ["...", "b", "conda-forge"],
+            expected = ["anaconda", "pkgs/main", "a", "b", "conda-forge"],
+        ),
+
+        # Deduplication: duplicate channels removed
+        (
+            channels = ["a", "a", "b", "b", "c"],
+            order = String[],
+            expected = ["a", "b", "c"],
+        ),
+
+        # Deduplication: duplicate order entries ignored
+        (
+            channels = ["a", "b", "c"],
+            order = ["a", "a", "b", "b"],
+            expected = ["a", "b", "c"],
+        ),
+
+        # Missing channels: order entries that don't exist ignored
+        (channels = ["a", "b"], order = ["c", "a", "d", "b"], expected = ["a", "b"]),
+    ]
+
+    @testset "$(case.channels) $(case.order)" for case in cases
+        # Construct channel objects from strings
+        channels = [CondaPkg.ChannelSpec(name) for name in case.channels]
+
+        # Apply ordering
+        ordered = CondaPkg._resolve_order_channels(channels, case.order)
+
+        # Check result
+        @test [c.name for c in ordered] == case.expected
+    end
+end

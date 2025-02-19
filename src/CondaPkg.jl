@@ -91,6 +91,21 @@ getpref_openssl_version() =
 getpref_verbosity() = getpref(Int, "verbosity", "JULIA_CONDAPKG_VERBOSITY", 0)
 getpref_offline() = getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
 
+function getpref_channel_priority()
+    p = getpref(String, "channel_priority", "JULIA_CONDAPKG_CHANNEL_PRIORITY", "flexible")
+    if p in ("strict", "flexible", "disabled")
+        return p
+    else
+        error("channel_priority must be strict, flexible or disabled, got $p")
+    end
+end
+
+function getpref_channel_order()
+    order =
+        getpref(Vector{String}, "channel_order", "JULIA_CONDAPKG_CHANNEL_ORDER", String[])
+    String[c == "..." ? c : validate_channel(c) for c in order]
+end
+
 function getpref_pip_backend()
     b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
     if b == "pip"
