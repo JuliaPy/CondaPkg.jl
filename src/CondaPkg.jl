@@ -52,11 +52,19 @@ end
     conda_env::String = ""
     shared::Bool = false
     frozen::Bool = false
+    # testing
+    testing::Bool = false
+    test_preferences::Dict{String,Any} = Dict{String,Any}()
 end
 
 const STATE = State()
 
 function getpref(::Type{T}, prefname, envname, default = nothing) where {T}
+    if STATE.testing
+        ans = get(STATE.test_preferences, prefname, nothing)
+        ans === nothing || return checkpref(T, ans)::T
+        return default
+    end
     ans = @load_preference(prefname, nothing)
     ans === nothing || return checkpref(T, ans)::T
     ans = get(ENV, envname, "")
@@ -70,6 +78,7 @@ checkpref(::Type{T}, x::AbstractString) where {T} = parse(T, x)
 checkpref(::Type{Bool}, x::AbstractString) =
     x in ("yes", "true") ? true :
     x in ("no", "false") ? false : error("expecting true or false, got $(repr(x))")
+checkpref(::Type{Vector{String}}, x::AbstractString) = split(x)
 
 # Specific preference functions
 getpref_backend() = getpref(String, "backend", "JULIA_CONDAPKG_BACKEND", "")
@@ -81,16 +90,31 @@ getpref_openssl_version() =
     getpref(String, "openssl_version", "JULIA_CONDAPKG_OPENSSL_VERSION", "")
 getpref_verbosity() = getpref(Int, "verbosity", "JULIA_CONDAPKG_VERBOSITY", 0)
 getpref_offline() = getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
-getpref_pip_backend() =
-    let b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
-        if b == "pip"
-            :pip
-        elseif b == "uv"
-            :uv
-        else
-            error("pip_backend must be pip or uv, got $b")
-        end
+
+function getpref_pip_backend()
+    b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
+    if b == "pip"
+        :pip
+    elseif b == "uv"
+        :uv
+    else
+        error("pip_backend must be pip or uv, got $b")
     end
+end
+
+function getpref_allowed_channels()
+    channels = getpref(
+        Vector{String},
+        "allowed_channels",
+        "JULIA_CONDAPKG_ALLOWED_CHANNELS",
+        nothing,
+    )
+    if channels === nothing
+        nothing
+    else
+        Set(validate_channel(c) for c in channels)
+    end
+end
 
 include("backend.jl")
 include("spec.jl")

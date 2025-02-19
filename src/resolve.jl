@@ -546,6 +546,29 @@ function _run(io::IO, cmd::Cmd, args...; flags = String[])
     run(cmd)
 end
 
+function _resolve_check_allowed_channels(io::IO, packages, channels)
+    allowed = getpref_allowed_channels()
+    allowed === nothing && return
+
+    # Check package-specific channels
+    for (name, pkgs) in packages
+        for (fn, spec) in pkgs
+            if !isempty(spec.channel) && spec.channel ∉ allowed
+                error(
+                    "Package '$name' in $fn requires channel '$(spec.channel)' which is not in allowed channels list",
+                )
+            end
+        end
+    end
+
+    # Check global channels
+    disallowed = filter(c -> c.name ∉ allowed, channels)
+    if !isempty(disallowed)
+        error(
+            "The following channels are not in the allowed list: $(join(map(c->c.name, disallowed), ", "))",
+        )
+    end
+end
 
 function resolve(;
     force::Bool = false,
@@ -630,6 +653,10 @@ function resolve(;
         # find all dependencies
         (packages, channels, pip_packages, extra_path) =
             _resolve_find_dependencies(io, load_path)
+
+        # validate channels against allowed list
+        _resolve_check_allowed_channels(io, packages, channels)
+
         # install pip if there are pip packages to install
         pip_backend = getpref_pip_backend()
         if !isempty(pip_packages)

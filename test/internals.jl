@@ -75,64 +75,80 @@ end
 
 @testitem "_compatible_libstdcxx_ng_version" begin
     include("setup.jl")
-    key = "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION"
-    orig_bound = pop!(ENV, key, nothing)
-    try
-        @testset "$new_bound" for new_bound in [nothing, "", "foo"]
-            if new_bound === nothing
-                delete!(ENV, key)
-            else
-                ENV[key] = new_bound
-            end
-            bound = CondaPkg._compatible_libstdcxx_ng_version()
-            if new_bound === nothing || new_bound == ""
-                if Sys.islinux()
-                    if bound !== nothing
-                        @test bound isa String
-                        @test startswith(bound, ">=")
-                    end
-                else
-                    @test bound === nothing
+    @testset "$new_bound" for new_bound in [nothing, "", "foo"]
+        CondaPkg.STATE.test_preferences["libstdcxx_ng_version"] = new_bound
+        bound = CondaPkg._compatible_libstdcxx_ng_version()
+        if new_bound === nothing || new_bound == ""
+            if Sys.islinux()
+                if bound !== nothing
+                    @test bound isa String
+                    @test startswith(bound, ">=")
                 end
             else
-                @test bound == new_bound
+                @test bound === nothing
             end
-        end
-    finally
-        if orig_bound === nothing
-            delete!(ENV, key)
         else
-            ENV[key] = orig_bound
+            @test bound == new_bound
         end
     end
 end
 
 @testitem "_compatible_openssl_version" begin
     include("setup.jl")
-    key = "JULIA_CONDAPKG_OPENSSL_VERSION"
-    orig_bound = pop!(ENV, key, nothing)
-    try
-        @testset "$new_bound" for new_bound in [nothing, "", "foo"]
-            if new_bound === nothing
-                delete!(ENV, key)
-            else
-                ENV[key] = new_bound
+    @testset "$new_bound" for new_bound in [nothing, "", "foo"]
+        CondaPkg.STATE.test_preferences["openssl_version"] = new_bound
+        bound = CondaPkg._compatible_openssl_version()
+        if new_bound === nothing || new_bound == ""
+            if bound !== nothing
+                @test bound isa String
+                @test startswith(bound, ">=")
             end
-            bound = CondaPkg._compatible_openssl_version()
-            if new_bound === nothing || new_bound == ""
-                if bound !== nothing
-                    @test bound isa String
-                    @test startswith(bound, ">=")
-                end
-            else
-                @test bound == new_bound
-            end
-        end
-    finally
-        if orig_bound === nothing
-            delete!(ENV, key)
         else
-            ENV[key] = orig_bound
+            @test bound == new_bound
         end
     end
+end
+
+@testitem "_resolve_check_allowed_channels" begin
+    include("setup.jl")
+
+    # Test no allowed channels set
+    packages =
+        Dict("foo" => Dict("test.toml" => CondaPkg.PkgSpec("foo", channel = "bad-channel")))
+    channels = [CondaPkg.ChannelSpec("conda-forge")]
+    @test nothing === CondaPkg._resolve_check_allowed_channels(devnull, packages, channels)
+
+    # Test package with disallowed channel
+    CondaPkg.STATE.test_preferences["allowed_channels"] = ["conda-forge"]
+    packages =
+        Dict("foo" => Dict("test.toml" => CondaPkg.PkgSpec("foo", channel = "bad-channel")))
+    channels = [CondaPkg.ChannelSpec("conda-forge")]
+    @test_throws ErrorException(
+        "Package 'foo' in test.toml requires channel 'bad-channel' which is not in allowed channels list",
+    ) CondaPkg._resolve_check_allowed_channels(devnull, packages, channels)
+
+    # Test global channel not allowed
+    CondaPkg.STATE.test_preferences["allowed_channels"] = ["conda-forge"]
+    packages = Dict("foo" => Dict("test.toml" => CondaPkg.PkgSpec("foo")))
+    channels = [CondaPkg.ChannelSpec("bad-channel")]
+    @test_throws ErrorException(
+        "The following channels are not in the allowed list: bad-channel",
+    ) CondaPkg._resolve_check_allowed_channels(devnull, packages, channels)
+
+    # Test multiple disallowed global channels
+    CondaPkg.STATE.test_preferences["allowed_channels"] = ["conda-forge"]
+    packages = Dict("foo" => Dict("test.toml" => CondaPkg.PkgSpec("foo")))
+    channels = [CondaPkg.ChannelSpec("bad1"), CondaPkg.ChannelSpec("bad2")]
+    @test_throws ErrorException(
+        "The following channels are not in the allowed list: bad1, bad2",
+    ) CondaPkg._resolve_check_allowed_channels(devnull, packages, channels)
+
+    # Test multiple allowed channels
+    CondaPkg.STATE.test_preferences["allowed_channels"] = ["conda-forge", "anaconda"]
+    packages = Dict(
+        "foo" => Dict("test.toml" => CondaPkg.PkgSpec("foo", channel = "conda-forge")),
+        "bar" => Dict("test.toml" => CondaPkg.PkgSpec("bar", channel = "anaconda")),
+    )
+    channels = [CondaPkg.ChannelSpec("conda-forge"), CondaPkg.ChannelSpec("anaconda")]
+    @test nothing === CondaPkg._resolve_check_allowed_channels(devnull, packages, channels)
 end

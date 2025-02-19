@@ -163,6 +163,7 @@ in more detail.
 | `env` | `JULIA_CONDAPKG_ENV` | Path to the Conda environment to use. |
 | `verbosity` | `JULIA_CONDAPKG_VERBOSITY` | One of `-1`, `0`, `1` or `2`. |
 | `pip_backend` | `JULIA_CONDAPKG_PIP_BACKEND` | One of `pip` or `uv`. |
+| `allowed_channels` | `JULIA_CONDAPKG_ALLOWED_CHANNELS` | List of allowed Conda channels. |
 | `libstdcxx_ng_version` | `JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION` | Either `ignore` or a version specifier. |
 | `openssl_version` | `JULIA_CONDAPKG_OPENSSL_VERSION` | Either `ignore` or a version specifier. |
 
@@ -238,6 +239,26 @@ You can control which package manager is used to install pip dependencies by set
 `pip_backend` preference to one of:
 - `pip`
 - `uv` (the default).
+
+### Allowed Channels
+
+You can restrict which Conda channels are allowed to be used by setting the `allowed_channels` preference to a list of channel names. For example:
+```
+pkg> preference add CondaPkg allowed_channels=conda-forge,anaconda
+```
+
+This restriction helps ensure reproducibility and security by preventing the use of untrusted channels.
+
+You can instead set it as an environment variable using a space-separated list:
+```
+julia> ENV["JULIA_CONDAPKG_ALLOWED_CHANNELS"] = "conda-forge anaconda"
+```
+
+When this preference is set:
+- Any attempt to use a channel not in the allowed list will result in an error.
+- This applies to both package-specific channels (e.g. `some-channel::some-package`) and global channels.
+
+If the preference is not set, all channels are allowed.
 
 ### Compatibility between Julia and Conda packages
 
