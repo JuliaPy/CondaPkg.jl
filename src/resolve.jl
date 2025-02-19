@@ -112,8 +112,7 @@ instance it is used by PythonCall.
 Overridden by the `libstdcxx_ng_version` preference.
 """
 function _compatible_libstdcxx_ng_version()
-    bound =
-        getpref(String, "libstdcxx_ng_version", "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION", "")
+    bound = getpref_libstdcxx_ng_version()
     if bound == "ignore"
         return nothing
     elseif bound != ""
@@ -145,7 +144,7 @@ See https://www.openssl.org/policies/releasestrat.html.
 Overridden by the `openssl_version` preference.
 """
 function _compatible_openssl_version()
-    bound = getpref(String, "openssl_version", "JULIA_CONDAPKG_OPENSSL_VERSION", "")
+    bound = getpref_openssl_version()
     if bound == "ignore"
         return nothing
     elseif bound != ""
@@ -168,6 +167,115 @@ function _compatible_openssl_version()
     else
         # before this, only patch releases are ABI-compatible
         return ">=$(version.major).$(version.minor), <$(version.major).$(version.minor).$(version.patch+1)"
+    end
+end
+
+# Helper function to extract channels in a given order from a dict
+function _extract_ordered_channels(
+    order::Vector{String},
+    channel_dict::Dict{String,ChannelSpec},
+)
+    result = ChannelSpec[]
+    for name in order
+        channel = pop!(channel_dict, name, nothing)
+        if channel !== nothing
+            push!(result, channel)
+        end
+    end
+    result
+end
+
+function _resolve_order_channels!(channels::Vector{ChannelSpec}, order::Vector{String})
+    # Convert channels to dict for easier manipulation - this automatically deduplicates
+    channel_dict = Dict(c.name => c for c in channels)
+    empty!(channels)
+
+    # Hard-coded extra orderings
+    extra_before = ["conda-forge", "anaconda", "pkgs/main"]
+    extra_after = String[]
+
+    # Find where "..." appears in order, if at all
+    ellipsis_idx = findfirst(==("..."), order)
+
+    # Split order into before/after ellipsis
+    before = ellipsis_idx === nothing ? order : order[1:ellipsis_idx-1]
+    after = ellipsis_idx === nothing ? String[] : order[ellipsis_idx+1:end]
+
+    # 1. User-specified before
+    before_channels = _extract_ordered_channels(before, channel_dict)
+
+    # 2. User-specified after
+    after_channels = _extract_ordered_channels(after, channel_dict)
+
+    # 3. Extra before
+    extra_before_channels = _extract_ordered_channels(extra_before, channel_dict)
+
+    # 4. Extra after
+    extra_after_channels = _extract_ordered_channels(extra_after, channel_dict)
+
+    # 5. Remaining channels (if ellipsis present or no explicit order given)
+    # Sort by name to ensure consistent ordering
+    remaining_channels = sort!(collect(ChannelSpec, values(channel_dict)), by = c -> c.name)
+
+    # Concatenate all the channels
+    append!(channels, before_channels)
+    append!(channels, extra_before_channels)
+    append!(channels, remaining_channels)
+    append!(channels, extra_after_channels)
+    append!(channels, after_channels)
+
+    channels
+end
+
+function _resolve_map_channels!(
+    channels::Vector{ChannelSpec},
+    packages::Dict{String,Dict{String,PkgSpec}},
+    mapping::Dict{String,String},
+)
+    isempty(mapping) && return channels
+
+    # Apply mapping to each global channel in-place
+    for i in eachindex(channels)
+        if haskey(mapping, channels[i].name)
+            channels[i] = ChannelSpec(mapping[channels[i].name])
+        end
+    end
+
+    # Apply mapping to package-specific channels
+    for (name, pkgs) in packages
+        for (fn, spec) in pkgs
+            if !isempty(spec.channel) && haskey(mapping, spec.channel)
+                pkgs[fn] = PkgSpec(spec, channel = mapping[spec.channel])
+            end
+        end
+    end
+end
+
+function _resolve_check_allowed_channels(
+    io::IO,
+    packages,
+    channels,
+    allowed_channels::Union{Nothing,Set{String}},
+)
+    allowed_channels === nothing && return
+
+    # Check package-specific channels
+    for (name, pkgs) in packages
+        for (fn, spec) in pkgs
+            if !isempty(spec.channel) && spec.channel ∉ allowed_channels
+                error(
+                    "Package '$name' in $fn requires channel '$(spec.channel)' which is not in allowed channels list",
+                )
+            end
+        end
+    end
+
+    # Check global channels
+    disallowed = filter(c -> c.name ∉ allowed_channels, channels)
+    if !isempty(disallowed)
+        error(
+            "The following channels are not in the allowed list: $(join(map(c->c.name, disallowed), ", "))",
+        )
     end
 end
 
@@ -395,12 +503,8 @@ function _resolve_pip_diff(old_specs, new_specs)
     return (removed, changed, added)
 end
 
-function _verbosity()
-    getpref(Int, "verbosity", "JULIA_CONDAPKG_VERBOSITY", 0)
-end
-
 function _verbosity_flags()
-    n = _verbosity()
+    n = getpref_verbosity()
     n < 0 ? ["-" * "q"^(-n)] : n > 0 ? ["-" * "v"^n] : String[]
 end
 
@@ -421,12 +525,27 @@ function _resolve_conda_install(io, conda_env, specs, channels; create = false)
     for channel in channels
         push!(args, "-c", specstr(channel))
     end
+
+    # Set channel priority
+    priority = getpref_channel_priority()
+    if priority == "disabled"
+        pushfirst!(args, "--no-channel-priority")
+    elseif priority == "strict"
+        pushfirst!(args, "--strict-channel-priority")
+    else
+        @assert priority == "flexible"
+        # flexible is the default, no flag needed
+    end
+
     vrb = _verbosity_flags()
     cmd = conda_cmd(
-        `$(create ? "create" : "install") $vrb -y -p $conda_env --override-channels --no-channel-priority $args`,
+        `$(create ? "create" : "install") $vrb -y -p $conda_env --override-channels $args`,
         io = io,
     )
-    flags = append!(["-y", "--override-channels", "--no-channel-priority"], vrb)
+    flags = append!(
+        ["-y", "--override-channels", "--no-channel-priority", "--strict-channel-priority"],
+        vrb,
+    )
     _run(io, cmd, create ? "Creating environment" : "Installing packages", flags = flags)
     nothing
 end
@@ -544,26 +663,11 @@ end
 
 function _run(io::IO, cmd::Cmd, args...; flags = String[])
     _log(io, args...)
-    if _verbosity() ≥ 0
+    if getpref_verbosity() ≥ 0
         lines = _cmdlines(cmd, flags)
         _logblock(io, lines, color = :light_black)
     end
     run(cmd)
-end
-
-function offline()
-    getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
-end
-
-function _pip_backend()
-    b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
-    if b == "pip"
-        :pip
-    elseif b == "uv"
-        :uv
-    else
-        error("pip_backend must be pip or uv, got $b")
-    end
 end
 
 function resolve(;
@@ -595,7 +699,7 @@ function resolve(;
     # find the topmost env in the load_path which depends on CondaPkg
     top_env = _resolve_top_env(load_path)
     STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-    conda_env = getpref(String, "env", "JULIA_CONDAPKG_ENV", "")
+    conda_env = getpref_env()
     if back === :Current
         conda_env = get(ENV, "CONDA_PREFIX", "")
         conda_env != "" || error(
@@ -649,8 +753,18 @@ function resolve(;
         # find all dependencies
         (packages, channels, pip_packages, extra_path) =
             _resolve_find_dependencies(io, load_path)
+
+        # validate channels against allowed list
+        _resolve_check_allowed_channels(io, packages, channels, getpref_allowed_channels())
+
+        # order channels according to preferences
+        _resolve_order_channels!(channels, getpref_channel_order())
+
+        # apply channel mapping
+        _resolve_map_channels!(channels, packages, getpref_channel_mapping())
+
         # install pip if there are pip packages to install
-        pip_backend = _pip_backend()
+        pip_backend = getpref_pip_backend()
         if !isempty(pip_packages)
             if pip_backend == :pip
                 if !haskey(packages, "pip")
@@ -676,9 +790,6 @@ function resolve(;
                 end
             end
         end
-        # sort channels
-        # (in the future we might prioritise them)
-        sort!(unique!(channels), by = c -> c.name)
         # merge dependencies
         specs = _resolve_merge_packages(packages, channels)
         # merge pip dependencies
@@ -707,7 +818,7 @@ function resolve(;
                 removed_pip_pkgs,
             ]) for pkg in pkgs
         ])
-        dry_run |= offline()
+        dry_run |= getpref_offline()
         if !isempty(changes)
             _log(
                 io,
@@ -795,13 +906,17 @@ function resolve(;
                 pixitomlpath = joinpath(meta_dir, "pixi.toml")
                 pixitoml = open(TOML.parse, pixitomlpath)
                 # new pixi.toml
+                channel_priority = getpref_channel_priority()
+                if channel_priority == "flexible"
+                    channel_priority = "strict"
+                end
                 pixitoml = Dict{String,Any}(
                     "project" => Dict{String,Any}(
                         "name" => ".CondaPkg",
                         "description" => "automatically generated by CondaPkg.jl",
                         "platforms" => pixitoml["project"]["platforms"],
                         "channels" => String[specstr(channel) for channel in channels],
-                        "channel-priority" => "disabled",
+                        "channel-priority" => channel_priority,
                     ),
                     "dependencies" =>
                         Dict{String,Any}(spec.name => pixispec(spec) for spec in specs),

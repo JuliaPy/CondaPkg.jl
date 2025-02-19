@@ -49,16 +49,16 @@ jobs:
             arch: x64
             backend: SystemPixi
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: prefix-dev/setup-pixi@v0
         if: ${{ matrix.backend == 'SystemPixi' }}
         with:
           run-install: false
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-downgrade-compat@v1
         if: ${{ matrix.version == '1.9' }}
         with:

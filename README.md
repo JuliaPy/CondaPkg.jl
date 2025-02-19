@@ -163,6 +163,10 @@ in more detail.
 | `env` | `JULIA_CONDAPKG_ENV` | Path to the Conda environment to use. |
 | `verbosity` | `JULIA_CONDAPKG_VERBOSITY` | One of `-1`, `0`, `1` or `2`. |
 | `pip_backend` | `JULIA_CONDAPKG_PIP_BACKEND` | One of `pip` or `uv`. |
+| `allowed_channels` | `JULIA_CONDAPKG_ALLOWED_CHANNELS` | List of allowed Conda channels. |
+| `channel_priority` | `JULIA_CONDAPKG_CHANNEL_PRIORITY` | One of `strict`, `flexible` (default) or `disabled`. |
+| `channel_order` | `JULIA_CONDAPKG_CHANNEL_ORDER` | List specifying channel order, with optional `...` for other channels. |
+| `channel_mapping` | `JULIA_CONDAPKG_CHANNEL_MAPPING` | Map of channel names to rename (old->new). |
 | `libstdcxx_ng_version` | `JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION` | Either `ignore` or a version specifier. |
 | `openssl_version` | `JULIA_CONDAPKG_OPENSSL_VERSION` | Either `ignore` or a version specifier. |
 
@@ -239,6 +243,47 @@ You can control which package manager is used to install pip dependencies by set
 - `pip`
 - `uv` (the default).
 
+### Allowed Channels
+
+You can restrict which Conda channels are allowed to be used by setting the `allowed_channels` preference to a list of channel names. For example:
+```
+pkg> preference add CondaPkg allowed_channels=conda-forge,anaconda
+```
+
+This restriction helps ensure reproducibility and security by preventing the use of untrusted channels.
+
+You can instead set it as an environment variable using a space-separated list:
+```
+julia> ENV["JULIA_CONDAPKG_ALLOWED_CHANNELS"] = "conda-forge anaconda"
+```
+
+When this preference is set:
+- Any attempt to use a channel not in the allowed list will result in an error.
+- This applies to both package-specific channels (e.g. `some-channel::some-package`) and global channels.
+
+If the preference is not set, all channels are allowed.
+
+### Channel Priority and Ordering
+
+You can control how channels are prioritized using the `channel_priority` preference:
+- `flexible` (default): Packages from lower-priority channels can satisfy dependencies as long as they are newer than those in higher-priority channels.
+- `strict`: Only packages from the highest-priority channel that contains the package will be considered.
+- `disabled`: Channel priority is ignored.
+
+You can control the order of channels using the `channel_order` preference. This is a list of channel names that specifies the order in which channels should be considered. For example:
+```
+pkg> preference add CondaPkg channel_order=conda-forge,anaconda,...,pytorch
+```
+
+The special entry `...` indicates where any other channels should go. If not specified, other channels go at the end. So `[foo, bar]` is equivalent to `[foo, bar, ...]`.
+
+You can instead set it as an environment variable using a space-separated list:
+```
+julia> ENV["JULIA_CONDAPKG_CHANNEL_ORDER"] = "conda-forge anaconda ... pytorch"
+```
+
+Note that when using the Pixi backend, `flexible` priority is not supported and will be treated as `strict`.
+
 ### Compatibility between Julia and Conda packages
 
 If you use both a Julia package and a Conda package which both use the same underlying
@@ -255,6 +300,19 @@ preferences. These can be set to one of:
 - A (non-empty) specific Conda version specifier.
 - `ignore` to ignore the compatibility constraint entirely.
 - Unset or the empty string for the default behaviour.
+
+### Channel Mapping
+
+You can map channel names to new names using the `channel_mapping` preference. This is useful when working with corporate proxies or mirrors. The mapping can be specified in several formats:
+
+- As a dictionary: `channel_mapping=Dict("old1" => "new1", "old2" => "new2")`
+- As a space-separated string: `channel_mapping="old1->new1 old2->new2"`
+- As a list of strings: `channel_mapping=["old1->new1", "old2->new2"]`
+
+For example, to map conda-forge to a corporate mirror:
+```
+pkg> preference add CondaPkg channel_mapping=conda-forge->corporate-conda-mirror
+```
 
 ## Frequently Asked Questions
 
