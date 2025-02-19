@@ -112,8 +112,7 @@ instance it is used by PythonCall.
 Overridden by the `libstdcxx_ng_version` preference.
 """
 function _compatible_libstdcxx_ng_version()
-    bound =
-        getpref(String, "libstdcxx_ng_version", "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION", "")
+    bound = getpref_libstdcxx_ng_version()
     if bound == "ignore"
         return nothing
     elseif bound != ""
@@ -145,7 +144,7 @@ See https://www.openssl.org/policies/releasestrat.html.
 Overridden by the `openssl_version` preference.
 """
 function _compatible_openssl_version()
-    bound = getpref(String, "openssl_version", "JULIA_CONDAPKG_OPENSSL_VERSION", "")
+    bound = getpref_openssl_version()
     if bound == "ignore"
         return nothing
     elseif bound != ""
@@ -395,12 +394,8 @@ function _resolve_pip_diff(old_specs, new_specs)
     return (removed, changed, added)
 end
 
-function _verbosity()
-    getpref(Int, "verbosity", "JULIA_CONDAPKG_VERBOSITY", 0)
-end
-
 function _verbosity_flags()
-    n = _verbosity()
+    n = getpref_verbosity()
     n < 0 ? ["-" * "q"^(-n)] : n > 0 ? ["-" * "v"^n] : String[]
 end
 
@@ -544,27 +539,13 @@ end
 
 function _run(io::IO, cmd::Cmd, args...; flags = String[])
     _log(io, args...)
-    if _verbosity() ≥ 0
+    if getpref_verbosity() ≥ 0
         lines = _cmdlines(cmd, flags)
         _logblock(io, lines, color = :light_black)
     end
     run(cmd)
 end
 
-function offline()
-    getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
-end
-
-function _pip_backend()
-    b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
-    if b == "pip"
-        :pip
-    elseif b == "uv"
-        :uv
-    else
-        error("pip_backend must be pip or uv, got $b")
-    end
-end
 
 function resolve(;
     force::Bool = false,
@@ -595,7 +576,7 @@ function resolve(;
     # find the topmost env in the load_path which depends on CondaPkg
     top_env = _resolve_top_env(load_path)
     STATE.meta_dir = meta_dir = joinpath(top_env, ".CondaPkg")
-    conda_env = getpref(String, "env", "JULIA_CONDAPKG_ENV", "")
+    conda_env = getpref_env()
     if back === :Current
         conda_env = get(ENV, "CONDA_PREFIX", "")
         conda_env != "" || error(
@@ -650,7 +631,7 @@ function resolve(;
         (packages, channels, pip_packages, extra_path) =
             _resolve_find_dependencies(io, load_path)
         # install pip if there are pip packages to install
-        pip_backend = _pip_backend()
+        pip_backend = getpref_pip_backend()
         if !isempty(pip_packages)
             if pip_backend == :pip
                 if !haskey(packages, "pip")
@@ -707,7 +688,7 @@ function resolve(;
                 removed_pip_pkgs,
             ]) for pkg in pkgs
         ])
-        dry_run |= offline()
+        dry_run |= getpref_offline()
         if !isempty(changes)
             _log(
                 io,

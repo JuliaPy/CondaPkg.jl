@@ -71,6 +71,27 @@ checkpref(::Type{Bool}, x::AbstractString) =
     x in ("yes", "true") ? true :
     x in ("no", "false") ? false : error("expecting true or false, got $(repr(x))")
 
+# Specific preference functions
+getpref_backend() = getpref(String, "backend", "JULIA_CONDAPKG_BACKEND", "")
+getpref_exe() = getpref(String, "exe", "JULIA_CONDAPKG_EXE", "")
+getpref_env() = getpref(String, "env", "JULIA_CONDAPKG_ENV", "")
+getpref_libstdcxx_ng_version() =
+    getpref(String, "libstdcxx_ng_version", "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION", "")
+getpref_openssl_version() =
+    getpref(String, "openssl_version", "JULIA_CONDAPKG_OPENSSL_VERSION", "")
+getpref_verbosity() = getpref(Int, "verbosity", "JULIA_CONDAPKG_VERBOSITY", 0)
+getpref_offline() = getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
+getpref_pip_backend() =
+    let b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
+        if b == "pip"
+            :pip
+        elseif b == "uv"
+            :uv
+        else
+            error("pip_backend must be pip or uv, got $b")
+        end
+    end
+
 include("backend.jl")
 include("spec.jl")
 include("meta.jl")
