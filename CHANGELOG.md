@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+* Add `allowed_channels` preference to restrict which Conda channels can be used.
+* Add `channel_priority` preference to control channel priority (strict/flexible/disabled).
+* Add `channel_order` preference to specify channel ordering.
+* Default channel priority is now `flexible`, or `strict` on pixi backends (previously `disabled`).
+
 ## 0.2.25 (2025-02-18)
 * Add `Pixi` and `SystemPixi` backends to allow using [Pixi](https://pixi.sh/latest/) to install packages.
 * The `Pixi` backend is now the default on systems which have it available.
