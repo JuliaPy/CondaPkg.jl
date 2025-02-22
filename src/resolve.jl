@@ -256,13 +256,17 @@ function _resolve_check_allowed_channels(
     packages,
     channels,
     allowed_channels::Union{Nothing,Set{String}},
+    dry_run::Bool = false,
 )
-    allowed_channels === nothing && return
+    allowed_channels === nothing && return true
 
     # Check package-specific channels
     for (name, pkgs) in packages
         for (fn, spec) in pkgs
             if !isempty(spec.channel) && spec.channel ∉ allowed_channels
+                if dry_run
+                    return false
+                end
                 error(
                     "Package '$name' in $fn requires channel '$(spec.channel)' which is not in allowed channels list",
                 )
@@ -273,10 +277,15 @@ function _resolve_check_allowed_channels(
     # Check global channels
     disallowed = filter(c -> c.name ∉ allowed_channels, channels)
     if !isempty(disallowed)
+        if dry_run
+            return false
+        end
         error(
             "The following channels are not in the allowed list: $(join(map(c->c.name, disallowed), ", "))",
         )
     end
+
+    return true
 end
 
 function _resolve_find_dependencies(io, load_path)
@@ -755,7 +764,15 @@ function resolve(;
             _resolve_find_dependencies(io, load_path)
 
         # validate channels against allowed list
-        _resolve_check_allowed_channels(io, packages, channels, getpref_allowed_channels())
+        if !_resolve_check_allowed_channels(
+            io,
+            packages,
+            channels,
+            getpref_allowed_channels(),
+            dry_run,
+        )
+            dry_run && return
+        end
 
         # order channels according to preferences
         _resolve_order_channels!(channels, getpref_channel_order())
