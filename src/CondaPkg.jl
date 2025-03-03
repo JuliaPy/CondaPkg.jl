@@ -140,7 +140,7 @@ function getpref_allowed_channels()
     if channels === nothing
         nothing
     else
-        Set(validate_channel(c) for c in channels)
+        Set{String}(validate_channel(c) for c in channels)
     end
 end
 
