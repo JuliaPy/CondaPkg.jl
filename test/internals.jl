@@ -183,7 +183,7 @@ end
     packages =
         Dict("foo" => Dict("test.toml" => CondaPkg.PkgSpec("foo", channel = "bad-channel")))
     channels = [CondaPkg.ChannelSpec("conda-forge")]
-    @test nothing ===
+    @test true ===
           CondaPkg._resolve_check_allowed_channels(devnull, packages, channels, nothing)
 
     # Test package with disallowed channel
@@ -218,7 +218,7 @@ end
         "bar" => Dict("test.toml" => CondaPkg.PkgSpec("bar", channel = "anaconda")),
     )
     channels = [CondaPkg.ChannelSpec("conda-forge"), CondaPkg.ChannelSpec("anaconda")]
-    @test nothing ===
+    @test true ===
           CondaPkg._resolve_check_allowed_channels(devnull, packages, channels, allowed)
 end
 
