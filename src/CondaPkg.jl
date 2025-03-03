@@ -17,19 +17,24 @@ using Scratch: @get_scratch!
 using TOML: TOML
 
 # these are loaded lazily to avoid downloading the JLLs unless they are needed
-MICROMAMBA_MODULE = Ref{Module}()
-PIXI_JLL_MODULE = Ref{Module}()
+const MICROMAMBA_MODULE = Ref{Module}()
+const PIXI_JLL_MODULE = Ref{Module}()
+
+const MICROMAMBA_PKGID =
+    Base.PkgId(Base.UUID("0b3b1443-0f03-428d-bdfb-f27f9c1191ea"), "MicroMamba")
+const PIXI_JLL_PKGID =
+    Base.PkgId(Base.UUID("4d7b5844-a134-5dcd-ac86-c8f19cd51bed"), "pixi_jll")
 
 function micromamba_module()
     if !isassigned(MICROMAMBA_MODULE)
-        MICROMAMBA_MODULE[] = Base.require(CondaPkg, :MicroMamba)
+        MICROMAMBA_MODULE[] = Base.require(MICROMAMBA_PKGID)
     end
     MICROMAMBA_MODULE[]
 end
 
 function pixi_jll_module()
     if !isassigned(PIXI_JLL_MODULE)
-        PIXI_JLL_MODULE[] = Base.require(CondaPkg, :pixi_jll)
+        PIXI_JLL_MODULE[] = Base.require(PIXI_JLL_PKGID)
     end
     PIXI_JLL_MODULE[]
 end
