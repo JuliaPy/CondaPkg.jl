@@ -201,7 +201,8 @@ end
 @testitem "external conda env" begin
     include("setup.jl")
     dn = string(tempname(), backend, Sys.KERNEL, VERSION)
-    (isnull || ispixi) || withenv("JULIA_CONDAPKG_ENV" => dn) do
+    if !isnull && !ispixi
+        CondaPkg.STATE.test_preferences["env"] = dn
         # create empty env
         CondaPkg.resolve()
         @test !occursin("ca-certificates", status())
@@ -209,26 +210,32 @@ end
         CondaPkg.add("ca-certificates"; interactive = true, force = true)  # force: spurious windows failures
         @test occursin("ca-certificates", status())
         CondaPkg.withenv() do
-            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "", "ssl", "cacert.pem"))
+            @test isfile(
+                CondaPkg.envdir(Sys.iswindows() ? "Library" : "", "ssl", "cacert.pem"),
+            )
         end
         # remove a package from specs, it must remain installed because we use a shared centralized env
         CondaPkg.rm("ca-certificates"; interactive = true, force = true)
         @test !occursin("ca-certificates", status())  # removed from specs ...
         CondaPkg.withenv() do  # ... but still installed (shared env might be used by specs from alternate julia versions)
-            @test isfile(CondaPkg.envdir(Sys.iswindows() ? "Library" : "", "ssl", "cacert.pem"))
+            @test isfile(
+                CondaPkg.envdir(Sys.iswindows() ? "Library" : "", "ssl", "cacert.pem"),
+            )
         end
     end
 end
 
 @testitem "shared env" begin
     include("setup.jl")
-    (isnull || ispixi) || withenv("JULIA_CONDAPKG_ENV" => "@my_env") do
+    if !isnull && !ispixi
+        CondaPkg.STATE.test_preferences["env"] = "@my_env"
         CondaPkg.add("python"; force = true)
         @test CondaPkg.envdir() ==
               joinpath(Base.DEPOT_PATH[1], "conda_environments", "my_env")
         @test isfile(CondaPkg.envdir(Sys.iswindows() ? "python.exe" : "bin/python"))
     end
-    (isnull || ispixi) || withenv("JULIA_CONDAPKG_ENV" => "@/some/absolute/path") do
+    if !isnull && !ispixi
+        CondaPkg.STATE.test_preferences["env"] = "@/some/absolute/path"
         @test_throws ErrorException CondaPkg.add("python"; force = true)
     end
 end

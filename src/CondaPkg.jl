@@ -57,11 +57,19 @@ end
     conda_env::String = ""
     shared::Bool = false
     frozen::Bool = false
+    # testing
+    testing::Bool = false
+    test_preferences::Dict{String,Any} = Dict{String,Any}()
 end
 
 const STATE = State()
 
 function getpref(::Type{T}, prefname, envname, default = nothing) where {T}
+    if STATE.testing
+        ans = get(STATE.test_preferences, prefname, nothing)
+        ans === nothing || return checkpref(T, ans)::T
+        return default
+    end
     ans = @load_preference(prefname, nothing)
     ans === nothing || return checkpref(T, ans)::T
     ans = get(ENV, envname, "")
@@ -75,6 +83,85 @@ checkpref(::Type{T}, x::AbstractString) where {T} = parse(T, x)
 checkpref(::Type{Bool}, x::AbstractString) =
     x in ("yes", "true") ? true :
     x in ("no", "false") ? false : error("expecting true or false, got $(repr(x))")
+checkpref(::Type{Vector{String}}, x::AbstractString) = collect(String, split(x))
+checkpref(::Type{Dict{String,String}}, x::AbstractString) =
+    checkpref(Dict{String,String}, split(x))
+checkpref(::Type{Pair{String,String}}, x::AbstractString) =
+    let (x1, x2) = split(x, "->", limit = 2)
+        Pair{String,String}(x1, x2)
+    end
+checkpref(::Type{Dict{String,String}}, x::AbstractVector) =
+    Dict{String,String}(checkpref(Pair{String,String}, p) for p in x)
+
+# Specific preference functions
+getpref_backend() = getpref(String, "backend", "JULIA_CONDAPKG_BACKEND", "")
+getpref_exe() = getpref(String, "exe", "JULIA_CONDAPKG_EXE", "")
+getpref_env() = getpref(String, "env", "JULIA_CONDAPKG_ENV", "")
+getpref_libstdcxx_ng_version() =
+    getpref(String, "libstdcxx_ng_version", "JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION", "")
+getpref_openssl_version() =
+    getpref(String, "openssl_version", "JULIA_CONDAPKG_OPENSSL_VERSION", "")
+getpref_verbosity() = getpref(Int, "verbosity", "JULIA_CONDAPKG_VERBOSITY", 0)
+getpref_offline() = getpref(Bool, "offline", "JULIA_CONDAPKG_OFFLINE", false)
+
+function getpref_channel_priority()
+    p = getpref(String, "channel_priority", "JULIA_CONDAPKG_CHANNEL_PRIORITY", "flexible")
+    if p in ("strict", "flexible", "disabled")
+        return p
+    else
+        error("channel_priority must be strict, flexible or disabled, got $p")
+    end
+end
+
+function getpref_channel_order()
+    order =
+        getpref(Vector{String}, "channel_order", "JULIA_CONDAPKG_CHANNEL_ORDER", String[])
+    String[c == "..." ? c : validate_channel(c) for c in order]
+end
+
+function getpref_pip_backend()
+    b = getpref(String, "pip_backend", "JULIA_CONDAPKG_PIP_BACKEND", "uv")
+    if b == "pip"
+        :pip
+    elseif b == "uv"
+        :uv
+    else
+        error("pip_backend must be pip or uv, got $b")
+    end
+end
+
+function getpref_allowed_channels()
+    channels = getpref(
+        Vector{String},
+        "allowed_channels",
+        "JULIA_CONDAPKG_ALLOWED_CHANNELS",
+        nothing,
+    )
+    if channels === nothing
+        nothing
+    else
+        Set(validate_channel(c) for c in channels)
+    end
+end
+
+function getpref_channel_mapping()
+    mapping = getpref(
+        Dict{String,String},
+        "channel_mapping",
+        "JULIA_CONDAPKG_CHANNEL_MAPPING",
+        Dict{String,String}(),
+    )
+
+    # Validate all channel names
+    validated = Dict{String,String}()
+    for (old, new) in mapping
+        old_validated = validate_channel(old)
+        new_validated = validate_channel(new)
+        validated[old_validated] = new_validated
+    end
+
+    validated
+end
 
 include("backend.jl")
 include("spec.jl")

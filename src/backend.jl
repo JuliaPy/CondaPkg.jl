@@ -9,9 +9,9 @@ const PIXI_BACKENDS = (:Pixi, :SystemPixi)
 
 function backend()
     if STATE.backend == :NotSet
-        backend = getpref(String, "backend", "JULIA_CONDAPKG_BACKEND", "")
-        exe = getpref(String, "exe", "JULIA_CONDAPKG_EXE", "")
-        env = getpref(String, "env", "JULIA_CONDAPKG_ENV", "")
+        backend = getpref_backend()
+        exe = getpref_exe()
+        env = getpref_env()
         if backend == ""
             if exe == ""
                 if env == "" && invokelatest(pixi_jll_module().is_available)::Bool
