@@ -1,7 +1,7 @@
 name = "CondaPkg"
 uuid = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
 authors = ["Christopher Doris <github.com/cjdoris>"]
-version = "0.2.19"
+version = "0.2.26"
 
 [deps]
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
@@ -9,17 +9,32 @@ Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MicroMamba = "0b3b1443-0f03-428d-bdfb-f27f9c1191ea"
 Pidfile = "fa939f87-e72e-5be4-a000-7fc836dbe307"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Preferences = "21216c6a-2e73-6563-6e65-726566657250"
+Scratch = "6c6a2e73-6563-6170-7368-637461726353"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+pixi_jll = "4d7b5844-a134-5dcd-ac86-c8f19cd51bed"
 
 [compat]
+Aqua = "0 - 999"
 JSON3 = "1.9"
+Markdown = "1"
 MicroMamba = "0.1.4"
+OpenSSL_jll = "0 - 999"
 Pidfile = "1.3"
-julia = "1"
+Pkg = "1.9"
+Preferences = "1.3"
+Scratch = "1.2"
+TOML = "1"
+Test = "1"
+TestItemRunner = "0 - 999"
+julia = "1.9"
+pixi_jll = "0.41.3, 0.42 - 2"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+OpenSSL_jll = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Test", "TestItemRunner"]
+test = ["Aqua", "OpenSSL_jll", "Test", "TestItemRunner"]

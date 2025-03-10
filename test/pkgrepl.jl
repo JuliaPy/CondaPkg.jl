@@ -21,11 +21,14 @@ end
 
 @testitem "add/rm pip package" begin
     include("setup.jl")
-    CondaPkg.PkgREPL.pip_add(["six==1.16.0"])
+    CondaPkg.PkgREPL.pip_add(["six==1.16.0", "pydantic[email]==2.9.2"])
     @test occursin("six", status())
     @test occursin("(==1.16.0)", status())
-    CondaPkg.PkgREPL.pip_rm(["six"])
+    @test occursin("pydantic", status())
+    @test occursin("(==2.9.2, [email])", status())
+    CondaPkg.PkgREPL.pip_rm(["six", "pydantic"])
     @test !occursin("six", status())
+    @test !occursin("pydantic", status())
 end
 
 @testitem "status" begin
@@ -54,14 +57,24 @@ end
 
 @testitem "run" begin
     include("setup.jl")
-    CondaPkg.add("python", version="==3.10.2")
     if !isnull
+        CondaPkg.add("python", version = "==3.10.2")
         fn = tempname()
+        # run python --version and check the output
         open(fn, "w") do io
             redirect_stdout(io) do
                 CondaPkg.PkgREPL.run(["python", "--version"])
             end
         end
         @test contains(read(fn, String), "3.10.2")
+        # run conda --help and check the output
+        # tests that conda and mamba both run whatever CondaPkg runs
+        open(fn, "w") do io
+            redirect_stdout(io) do
+                CondaPkg.PkgREPL.run([ispixi ? "pixi" : "conda", "--help"])
+            end
+        end
+        @test contains(read(fn, String), "--help")
+        @test contains(read(fn, String), "--version")
     end
 end

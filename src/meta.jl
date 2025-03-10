@@ -4,7 +4,7 @@ information about the most recent resolve.
 """
 
 # increment whenever the metadata format changes
-const META_VERSION = 13
+const META_VERSION = 15
 
 @kwdef mutable struct Meta
     timestamp::Float64
@@ -12,6 +12,7 @@ const META_VERSION = 13
     load_path::Vector{String}
     extra_path::Vector{String}
     version::VersionNumber
+    backend::Symbol
     packages::Vector{PkgSpec}
     channels::Vector{ChannelSpec}
     pip_packages::Vector{PipPkgSpec}
@@ -26,6 +27,7 @@ function read_meta(io::IO)
             load_path = read_meta(io, Vector{String}),
             extra_path = read_meta(io, Vector{String}),
             version = read_meta(io, VersionNumber),
+            backend = read_meta(io, Symbol),
             packages = read_meta(io, Vector{PkgSpec}),
             channels = read_meta(io, Vector{ChannelSpec}),
             pip_packages = read_meta(io, Vector{PipPkgSpec}),
@@ -43,13 +45,16 @@ function read_meta(io::IO, ::Type{String})
     end
     String(bytes)
 end
+function read_meta(io::IO, ::Type{Symbol})
+    Symbol(read_meta(io, String))
+end
 function read_meta(io::IO, ::Type{Bool})
     read(io, Bool)
 end
 function read_meta(io::IO, ::Type{Vector{T}}) where {T}
     len = read(io, Int)
     ans = Vector{T}()
-    for _ in 1:len
+    for _ = 1:len
         item = read_meta(io, T)
         push!(ans, item)
     end
@@ -63,7 +68,7 @@ function read_meta(io::IO, ::Type{PkgSpec})
     version = read_meta(io, String)
     channel = read_meta(io, String)
     build = read_meta(io, String)
-    PkgSpec(name, version=version, channel=channel, build=build)
+    PkgSpec(name, version = version, channel = channel, build = build)
 end
 function read_meta(io::IO, ::Type{ChannelSpec})
     name = read_meta(io, String)
@@ -73,8 +78,9 @@ function read_meta(io::IO, ::Type{PipPkgSpec})
     name = read_meta(io, String)
     version = read_meta(io, String)
     binary = read_meta(io, String)
+    extras = read_meta(io, Vector{String})
     editable = read_meta(io, Bool)
-    PipPkgSpec(name, version=version, binary=binary, editable=editable)
+    PipPkgSpec(name, version = version, binary = binary, extras = extras, editable = editable)
 end
 
 function write_meta(io::IO, meta::Meta)
@@ -84,6 +90,7 @@ function write_meta(io::IO, meta::Meta)
     write_meta(io, meta.load_path)
     write_meta(io, meta.extra_path)
     write_meta(io, meta.version)
+    write_meta(io, meta.backend)
     write_meta(io, meta.packages)
     write_meta(io, meta.channels)
     write_meta(io, meta.pip_packages)
@@ -95,6 +102,9 @@ end
 function write_meta(io::IO, x::String)
     write(io, convert(Int, sizeof(x)))
     write(io, x)
+end
+function write_meta(io::IO, x::Symbol)
+    write_meta(io, String(x))
 end
 function write_meta(io::IO, x::Bool)
     write(io, x)
@@ -121,5 +131,6 @@ function write_meta(io::IO, x::PipPkgSpec)
     write_meta(io, x.name)
     write_meta(io, x.version)
     write_meta(io, x.binary)
+    write_meta(io, x.extras)
     write_meta(io, x.editable)
 end

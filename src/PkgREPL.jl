@@ -7,33 +7,41 @@ import Markdown
 ### parsing
 
 function parse_pkg(x::String)
-    m = match(r"""
-    ^
-    (?:([^\s\:]+)::)?  # channel
-    ([-_.A-Za-z0-9]+)  # name
-    (?:\@?([<>=!0-9][^\s\#]*))?  # version
-    (?:\#([^\s]+))?  # build
-    $
-    """x, x)
+    m = match(
+        r"""
+^
+(?:([^\s\:]+)::)?  # channel
+([-_.A-Za-z0-9]+)  # name
+(?:\@?([<>=!0-9][^\s\#]*))?  # version
+(?:\#([^\s]+))?  # build
+$
+"""x,
+        x,
+    )
     m === nothing && error("invalid conda package: $x")
     channel = something(m.captures[1], "")
     name = m.captures[2]
     version = something(m.captures[3], "")
     build = something(m.captures[4], "")
-    CondaPkg.PkgSpec(name, version=version, channel=channel, build=build)
+    CondaPkg.PkgSpec(name, version = version, channel = channel, build = build)
 end
 
-function parse_pip_pkg(x::String; binary::String="", editable=false)
-    m = match(r"""
-    ^
-    ([-_.A-Za-z0-9]+)
-    ([~!<>=@].*)?
-    $
-    """x, x)
+function parse_pip_pkg(x::String; binary::String = "", editable=false)
+    m = match(
+        r"""
+^
+([-_.A-Za-z0-9]+)
+(\[([^\]]*)\])?
+([~!<>=@].*)?
+$
+"""x,
+        x,
+    )
     m === nothing && error("invalid pip package: $x")
     name = m.captures[1]
-    version = something(m.captures[2], "")
-    CondaPkg.PipPkgSpec(name, version=version, binary=binary, editable=editable)
+    extras = split(something(m.captures[3], ""), ",", keepempty = false)
+    version = something(m.captures[4], "")
+    CondaPkg.PipPkgSpec(name, version = version, binary = binary, extras = extras, editable = editable)
 end
 
 function parse_channel(x::String)
@@ -85,8 +93,8 @@ const status_spec = Pkg.REPLMode.CommandSpec(
 
 ### resolve
 
-function resolve(; force=false)
-    CondaPkg.resolve(force=force, interactive=true)
+function resolve(; force = false)
+    CondaPkg.resolve(force = force, interactive = true)
 end
 
 const resolve_help = Markdown.parse("""
@@ -190,8 +198,8 @@ const channel_add_spec = Pkg.REPLMode.CommandSpec(
 
 ### pip_add
 
-function pip_add(args; binary="", editable=false)
-    CondaPkg.add([parse_pip_pkg(arg, binary=binary, editable=editable) for arg in args])
+function pip_add(args; binary = "", editable = false)
+    CondaPkg.add([parse_pip_pkg(arg, binary = binary, editable = editable) for arg in args])
 end
 
 const pip_add_help = Markdown.parse("""
@@ -205,8 +213,9 @@ Add Pip packages to the environment.
 
 ```
 pkg> conda pip_add build
-pkg> conda pip_add build~=0.7          # version range
-pkg> conda pip_add --binary=no nmslib  # always build from source
+pkg> conda pip_add build~=0.7                # version range
+pkg> conda pip_add pydantic[email,timezone]  # extras
+pkg> conda pip_add --binary=no nmslib        # always build from source
 pkg> conda pip_add --editable nmslib@/path/to/package_source  # install locally
 ```
 """)
@@ -335,8 +344,19 @@ const gc_spec = Pkg.REPLMode.CommandSpec(
 ### run
 
 function run(args)
-    CondaPkg.withenv() do
-        Base.run(Cmd(args))
+    try
+        CondaPkg.withenv() do
+            b = CondaPkg.backend()
+            if b in CondaPkg.CONDA_BACKENDS && args[1] == "conda"
+                Base.run(CondaPkg.conda_cmd(args[2:end]))
+            elseif b in CondaPkg.PIXI_BACKENDS && args[1] == "pixi"
+                Base.run(CondaPkg.pixi_cmd(args[2:end]))
+            else
+                Base.run(Cmd(args))
+            end
+        end
+    catch err
+        Base.display_error(err)
     end
 end
 
@@ -346,6 +366,9 @@ conda run cmd ...
 ```
 
 Run the given command in the Conda environment.
+
+You can do `conda run conda ...` to run whichever conda (or mamba or micromamba) executable
+that CondaPkg uses. Or in a pixi backend, do `conda run pixi ...` to run the pixi executable.
 """)
 
 const run_spec = Pkg.REPLMode.CommandSpec(

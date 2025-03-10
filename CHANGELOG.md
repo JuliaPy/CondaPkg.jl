@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.2.26 (2025-03-03)
+* Add `allowed_channels` preference to restrict which Conda channels can be used.
+* Add `channel_priority` preference to control channel priority (strict/flexible/disabled).
+* Add `channel_order` preference to specify channel ordering.
+* Add `channel_mapping` preference to rename channels (useful for proxies/mirrors).
+* Default channel priority is now `flexible`, or `strict` on pixi backends (previously `disabled`).
+* Bug fixes in lazy loading.
+
+## 0.2.25 (2025-02-18)
+* Add `Pixi` and `SystemPixi` backends to allow using [Pixi](https://pixi.sh/latest/) to install packages.
+* The `Pixi` backend is now the default on systems which have it available.
+
+## 0.2.24 (2024-11-08)
+* Add `pip_backend` preference to choose between `pip` and `uv`.
+* Add `libstdcxx_ng_version` preference to override automatic version bounds.
+* Add `openssl_version` preference to override automatic version bounds.
+* Pip packages now support extras.
+
+## 0.2.23 (2024-07-20)
+* Pip packages are now installed using [`uv`](https://pypi.org/project/uv/) if it is installed.
+* Special handling of `openssl` for compatibility with `OpenSSL_jll` if it is installed.
+
+## 0.2.22 (2023-10-20)
+* `pkg> conda run conda ...` now runs whatever conda executable CondaPkg is configured with.
+
+## 0.2.21 (2023-09-30)
+* Special handling of `python` with `build="**cpython**"`.
+
+## 0.2.20 (2023-09-22)
+* Shared envs are now not always fully reinstalled when resolving.
+
+## 0.2.19 (2023-09-21)
+* Now configurable using preferences.
+
 ## 0.2.18 (2023-03-22)
 * Lock file is always shown when locked.
 
