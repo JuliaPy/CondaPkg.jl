@@ -80,6 +80,7 @@ function parse_deps(toml)
                 version = ""
                 binary = ""
                 extras = String[]
+                editable = false
                 if dep isa AbstractString
                     version = _convert(String, dep)
                 elseif dep isa AbstractDict
@@ -90,16 +91,18 @@ function parse_deps(toml)
                             binary = _convert(String, v)
                         elseif k == "extras"
                             extras = _convert(Vector{String}, v)
+                        elseif k == "editable"
+                            editable = _convert(Bool, v)
                         else
                             error(
-                                "pip.deps keys must be 'version', 'extras' or 'binary', got '$k'",
+                                "pip.deps keys must be 'version', 'extras', 'binary' or 'editable', got '$k'",
                             )
                         end
                     end
                 else
                     error("pip.deps must be String or Dict, got $(typeof(dep))")
                 end
-                pkg = PipPkgSpec(name, version = version, binary = binary, extras = extras)
+                pkg = PipPkgSpec(name, version = version, binary = binary, extras = extras, editable = editable)
                 push!(pip_packages, pkg)
             end
         end
@@ -302,6 +305,9 @@ function add!(toml, pkg::PipPkgSpec)
     if !isempty(pkg.extras)
         dep["extras"] = pkg.extras
     end
+    if pkg.editable
+        dep["editable"] = pkg.editable
+    end
     if issubset(keys(dep), ["version"])
         deps[pkg.name] = pkg.version
     else
@@ -380,7 +386,7 @@ Removes a channel from the current environment.
 rm_channel(channel::AbstractString; kw...) = rm(ChannelSpec(channel); kw...)
 
 """
-    add_pip(pkg; version="", binary="", extras=[], resolve=true)
+    add_pip(pkg; version="", binary="", extras=[], resolve=true, editable=false)
 
 Adds a pip dependency to the current environment.
 
@@ -389,8 +395,8 @@ Adds a pip dependency to the current environment.
     Use conda dependencies instead if at all possible. Pip does not handle version
     conflicts gracefully, so it is possible to get incompatible versions.
 """
-add_pip(pkg::AbstractString; version = "", binary = "", extras = String[], kw...) =
-    add(PipPkgSpec(pkg, version = version, binary = binary, extras = extras); kw...)
+add_pip(pkg::AbstractString; version = "", binary = "", extras = String[], editable = false, kw...) =
+    add(PipPkgSpec(pkg, version = version, binary = binary, extras = extras, editable = editable); kw...)
 
 """
     rm_pip(pkg; resolve=true)
