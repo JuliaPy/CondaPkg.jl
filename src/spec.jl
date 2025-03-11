@@ -229,7 +229,16 @@ function pixispec(x::PipPkgSpec)
                 spec["git"] = url
             end
         elseif startswith(url, r"[a-z]+://")
-            spec["url"] = url
+            # Handle the file:// prefix.
+            m = match(r"^file://(.*)", url)
+            if m !== nothing
+                spec["path"] = m.captures[1]
+                if x.editable
+                    spec["editable"] = true
+                end
+            else
+                spec["url"] = url
+            end
         else
             # https://pixi.sh/latest/reference/pixi_manifest/#path
             # minimal-project = { path = "./minimal-project", editable = true}
