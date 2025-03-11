@@ -234,6 +234,9 @@ function status(; io::IO = stderr)
             if !isempty(pkg.extras)
                 push!(specparts, "[$(join(pkg.extras, ", "))]")
             end
+            if pkg.editable
+                push!(specparts, "editable")
+            end
             isempty(specparts) ||
                 printstyled(io, " (", join(specparts, ", "), ")", color = :light_black)
             println(io)
