@@ -174,9 +174,10 @@ end
 
     # install package
     # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
-    CondaPkg.add_pip("foononeditable", version="@ $(dirname(@__FILE__))/FooNonEditable")
+    pkg_path = joinpath(dirname(@__FILE__), "FooNonEditable")
+    CondaPkg.add_pip("foononeditable", version="@ $(pkg_path)")
     @test occursin("foononeditable", status())
-    @test occursin("$(dirname(@__FILE__))/FooNonEditable", status())
+    @test occursin(pkg_path, status())
     CondaPkg.withenv() do
         isnull || run(`python -c "import foononeditable"`)
     end
@@ -200,9 +201,10 @@ end
 
     # install package
     # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
-    CondaPkg.add_pip("foo", version="@ $(dirname(@__FILE__))/Foo", editable=true)
+    pkg_path = joinpath(dirname(@__FILE__), "Foo")
+    CondaPkg.add_pip("foo", version="@ $(pkg_path)", editable=true)
     @test occursin("foo", status())
-    @test occursin("$(dirname(@__FILE__))/Foo", status())
+    @test occursin(pkg_path, status())
     CondaPkg.withenv() do
         isnull || run(`python -c "import foo"`)
     end
@@ -213,7 +215,9 @@ end
     end
 
     # Now add the `added.py` file to create the `added` module.
-    cp("$(dirname(@__FILE__))/Foo/foo/test/added.py", "$(dirname(@__FILE__))/Foo/foo/added.py")
+    added_src_path = joinpath(dirname(@__FILE__), "Foo", "foo", "test", "added.py")
+    added_dst_path = joinpath(dirname(@__FILE__), "Foo", "foo", "added.py")
+    cp(added_src_path, added_dst_path)
 
     # Test that the `added` module exists.
     CondaPkg.withenv() do
@@ -221,7 +225,7 @@ end
     end
 
     # Remove the added file for later tests.
-    rm("$(dirname(@__FILE__))/Foo/foo/added.py")
+    rm(added_dst_path)
 
     # remove package
     CondaPkg.rm_pip("foo")
