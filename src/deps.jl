@@ -248,8 +248,10 @@ function add(
     channel = "",
     resolve = true,
     file = cur_deps_file(),
+    io::IO = stderr,
     kw...,
 )
+    old_content = (resolve && isfile(file)) ? read(file) : nothing
     toml = read_deps(; file)
 
     for pkg in pkgs
@@ -257,7 +259,19 @@ function add(
     end
     write_deps(toml; file)
     STATE.resolved = false
-    resolve && CondaPkg.resolve(; kw...)
+    if resolve
+        try
+            CondaPkg.resolve(; io = io, kw...)
+        catch
+            _log(io, "Resolve failed, reverting $file")
+            if old_content === nothing
+                Base.rm(file)
+            else
+                write(file, old_content)
+            end
+            rethrow()
+        end
+    end
     return
 end
 

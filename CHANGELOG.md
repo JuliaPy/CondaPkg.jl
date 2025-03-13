@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* Whed `add`ing a dependency, if resolving fails then CondaPkg.toml is now reverted.
+
 ## 0.2.26 (2025-03-03)
 * Add `allowed_channels` preference to restrict which Conda channels can be used.
 * Add `channel_priority` preference to control channel priority (strict/flexible/disabled).
