@@ -198,6 +198,28 @@ end
     @test true
 end
 
+@testitem "install non-existent package" begin
+    include("setup.jl")
+
+    # First add a package to ensure we are in a resolved state
+    CondaPkg.add("python", version = "==3.10.2")
+
+    # Verify clean state
+    @test !occursin("Not Resolved", status())
+    @test !occursin("nonexistentpackage123xyz", status())
+    @test occursin("python", status())
+
+    # Try to add non-existent package and verify it throws
+    @test_throws Exception CondaPkg.add("nonexistentpackage123xyz")
+
+    # Verify the deps file was reverted
+    @test !occursin("nonexistentpackage123xyz", status())
+    @test occursin("python", status())
+
+    # Verify that resolving failed
+    @test occursin("Not Resolved", status())
+end
+
 @testitem "external conda env" begin
     include("setup.jl")
     dn = string(tempname(), backend, Sys.KERNEL, VERSION)
