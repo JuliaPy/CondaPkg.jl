@@ -213,12 +213,15 @@ end
         # Try to add non-existent package and verify it throws
         @test_throws Exception CondaPkg.add("nonexistentpackage123xyz")
 
+        # Verify that resolving failed
+        @test !CondaPkg.STATE.resolved
+
+        # is_resolved() re-checks that the old deps are still valid (except Pixi)
+        @test CondaPkg.is_resolved() == !ispixi
+
         # Verify the deps file was reverted
         @test !occursin("nonexistentpackage123xyz", status())
         @test occursin("python", status())
-
-        # Verify that resolving failed
-        @test occursin("Not Resolved", status())
     end
 end
 
