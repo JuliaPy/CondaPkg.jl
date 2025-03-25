@@ -14,11 +14,11 @@ function backend()
         env = getpref_env()
         if backend == ""
             if exe == ""
-                if env == "" && invokelatest(pixi_jll_module().is_available)::Bool
+                if env == "" && pixi_jll.is_available()
                     # cannot currently use pixi backend if env preference is set
                     # (see resolve())
                     backend = "Pixi"
-                elseif invokelatest(micromamba_module().is_available)::Bool
+                elseif MicroMamba.is_available()
                     backend = "MicroMamba"
                 else
                     error(
@@ -79,7 +79,7 @@ end
 function conda_cmd(args = ``; io::IO = stderr)
     b = backend()
     if b == :MicroMamba
-        invokelatest(micromamba_module().cmd, args, io = io)::Cmd
+        MicroMamba.cmd(args, io = io)
     elseif b in CONDA_BACKENDS
         STATE.condaexe == "" && error("this is a bug")
         `$(STATE.condaexe) $args`
@@ -93,7 +93,7 @@ default_pixi_cache_dir() = @get_scratch!("pixi_cache")
 function pixi_cmd(args = ``; io::IO = stderr)
     b = backend()
     if b == :Pixi
-        pixiexe = invokelatest(pixi_jll_module().pixi)::Cmd
+        pixiexe = pixi_jll.pixi()
         if !haskey(ENV, "PIXI_CACHE_DIR") && !haskey(ENV, "RATTLER_CACHE_DIR")
             # if the cache dirs are not set, use a scratch dir
             pixi_cache_dir = default_pixi_cache_dir()
