@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.27 (2025-04-06)
 * When `add`ing or `rm`ing a dependency, if resolving fails then CondaPkg.toml is now reverted.
 * Bug fixes.
 
