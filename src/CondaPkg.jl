@@ -16,27 +16,12 @@ using Pkg: Pkg
 using Scratch: @get_scratch!
 using TOML: TOML
 
-# these are loaded lazily to avoid downloading the JLLs unless they are needed
-const MICROMAMBA_MODULE = Ref{Module}()
-const PIXI_JLL_MODULE = Ref{Module}()
-
-const MICROMAMBA_PKGID =
-    Base.PkgId(Base.UUID("0b3b1443-0f03-428d-bdfb-f27f9c1191ea"), "MicroMamba")
-const PIXI_JLL_PKGID =
-    Base.PkgId(Base.UUID("4d7b5844-a134-5dcd-ac86-c8f19cd51bed"), "pixi_jll")
-
-function micromamba_module()
-    if !isassigned(MICROMAMBA_MODULE)
-        MICROMAMBA_MODULE[] = Base.require(MICROMAMBA_PKGID)
-    end
-    MICROMAMBA_MODULE[]
+# avoid loading backends which are definitely not used
+if @load_preference("backend", "MicroMamba") == "MicroMamba"
+    using MicroMamba: MicroMamba
 end
-
-function pixi_jll_module()
-    if !isassigned(PIXI_JLL_MODULE)
-        PIXI_JLL_MODULE[] = Base.require(PIXI_JLL_PKGID)
-    end
-    PIXI_JLL_MODULE[]
+if @load_preference("backend", "Pixi") == "Pixi"
+    using pixi_jll: pixi_jll
 end
 
 let toml = TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
