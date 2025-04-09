@@ -18,7 +18,7 @@ function backend()
                     # cannot currently use pixi backend if env preference is set
                     # (see resolve())
                     backend = "Pixi"
-                elseif MicroMamba.is_available()
+                elseif MicroMamba.available()
                     backend = "MicroMamba"
                 else
                     error(
