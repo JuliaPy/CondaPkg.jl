@@ -16,8 +16,13 @@ using Pkg: Pkg
 using Scratch: @get_scratch!
 using TOML: TOML
 
-using MicroMamba
-using pixi_jll
+# avoid loading backends which are definitely not used
+if @load_preference("backend", "MicroMamba") == "MicroMamba"
+    using MicroMamba: MicroMamba
+end
+if @load_preference("backend", "Pixi") == "Pixi"
+    using pixi_jll: pixi_jll
+end
 
 let toml = TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
     @eval const UUID = Base.UUID($(toml["uuid"]))
