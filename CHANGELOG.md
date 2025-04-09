@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.28 (2025-04-09)
 * Bug fix: remove lazy loading for backends, which is incompatible with precompilation.
 
 ## 0.2.27 (2025-04-06)
