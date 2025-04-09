@@ -16,22 +16,12 @@ using Pkg: Pkg
 using Scratch: @get_scratch!
 using TOML: TOML
 
-# these are loaded lazily to avoid downloading the JLLs unless they are needed
-MICROMAMBA_MODULE = Ref{Module}()
-PIXI_JLL_MODULE = Ref{Module}()
-
-function micromamba_module()
-    if !isassigned(MICROMAMBA_MODULE)
-        MICROMAMBA_MODULE[] = Base.require(CondaPkg, :MicroMamba)
-    end
-    MICROMAMBA_MODULE[]
+# avoid loading backends which are definitely not used
+if @load_preference("backend", "MicroMamba") == "MicroMamba"
+    using MicroMamba: MicroMamba
 end
-
-function pixi_jll_module()
-    if !isassigned(PIXI_JLL_MODULE)
-        PIXI_JLL_MODULE[] = Base.require(CondaPkg, :pixi_jll)
-    end
-    PIXI_JLL_MODULE[]
+if @load_preference("backend", "Pixi") == "Pixi"
+    using pixi_jll: pixi_jll
 end
 
 let toml = TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
@@ -135,7 +125,7 @@ function getpref_allowed_channels()
     if channels === nothing
         nothing
     else
-        Set(validate_channel(c) for c in channels)
+        Set{String}(validate_channel(c) for c in channels)
     end
 end
 

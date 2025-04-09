@@ -1,11 +1,19 @@
 # Changelog
 
-## Unreleased
+## 0.2.28 (2025-04-09)
+* Bug fix: remove lazy loading for backends, which is incompatible with precompilation.
+
+## 0.2.27 (2025-04-06)
+* When `add`ing or `rm`ing a dependency, if resolving fails then CondaPkg.toml is now reverted.
+* Bug fixes.
+
+## 0.2.26 (2025-03-03)
 * Add `allowed_channels` preference to restrict which Conda channels can be used.
 * Add `channel_priority` preference to control channel priority (strict/flexible/disabled).
 * Add `channel_order` preference to specify channel ordering.
 * Add `channel_mapping` preference to rename channels (useful for proxies/mirrors).
 * Default channel priority is now `flexible`, or `strict` on pixi backends (previously `disabled`).
+* Bug fixes in lazy loading.
 
 ## 0.2.25 (2025-02-18)
 * Add `Pixi` and `SystemPixi` backends to allow using [Pixi](https://pixi.sh/latest/) to install packages.
