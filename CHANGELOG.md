@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.28 (2025-04-09)
+* Bug fix: remove lazy loading for backends, which is incompatible with precompilation.
+
+## 0.2.27 (2025-04-06)
+* When `add`ing or `rm`ing a dependency, if resolving fails then CondaPkg.toml is now reverted.
+* Bug fixes.
+
 ## 0.2.26 (2025-03-03)
 * Add `allowed_channels` preference to restrict which Conda channels can be used.
 * Add `channel_priority` preference to control channel priority (strict/flexible/disabled).

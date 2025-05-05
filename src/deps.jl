@@ -249,25 +249,63 @@ _to_spec(s::Union{PkgSpec,PipPkgSpec,ChannelSpec}; channel = "") = s
 # Convert strings to PkgSpec
 _to_spec(s::AbstractString; channel = "") = PkgSpec(s; channel)
 
+function _add_or_rm(
+    op!::Function,
+    pkgs::AbstractVector;
+    channel = "",
+    resolve = true,
+    file = cur_deps_file(),
+    io::IO = stderr,
+    kw...,
+)
+    old_content = (resolve && isfile(file)) ? read(file) : nothing
+    toml = read_deps(; file)
+
+    for pkg in pkgs
+        op!(toml, _to_spec(pkg; channel))
+    end
+    write_deps(toml; file)
+    STATE.resolved = false
+    if resolve
+        try
+            CondaPkg.resolve(; io = io, kw...)
+        catch
+            _log(io, "Resolve failed, reverting $file")
+            if old_content === nothing
+                Base.rm(file)
+            else
+                write(file, old_content)
+            end
+            rethrow()
+        end
+    end
+    return
+end
+
 function add(
     pkgs::AbstractVector;
     channel = "",
     resolve = true,
     file = cur_deps_file(),
+    io::IO = stderr,
     kw...,
 )
-    toml = read_deps(; file)
-
-    for pkg in pkgs
-        add!(toml, _to_spec(pkg; channel))
-    end
-    write_deps(toml; file)
-    STATE.resolved = false
-    resolve && CondaPkg.resolve(; kw...)
-    return
+    _add_or_rm(add!, pkgs; channel, resolve, file, io, kw...)
 end
 
 add(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; kw...) = add([pkg]; kw...)
+
+function rm(
+    pkgs::AbstractVector;
+    resolve = true,
+    file = cur_deps_file(),
+    io::IO = stderr,
+    kw...,
+)
+    _add_or_rm(rm!, pkgs; channel = "", resolve, file, io, kw...)
+end
+
+rm(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; kw...) = rm([pkg]; kw...)
 
 function add!(toml, pkg::PkgSpec)
     deps = get!(Dict{String,Any}, toml, "deps")
@@ -317,19 +355,6 @@ function add!(toml, pkg::PipPkgSpec)
         deps[pkg.name] = dep
     end
 end
-
-function rm(pkgs::AbstractVector; resolve = true, file = cur_deps_file(), kw...)
-    toml = read_deps(; file)
-    for pkg in pkgs
-        rm!(toml, _to_spec(pkg))
-    end
-    write_deps(toml; file)
-    STATE.resolved = false
-    resolve && CondaPkg.resolve(; kw...)
-    return
-end
-
-rm(pkg::Union{PkgSpec,PipPkgSpec,ChannelSpec}; kw...) = rm([pkg]; kw...)
 
 function rm!(toml, pkg::PkgSpec)
     deps = get!(Dict{String,Any}, toml, "deps")

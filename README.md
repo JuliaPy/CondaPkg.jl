@@ -330,7 +330,13 @@ file](https://docs.julialang.org/en/v1/manual/command-line-interface/#Startup-fi
 (`~/.julia/config/startup.jl`):
 
 ```julia
-Base.identify_package("CondaPkg") === nothing || Base.require(@__MODULE__, :CondaPkg)
+if isinteractive()
+    try
+       using CondaPkg
+    catch
+       @warn "CondaPkg not available"
+    end
+end
 ```
 
 ### Can I install a package from a URL or file?
