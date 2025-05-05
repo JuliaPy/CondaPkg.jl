@@ -235,23 +235,6 @@ end
     end
 end
 
-# @testitem "install/remove executable package" begin
-#     include("setup.jl")
-#     if !isnull
-#         CondaPkg.add("uv", resolve = false)
-#         CondaPkg.resolve(force = true)
-#         exe_path = CondaPkg.which("uv")
-#         @test exe_path !== nothing
-#         @test isfile(exe_path)
-#         CondaPkg.rm("uv", resolve = false)
-#         CondaPkg.resolve(force = true)
-#         if !ispixi
-#             # pixi doesn't seem to remove unused packages??
-#             @test !isfile(exe_path)
-#         end
-#     end
-# end
-
 @testitem "install/remove libstdcxx-ng" begin
     include("setup.jl")
     CondaPkg.add("libstdcxx-ng", version = "<=julia", resolve = false)
