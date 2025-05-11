@@ -138,7 +138,7 @@ instance it is used by PythonCall.
 
 Overridden by the `libstdcxx_ng_version` preference.
 """
-function _compatible_libstdcxx_ng_version()
+function _compatible_libstdcxx_ng_version(max_minor_version::Int=50)
     bound = getpref_libstdcxx_ng_version()
     if bound == "ignore"
         return nothing
@@ -148,7 +148,7 @@ function _compatible_libstdcxx_ng_version()
     if !Sys.islinux()
         return nothing
     end
-    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version()
+    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version(max_minor_version)
     if loaded_libstdcxx_version === nothing
         return nothing
     end
