@@ -107,6 +107,7 @@ _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 # For each (V, B) in this list, if Julia has libstdc++ loaded at version at least V, then
 # B is a compatible bound for libstdcxx-ng.
 # See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
+# See https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/config/abi/pre/gnu.ver#L2536-L2537
 # See https://gcc.gnu.org/develop.html#timeline.
 # Last updated: 2025-05-11
 const _compatible_libstdcxx_ng_versions = [
