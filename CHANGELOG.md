@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* Bug fix: detect actual libstdcxx version.
+
 ## 0.2.28 (2025-04-09)
 * Bug fix: remove lazy loading for backends, which is incompatible with precompilation.
 
