@@ -111,23 +111,30 @@ _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 # See https://gcc.gnu.org/develop.html#timeline.
 # Last updated: 2025-05-11
 const _compatible_libstdcxx_ng_versions = [
-    (v"3.4.34", ">=3.4,<16.1"),  # NOTE: hypothetical upper bound
-    (v"3.4.33", ">=3.4,<15.1"),
-    (v"3.4.32", ">=3.4,<14.1"),
+    (v"3.4.34", ">=3.4,<=15.1"),
+    (v"3.4.33", ">=3.4,<15.0"),
+    (v"3.4.32", ">=3.4,<14.0"),
     (v"3.4.31", ">=3.4,<13.2"),
-    (v"3.4.30", ">=3.4,<13.1"),
-    (v"3.4.29", ">=3.4,<12.1"),
-    (v"3.4.28", ">=3.4,<11.1"),
+    (v"3.4.30", ">=3.4,<13.0"),
+    (v"3.4.29", ">=3.4,<12.0"),
+    (v"3.4.28", ">=3.4,<11.0"),
     (v"3.4.27", ">=3.4,<9.3"),
     (v"3.4.26", ">=3.4,<9.2"),
-    (v"3.4.25", ">=3.4,<9.1"),
-    (v"3.4.24", ">=3.4,<8.1"),
+    (v"3.4.25", ">=3.4,<9.0"),
+    (v"3.4.24", ">=3.4,<8.0"),
     (v"3.4.23", ">=3.4,<7.2"),
-    (v"3.4.22", ">=3.4,<7.1"),
-    (v"3.4.21", ">=3.4,<6.1"),
-    (v"3.4.20", ">=3.4,<5.1"),
+    (v"3.4.22", ">=3.4,<7.0"),
+    (v"3.4.21", ">=3.4,<6.0"),
+    (v"3.4.20", ">=3.4,<5.0"),
     (v"3.4.19", ">=3.4,<4.9"),
 ]
+
+const _libstdcxx_max_minor_version = let
+    v = _compatible_libstdcxx_ng_versions[1][1]
+    @assert v.major == 3
+    @assert v.minor == 4
+    v.patch
+end
 
 """
     _compatible_libstdcxx_ng_version()
@@ -150,8 +157,7 @@ function _compatible_libstdcxx_ng_version()
     if !Sys.islinux()
         return nothing
     end
-    max_minor_version = maximum(t -> Int(t[1].patch), _compatible_libstdcxx_ng_versions)
-    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version(max_minor_version)
+    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version(_libstdcxx_max_minor_version)
     if loaded_libstdcxx_version === nothing
         return nothing
     end
