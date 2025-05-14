@@ -105,12 +105,14 @@ end
 _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 
 # For each (V, B) in this list, if Julia has libstdc++ loaded at version at least V, then
-# B is a compatible bound for libstdcxx_ng.
+# B is a compatible bound for libstdcxx-ng.
 # See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
+# See https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/config/abi/pre/gnu.ver
 # See https://gcc.gnu.org/develop.html#timeline.
-# Last updated: 2024-11-08
+# Last updated: 2025-05-11
 const _compatible_libstdcxx_ng_versions = [
-    (v"3.4.33", ">=3.4,<14.3"),
+    (v"3.4.34", ">=3.4,<=15.1"),
+    (v"3.4.33", ">=3.4,<15.0"),
     (v"3.4.32", ">=3.4,<14.0"),
     (v"3.4.31", ">=3.4,<13.2"),
     (v"3.4.30", ">=3.4,<13.0"),
@@ -126,6 +128,13 @@ const _compatible_libstdcxx_ng_versions = [
     (v"3.4.20", ">=3.4,<5.0"),
     (v"3.4.19", ">=3.4,<4.9"),
 ]
+
+const _libstdcxx_max_minor_version = let
+    v = _compatible_libstdcxx_ng_versions[1][1]
+    @assert v.major == 3
+    @assert v.minor == 4
+    Int(v.patch)
+end
 
 """
     _compatible_libstdcxx_ng_version()
@@ -148,7 +157,7 @@ function _compatible_libstdcxx_ng_version()
     if !Sys.islinux()
         return nothing
     end
-    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version()
+    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version(_libstdcxx_max_minor_version)
     if loaded_libstdcxx_version === nothing
         return nothing
     end
