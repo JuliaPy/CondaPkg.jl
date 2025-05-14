@@ -133,7 +133,7 @@ const _libstdcxx_max_minor_version = let
     v = _compatible_libstdcxx_ng_versions[1][1]
     @assert v.major == 3
     @assert v.minor == 4
-    v.patch
+    Int(v.patch)
 end
 
 """
