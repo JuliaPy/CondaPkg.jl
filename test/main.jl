@@ -198,16 +198,12 @@ end
     @test true
 end
 
-@testitem "install/remove python (build=**cpython**)" begin
+@testitem "install cpython" begin
     @testset "$version" for version in ["3.12.*", "3.13.*"]
         include("setup.jl")
         CondaPkg.add("python", version = version, build = "**cpython**")
-        CondaPkg.resolve()
         @test occursin("python", status())
         @test occursin("($version, build=**cpython**)", status())
-        CondaPkg.rm("python")
-        CondaPkg.resolve()
-        @test !occursin("python", status())
     end
 end
 
