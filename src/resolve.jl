@@ -400,7 +400,7 @@ function _resolve_merge_packages(packages, channels)
                         pkg = PkgSpec(pkg, channel = channel)
                     end
                     if pkg.channel == "conda-forge"
-                        build = "*cpython*"
+                        build = "*cp*"  # "cpython" or "cp313"
                     elseif pkg.channel in ("anaconda", "pkgs/main")
                         build = ""
                     else

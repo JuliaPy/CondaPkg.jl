@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* `build=**cpython**` functionality updated for newer build strings in conda-forge.
+
 ## 0.2.29 (2025-05-14)
 * Bug fix: detect actual libstdcxx version.
 * Bug fix: comparing paths on weird filesystems.
