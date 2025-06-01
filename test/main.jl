@@ -163,20 +163,75 @@ end
     end
 end
 
-@testitem "install/remove executable package" begin
+@testitem "pip install/remove a local python package" begin
     include("setup.jl")
-    if !isnull
-        CondaPkg.add("uv", resolve = false)
-        CondaPkg.resolve(force = true)
-        exe_path = CondaPkg.which("uv")
-        @test exe_path !== nothing
-        @test isfile(exe_path)
-        CondaPkg.rm("uv", resolve = false)
-        CondaPkg.resolve(force = true)
-        if !ispixi
-            # pixi doesn't seem to remove unused packages??
-            @test !isfile(exe_path)
-        end
+    CondaPkg.add("python", version="==3.10.2")
+    # verify package isn't already installed
+    @test !occursin("foo", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import foo"`)
+    end
+
+    # install package
+    # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
+    pkg_path = joinpath(dirname(@__FILE__), "FooNonEditable")
+    CondaPkg.add_pip("foononeditable", version="@ $(pkg_path)")
+    @test occursin("foononeditable", status())
+    @test occursin(pkg_path, status())
+    CondaPkg.withenv() do
+        isnull || run(`python -c "import foononeditable"`)
+    end
+
+    # remove package
+    CondaPkg.rm_pip("foononeditable")
+    @test !occursin("foononeditable", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import foononeditable"`)
+    end
+end
+
+@testitem "pip install/remove a local editable python package" begin
+    include("setup.jl")
+    CondaPkg.add("python", version="==3.10.2")
+    # verify package isn't already installed
+    @test !occursin("foo", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import foo"`)
+    end
+
+    # install package
+    # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
+    pkg_path = joinpath(dirname(@__FILE__), "Foo")
+    CondaPkg.add_pip("foo", version="@ $(pkg_path)", editable=true)
+    @test occursin("foo", status())
+    @test occursin(pkg_path, status())
+    CondaPkg.withenv() do
+        isnull || run(`python -c "import foo"`)
+    end
+
+    # The `added` module shouldn't exist.
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import foo.added"`)
+    end
+
+    # Now add the `added.py` file to create the `added` module.
+    added_src_path = joinpath(dirname(@__FILE__), "Foo", "foo", "test", "added.py")
+    added_dst_path = joinpath(dirname(@__FILE__), "Foo", "foo", "added.py")
+    cp(added_src_path, added_dst_path)
+
+    # Test that the `added` module exists.
+    CondaPkg.withenv() do
+        isnull || run(`python -c "import foo.added; print(foo.added.y)"`)
+    end
+
+    # Remove the added file for later tests.
+    rm(added_dst_path)
+
+    # remove package
+    CondaPkg.rm_pip("foo")
+    @test !occursin("foo", status())
+    CondaPkg.withenv() do
+        isnull || @test_throws Exception run(`python -c "import foo"`)
     end
 end
 
