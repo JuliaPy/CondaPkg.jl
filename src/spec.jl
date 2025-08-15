@@ -225,6 +225,8 @@ function pixispec(x::PipPkgSpec)
             else
                 spec["git"] = url
             end
+        elseif startswith(url, "file:///")
+            spec["path"] = url[9:end]
         else
             spec["url"] = url
         end
