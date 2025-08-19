@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.30 (2025-08-19)
 * `build=**cpython**` functionality updated for newer build strings in conda-forge.
 * Special handling of `libstdcxx` for compatibility with Julia's `libstdc++.so`, plus
   corresponding `libstdcxx_version` preference.
