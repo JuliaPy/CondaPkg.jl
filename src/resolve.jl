@@ -147,8 +147,23 @@ instance it is used by PythonCall.
 
 Overridden by the `libstdcxx_ng_version` preference.
 """
-function _compatible_libstdcxx_ng_version()
-    bound = getpref_libstdcxx_ng_version()
+_compatible_libstdcxx_ng_version() =
+    _compatible_libstdcxx_version(getpref_libstdcxx_ng_version())
+
+"""
+    _compatible_libstdcxx_version()
+
+Version of libstdcxx compatible with the libstdc++ loaded into Julia.
+
+Specifying the package "libstdcxx" with version "<=julia" will replace the version with
+this one. This should be used by anything which embeds Python into the Julia process - for
+instance it is used by PythonCall.
+
+Overridden by the `libstdcxx_version` preference.
+"""
+_compatible_libstdcxx_version() = _compatible_libstdcxx_version(getpref_libstdcxx_version())
+
+function _compatible_libstdcxx_version(bound)
     if bound == "ignore"
         return nothing
     elseif bound != ""
@@ -157,7 +172,8 @@ function _compatible_libstdcxx_ng_version()
     if !Sys.islinux()
         return nothing
     end
-    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version(_libstdcxx_max_minor_version)
+    loaded_libstdcxx_version =
+        Base.BinaryPlatforms.detect_libstdcxx_version(_libstdcxx_max_minor_version)
     if loaded_libstdcxx_version === nothing
         return nothing
     end
@@ -348,6 +364,11 @@ function _resolve_find_dependencies(io, load_path)
                     for pkg in pkgs
                         if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
                             version = _compatible_libstdcxx_ng_version()
+                            version === nothing && continue
+                            pkg = PkgSpec(pkg; version)
+                        end
+                        if pkg.name == "libstdcxx" && pkg.version == "<=julia"
+                            version = _compatible_libstdcxx_version()
                             version === nothing && continue
                             pkg = PkgSpec(pkg; version)
                         end

@@ -93,6 +93,26 @@ end
     end
 end
 
+@testitem "_compatible_libstdcxx_version" begin
+    include("setup.jl")
+    @testset "$new_bound" for new_bound in [nothing, "", "foo"]
+        CondaPkg.STATE.test_preferences["libstdcxx_version"] = new_bound
+        bound = CondaPkg._compatible_libstdcxx_version()
+        if new_bound === nothing || new_bound == ""
+            if Sys.islinux()
+                if bound !== nothing
+                    @test bound isa String
+                    @test startswith(bound, ">=")
+                end
+            else
+                @test bound === nothing
+            end
+        else
+            @test bound == new_bound
+        end
+    end
+end
+
 @testitem "_compatible_openssl_version" begin
     include("setup.jl")
     @testset "$new_bound" for new_bound in [nothing, "", "foo"]
