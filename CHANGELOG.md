@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+* Bug fix: pip packages specified by file location are now correctly converted to "path"
+  installs with Pixi.
+
 ## 0.2.30 (2025-08-19)
 * `build=**cpython**` functionality updated for newer build strings in conda-forge.
 * Special handling of `libstdcxx` for compatibility with Julia's `libstdc++.so`, plus
