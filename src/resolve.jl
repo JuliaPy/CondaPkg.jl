@@ -157,7 +157,8 @@ function _compatible_libstdcxx_ng_version()
     if !Sys.islinux()
         return nothing
     end
-    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version(_libstdcxx_max_minor_version)
+    loaded_libstdcxx_version =
+        Base.BinaryPlatforms.detect_libstdcxx_version(_libstdcxx_max_minor_version)
     if loaded_libstdcxx_version === nothing
         return nothing
     end
@@ -463,6 +464,20 @@ function abspathurl(args...)
         @assert startswith(path, "/")
     end
     return "file://$path"
+end
+
+# Inverse of abspathurl: convert a file:// URL (as produced by abspathurl) back to a local path
+function pathfromurl(url::AbstractString)
+    startswith(url, "file://") || error("not a file:// url: $url")
+    # strip the "file://" prefix
+    path = url[8:end]
+    if Sys.iswindows()
+        # abspathurl on Windows prepends a leading "/" before "C:/...".
+        startswith(path, "/") || error("not supported")
+        path = path[2:end]
+        path = replace(path, '/' => '\\')
+    end
+    return path
 end
 
 function _resolve_merge_pip_packages(packages)
