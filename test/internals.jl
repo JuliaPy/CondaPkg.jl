@@ -60,6 +60,51 @@ end
     end
 end
 
+@testitem "pathfromurl" begin
+    include("setup.jl")
+    if Sys.iswindows()
+        @test CondaPkg.pathfromurl("file:///C:/foo/bar.txt") == "C:\\foo\\bar.txt"
+    else
+        @test CondaPkg.pathfromurl("file:///foo/bar.txt") == "/foo/bar.txt"
+    end
+end
+
+@testitem "pixispec" begin
+    include("setup.jl")
+    @testset "$(case.args)" for case in [
+        (args = (), expected = "*"),
+        (args = (version = "=1.2.3",), expected = "=1.2.3"),
+        (
+            args = (extras = ["bar", "baz"],),
+            expected = Dict("extras" => ["bar", "baz"], "version" => "*"),
+        ),
+        (
+            args = (version = "@git+https://github.com/example/example.git",),
+            expected = Dict("git" => "https://github.com/example/example.git"),
+        ),
+        (
+            args = (version = "@git+https://github.com/example/example.git@rev",),
+            expected = Dict(
+                "git" => "https://github.com/example/example.git",
+                "rev" => "rev",
+            ),
+        ),
+        (
+            args = (version = "@git+https://github.com/example/example.git@tag#rev",),
+            expected = Dict(
+                "git" => "https://github.com/example/example.git",
+                "rev" => "rev",
+            ),
+        ),
+        (
+            args = (version = Sys.iswindows() ? "@file:///C:/foo" : "@file:///foo",),
+            expected = Dict("path" => Sys.iswindows() ? "C:\\foo" : "/foo"),
+        ),
+    ]
+        @test CondaPkg.pixispec(CondaPkg.PipPkgSpec("foo"; case.args...)) == case.expected
+    end
+end
+
 @testitem "_resolve_merge_versions" begin
     include("setup.jl")
     @testset "$(case.v1) $(case.v2)" for case in [
