@@ -189,6 +189,15 @@ end
     @test true
 end
 
+@testitem "install/remove libstdcxx" begin
+    include("setup.jl")
+    CondaPkg.add("libstdcxx", version = "<=julia", resolve = false)
+    CondaPkg.resolve(force = true)
+    CondaPkg.rm("libstdcxx", resolve = false)
+    CondaPkg.resolve(force = true)
+    @test true
+end
+
 @testitem "install/remove openssl" begin
     include("setup.jl")
     CondaPkg.add("openssl", version = "<=julia", resolve = false)
