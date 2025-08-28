@@ -536,8 +536,9 @@ function _resolve_merge_pip_packages(packages)
         if isempty(urls)
             version = join(versions, ",")
         elseif isempty(versions)
-            length(urls) == 1 ||
-                error("multiple direct references ('@ ...') given for pip package '$name'")
+            length(urls) == 1 || error(
+                "multiple direct references ('@ ...') given for pip package '$name': $urls (from $pkgs)",
+            )
             version = "@ $(urls[1])"
         else
             error(
