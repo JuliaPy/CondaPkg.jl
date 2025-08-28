@@ -770,6 +770,7 @@ function resolve(;
     # skip resolving if already resolved and LOAD_PATH unchanged
     # this is a very fast check which avoids touching the file system
     load_path = Base.load_path()
+    @debug "load_path" load_path
     if !force && STATE.resolved && STATE.load_path == load_path
         @debug "already resolved (fast path)"
         interactive && _log(io, "Dependencies already up to date (resolved)")
