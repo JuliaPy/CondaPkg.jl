@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.31 (2025-08-28)
 * Bug fix: pip packages specified by file location are now correctly converted to "path"
   installs with Pixi.
 
