@@ -475,7 +475,7 @@ function _resolve_merge_versions(v1, v2)
 end
 
 function abspathurl(args...)
-    path = realpath(abspath(args...))
+    path = abspath(args...)
     if Sys.iswindows()
         path = replace(path, '\\' => '/')
         @assert !startswith(path, "/") # TODO: handle \\machine\... paths
