@@ -1043,11 +1043,16 @@ function resolve(;
                 write(pixitomlpath, pixitomlstr)
                 _log(io, "Wrote $pixitomlpath")
                 _logblock(io, eachline(pixitomlpath), color = :light_black)
+                if force
+                    _run(
+                        io,
+                        pixi_cmd(`update --manifest-path $pixitomlpath`),
+                        "Updating packages",
+                    )
+                end
                 _run(
                     io,
-                    pixi_cmd(
-                        `$(force ? "update" : "install") --manifest-path $pixitomlpath`,
-                    ),
+                    pixi_cmd(`install --manifest-path $pixitomlpath`),
                     "Installing packages",
                 )
             end

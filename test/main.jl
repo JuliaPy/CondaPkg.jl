@@ -208,10 +208,7 @@ end
         @test isfile(exe_path)
         CondaPkg.rm("uv", resolve = false)
         CondaPkg.resolve(force = true)
-        if !ispixi
-            # pixi doesn't seem to remove unused packages??
-            @test !isfile(exe_path)
-        end
+        @test !isfile(exe_path)
     end
 end
 
