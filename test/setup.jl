@@ -22,4 +22,11 @@ CondaPkg.STATE.shared = false
 CondaPkg.STATE.testing = true
 CondaPkg.STATE.test_preferences = Dict{String,Any}("backend" => backend)
 
+# link the test folder into the test environment, e.g. for accessing test data
+let test_dir = joinpath(dirname(CondaPkg.cur_deps_file()), "test")
+    if !ispath(test_dir)
+        symlink(joinpath(dirname(dirname(pathof(CondaPkg))), "test"), test_dir)
+    end
+end
+
 ENV["JULIA_DEBUG"] = "CondaPkg"

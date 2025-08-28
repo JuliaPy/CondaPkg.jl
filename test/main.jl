@@ -179,10 +179,7 @@ end
         end
 
         # install package
-        path = joinpath(dirname(dirname(pathof(CondaPkg))), "test", "data", file)
-        @assert ispath(path)
-        path = relpath(path, dirname(CondaPkg.cur_deps_file()))
-        @assert startswith(path, ".")
+        path = "./test/data/$file"
         CondaPkg.add_pip("example-python-package", version = "@$path")
         @test occursin("example-python-package", status())
         @test occursin("(@$path)", status())
