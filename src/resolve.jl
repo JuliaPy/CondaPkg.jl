@@ -41,6 +41,16 @@ function issamefile(file1, file2)
     end
 end
 
+function dedupepaths(paths)
+    deduped = String[]
+    for path in paths
+        if !any(dpath -> issamefile(path, dpath), deduped)
+            push!(deduped, path)
+        end
+    end
+    return deduped
+end
+
 function issameloadpath(load_path1, load_path2)
     if length(load_path1) != length(load_path2)
         return false
@@ -348,7 +358,7 @@ function _resolve_find_dependencies(io, load_path)
     parsed = Set{String}()
     orig_project = Pkg.project().path
     try
-        for proj in load_path
+        for proj in dedupepaths(load_path)
             Pkg.activate(proj; io = devnull)
             for env in [proj; [p.source for p in values(Pkg.dependencies())]]
                 dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
@@ -770,7 +780,6 @@ function resolve(;
     # skip resolving if already resolved and LOAD_PATH unchanged
     # this is a very fast check which avoids touching the file system
     load_path = Base.load_path()
-    @debug "load_path" LOAD_PATH load_path
     if !force && STATE.resolved && STATE.load_path == load_path
         @debug "already resolved (fast path)"
         interactive && _log(io, "Dependencies already up to date (resolved)")
