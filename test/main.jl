@@ -163,6 +163,44 @@ end
     end
 end
 
+@testitem "pip install/remove local python package" begin
+    @testset "file $file" for file in [
+        "example-python-package",
+        "example_python_package-1.0.0-py3-none-any.whl",
+        "example_python_package-1.0.0.tar.gz",
+    ]
+        include("setup.jl")
+        CondaPkg.add("python", version = "==3.10.2")
+        # verify package isn't already installed
+        @test !occursin("example-python-package", status())
+        CondaPkg.withenv() do
+            isnull ||
+                @test_throws Exception run(`python -c "import example_python_package"`)
+        end
+
+        # install package
+        path = joinpath(dirname(dirname(pathof(CondaPkg))), "test", "data", file)
+        @assert ispath(path)
+        path = relpath(path, dirname(CondaPkg.cur_deps_file()))
+        @assert startswith(path, ".")
+        CondaPkg.add_pip("example-python-package", version = "@$path")
+        @test occursin("example-python-package", status())
+        @test occursin("(@$path)", status())
+        CondaPkg.withenv() do
+            isnull || run(`python -c "import example_python_package"`)
+        end
+        @test occursin("v1.0.0", status()) == !isnull
+
+        # remove package
+        CondaPkg.rm_pip("example-python-package")
+        @test !occursin("example-python-package", status())
+        CondaPkg.withenv() do
+            isnull ||
+                @test_throws Exception run(`python -c "import example_python_package"`)
+        end
+    end
+end
+
 @testitem "install/remove executable package" begin
     include("setup.jl")
     if !isnull
