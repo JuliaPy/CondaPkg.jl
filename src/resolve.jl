@@ -41,6 +41,16 @@ function issamefile(file1, file2)
     end
 end
 
+function dedupepaths(paths)
+    deduped = String[]
+    for path in paths
+        if !any(dpath -> issamefile(path, dpath), deduped)
+            push!(deduped, path)
+        end
+    end
+    return deduped
+end
+
 function issameloadpath(load_path1, load_path2)
     if length(load_path1) != length(load_path2)
         return false
@@ -348,7 +358,7 @@ function _resolve_find_dependencies(io, load_path)
     parsed = Set{String}()
     orig_project = Pkg.project().path
     try
-        for proj in load_path
+        for proj in dedupepaths(load_path)
             Pkg.activate(proj; io = devnull)
             for env in [proj; [p.source for p in values(Pkg.dependencies())]]
                 dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
@@ -536,8 +546,9 @@ function _resolve_merge_pip_packages(packages)
         if isempty(urls)
             version = join(versions, ",")
         elseif isempty(versions)
-            length(urls) == 1 ||
-                error("multiple direct references ('@ ...') given for pip package '$name'")
+            length(urls) == 1 || error(
+                "multiple direct references ('@ ...') given for pip package '$name': $urls (from $pkgs)",
+            )
             version = "@ $(urls[1])"
         else
             error(
@@ -1032,11 +1043,16 @@ function resolve(;
                 write(pixitomlpath, pixitomlstr)
                 _log(io, "Wrote $pixitomlpath")
                 _logblock(io, eachline(pixitomlpath), color = :light_black)
+                if force
+                    _run(
+                        io,
+                        pixi_cmd(`update --manifest-path $pixitomlpath`),
+                        "Updating packages",
+                    )
+                end
                 _run(
                     io,
-                    pixi_cmd(
-                        `$(force ? "update" : "install") --manifest-path $pixitomlpath`,
-                    ),
+                    pixi_cmd(`install --manifest-path $pixitomlpath`),
                     "Installing packages",
                 )
             end
