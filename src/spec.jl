@@ -238,14 +238,13 @@ function pixispec(x::PipPkgSpec)
             spec["path"] = pathfromurl(url)
         else
             # https://pixi.sh/latest/reference/pixi_manifest/#path
-            # minimal-project = { path = "./minimal-project", editable = true}
             spec["path"] = url
-            if x.editable
-                spec["editable"] = true
-            end
         end
     else
         spec["version"] = x.version == "" ? "*" : x.version
+    end
+    if x.editable
+        spec["editable"] = true
     end
     if !isempty(x.extras)
         spec["extras"] = x.extras
@@ -256,6 +255,7 @@ function pixispec(x::PipPkgSpec)
         spec
     end
 end
+
 validate_pip_editable(editable, version) =
     if editable && !startswith(version, "@")
         error(
