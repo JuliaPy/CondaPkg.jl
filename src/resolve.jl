@@ -41,6 +41,16 @@ function issamefile(file1, file2)
     end
 end
 
+function dedupepaths(paths)
+    deduped = String[]
+    for path in paths
+        if !any(dpath -> issamefile(path, dpath), deduped)
+            push!(deduped, path)
+        end
+    end
+    return deduped
+end
+
 function issameloadpath(load_path1, load_path2)
     if length(load_path1) != length(load_path2)
         return false
@@ -105,12 +115,14 @@ end
 _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 
 # For each (V, B) in this list, if Julia has libstdc++ loaded at version at least V, then
-# B is a compatible bound for libstdcxx_ng.
+# B is a compatible bound for libstdcxx-ng.
 # See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
+# See https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/config/abi/pre/gnu.ver
 # See https://gcc.gnu.org/develop.html#timeline.
-# Last updated: 2024-11-08
+# Last updated: 2025-05-11
 const _compatible_libstdcxx_ng_versions = [
-    (v"3.4.33", ">=3.4,<14.3"),
+    (v"3.4.34", ">=3.4,<=15.1"),
+    (v"3.4.33", ">=3.4,<15.0"),
     (v"3.4.32", ">=3.4,<14.0"),
     (v"3.4.31", ">=3.4,<13.2"),
     (v"3.4.30", ">=3.4,<13.0"),
@@ -127,6 +139,13 @@ const _compatible_libstdcxx_ng_versions = [
     (v"3.4.19", ">=3.4,<4.9"),
 ]
 
+const _libstdcxx_max_minor_version = let
+    v = _compatible_libstdcxx_ng_versions[1][1]
+    @assert v.major == 3
+    @assert v.minor == 4
+    Int(v.patch)
+end
+
 """
     _compatible_libstdcxx_ng_version()
 
@@ -138,8 +157,23 @@ instance it is used by PythonCall.
 
 Overridden by the `libstdcxx_ng_version` preference.
 """
-function _compatible_libstdcxx_ng_version()
-    bound = getpref_libstdcxx_ng_version()
+_compatible_libstdcxx_ng_version() =
+    _compatible_libstdcxx_version(getpref_libstdcxx_ng_version())
+
+"""
+    _compatible_libstdcxx_version()
+
+Version of libstdcxx compatible with the libstdc++ loaded into Julia.
+
+Specifying the package "libstdcxx" with version "<=julia" will replace the version with
+this one. This should be used by anything which embeds Python into the Julia process - for
+instance it is used by PythonCall.
+
+Overridden by the `libstdcxx_version` preference.
+"""
+_compatible_libstdcxx_version() = _compatible_libstdcxx_version(getpref_libstdcxx_version())
+
+function _compatible_libstdcxx_version(bound)
     if bound == "ignore"
         return nothing
     elseif bound != ""
@@ -148,7 +182,8 @@ function _compatible_libstdcxx_ng_version()
     if !Sys.islinux()
         return nothing
     end
-    loaded_libstdcxx_version = Base.BinaryPlatforms.detect_libstdcxx_version()
+    loaded_libstdcxx_version =
+        Base.BinaryPlatforms.detect_libstdcxx_version(_libstdcxx_max_minor_version)
     if loaded_libstdcxx_version === nothing
         return nothing
     end
@@ -323,7 +358,7 @@ function _resolve_find_dependencies(io, load_path)
     parsed = Set{String}()
     orig_project = Pkg.project().path
     try
-        for proj in load_path
+        for proj in dedupepaths(load_path)
             Pkg.activate(proj; io = devnull)
             for env in [proj; [p.source for p in values(Pkg.dependencies())]]
                 dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
@@ -339,6 +374,11 @@ function _resolve_find_dependencies(io, load_path)
                     for pkg in pkgs
                         if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
                             version = _compatible_libstdcxx_ng_version()
+                            version === nothing && continue
+                            pkg = PkgSpec(pkg; version)
+                        end
+                        if pkg.name == "libstdcxx" && pkg.version == "<=julia"
+                            version = _compatible_libstdcxx_version()
                             version === nothing && continue
                             pkg = PkgSpec(pkg; version)
                         end
@@ -391,7 +431,7 @@ function _resolve_merge_packages(packages, channels)
                         pkg = PkgSpec(pkg, channel = channel)
                     end
                     if pkg.channel == "conda-forge"
-                        build = "*cpython*"
+                        build = "*cp*"  # "cpython" or "cp313"
                     elseif pkg.channel in ("anaconda", "pkgs/main")
                         build = ""
                     else
@@ -456,6 +496,20 @@ function abspathurl(args...)
     return "file://$path"
 end
 
+# Inverse of abspathurl: convert a file:// URL (as produced by abspathurl) back to a local path
+function pathfromurl(url::AbstractString)
+    startswith(url, "file://") || error("not a file:// url: $url")
+    # strip the "file://" prefix
+    path = url[8:end]
+    if Sys.iswindows()
+        # abspathurl on Windows prepends a leading "/" before "C:/...".
+        startswith(path, "/") || error("not supported")
+        path = path[2:end]
+        path = replace(path, '/' => '\\')
+    end
+    return path
+end
+
 function _resolve_merge_pip_packages(packages)
     specs = PipPkgSpec[]
     for (name, pkgs) in packages
@@ -494,8 +548,9 @@ function _resolve_merge_pip_packages(packages)
         if isempty(urls)
             version = join(versions, ",")
         elseif isempty(versions)
-            length(urls) == 1 ||
-                error("multiple direct references ('@ ...') given for pip package '$name'")
+            length(urls) == 1 || error(
+                "multiple direct references ('@ ...') given for pip package '$name': $urls (from $pkgs)",
+            )
             version = "@ $(urls[1])"
         else
             error(
@@ -1002,11 +1057,16 @@ function resolve(;
                 write(pixitomlpath, pixitomlstr)
                 _log(io, "Wrote $pixitomlpath")
                 _logblock(io, eachline(pixitomlpath), color = :light_black)
+                if force
+                    _run(
+                        io,
+                        pixi_cmd(`update --manifest-path $pixitomlpath`),
+                        "Updating packages",
+                    )
+                end
                 _run(
                     io,
-                    pixi_cmd(
-                        `$(force ? "update" : "install") --manifest-path $pixitomlpath`,
-                    ),
+                    pixi_cmd(`install --manifest-path $pixitomlpath`),
                     "Installing packages",
                 )
             end

@@ -165,7 +165,7 @@ end
 
 @testitem "pip install/remove a local python package" begin
     include("setup.jl")
-    CondaPkg.add("python", version="==3.10.2")
+    CondaPkg.add("python", version = "==3.10.2")
     # verify package isn't already installed
     @test !occursin("foo", status())
     CondaPkg.withenv() do
@@ -175,7 +175,7 @@ end
     # install package
     # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
     pkg_path = joinpath(dirname(@__FILE__), "FooNonEditable")
-    CondaPkg.add_pip("foononeditable", version="@ $(pkg_path)")
+    CondaPkg.add_pip("foononeditable", version = "@ $(pkg_path)")
     @test occursin("foononeditable", status())
     @test occursin(pkg_path, status())
     CondaPkg.withenv() do
@@ -192,7 +192,7 @@ end
 
 @testitem "pip install/remove a local editable python package" begin
     include("setup.jl")
-    CondaPkg.add("python", version="==3.10.2")
+    CondaPkg.add("python", version = "==3.10.2")
     # verify package isn't already installed
     @test !occursin("foo", status())
     CondaPkg.withenv() do
@@ -202,7 +202,7 @@ end
     # install package
     # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
     pkg_path = joinpath(dirname(@__FILE__), "Foo")
-    CondaPkg.add_pip("foo", version="@ $(pkg_path)", editable=true)
+    CondaPkg.add_pip("foo", version = "@ $(pkg_path)", editable = true)
     @test occursin("foo", status())
     @test occursin(pkg_path, status())
     CondaPkg.withenv() do
@@ -235,11 +235,69 @@ end
     end
 end
 
+@testitem "pip install/remove local python package" begin
+    @testset "file $file" for file in [
+        "example-python-package",
+        "example_python_package-1.0.0-py3-none-any.whl",
+        "example_python_package-1.0.0.tar.gz",
+    ]
+        include("setup.jl")
+        CondaPkg.add("python", version = "==3.10.2")
+        # verify package isn't already installed
+        @test !occursin("example-python-package", status())
+        CondaPkg.withenv() do
+            isnull ||
+                @test_throws Exception run(`python -c "import example_python_package"`)
+        end
+
+        # install package
+        path = "./test/data/$file"
+        CondaPkg.add_pip("example-python-package", version = "@$path")
+        @test occursin("example-python-package", status())
+        @test occursin("(@$path)", status())
+        CondaPkg.withenv() do
+            isnull || run(`python -c "import example_python_package"`)
+        end
+        @test occursin("v1.0.0", status()) == !isnull
+
+        # remove package
+        CondaPkg.rm_pip("example-python-package")
+        @test !occursin("example-python-package", status())
+        CondaPkg.withenv() do
+            isnull ||
+                @test_throws Exception run(`python -c "import example_python_package"`)
+        end
+    end
+end
+
+@testitem "install/remove executable package" begin
+    include("setup.jl")
+    if !isnull
+        CondaPkg.add("uv", resolve = false)
+        CondaPkg.resolve(force = true)
+        exe_path = CondaPkg.which("uv")
+        @test exe_path !== nothing
+        @test isfile(exe_path)
+        CondaPkg.rm("uv", resolve = false)
+        CondaPkg.resolve(force = true)
+        @test !isfile(exe_path)
+    end
+end
+
 @testitem "install/remove libstdcxx-ng" begin
     include("setup.jl")
     CondaPkg.add("libstdcxx-ng", version = "<=julia", resolve = false)
     CondaPkg.resolve(force = true)
     CondaPkg.rm("libstdcxx-ng", resolve = false)
+    CondaPkg.resolve(force = true)
+    @test true
+end
+
+@testitem "install/remove libstdcxx" begin
+    include("setup.jl")
+    CondaPkg.add("libstdcxx", version = "<=julia", resolve = false)
+    CondaPkg.resolve(force = true)
+    CondaPkg.rm("libstdcxx", resolve = false)
     CondaPkg.resolve(force = true)
     @test true
 end
@@ -251,6 +309,15 @@ end
     CondaPkg.rm("openssl", resolve = false)
     CondaPkg.resolve(force = true)
     @test true
+end
+
+@testitem "install cpython" begin
+    @testset "$version" for version in ["3.12.*", "3.13.*"]
+        include("setup.jl")
+        CondaPkg.add("python", version = version, build = "**cpython**")
+        @test occursin("python", status())
+        @test occursin("($version, build=**cpython**)", status())
+    end
 end
 
 @testitem "install non-existent package" begin

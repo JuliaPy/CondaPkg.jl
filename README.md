@@ -168,6 +168,7 @@ in more detail.
 | `channel_priority` | `JULIA_CONDAPKG_CHANNEL_PRIORITY` | One of `strict`, `flexible` (default) or `disabled`. |
 | `channel_order` | `JULIA_CONDAPKG_CHANNEL_ORDER` | List specifying channel order, with optional `...` for other channels. |
 | `channel_mapping` | `JULIA_CONDAPKG_CHANNEL_MAPPING` | Map of channel names to rename (old->new). |
+| `libstdcxx_version` | `JULIA_CONDAPKG_LIBSTDCXX_VERSION` | Either `ignore` or a version specifier. |
 | `libstdcxx_ng_version` | `JULIA_CONDAPKG_LIBSTDCXX_NG_VERSION` | Either `ignore` or a version specifier. |
 | `openssl_version` | `JULIA_CONDAPKG_OPENSSL_VERSION` | Either `ignore` or a version specifier. |
 
@@ -293,11 +294,12 @@ shared library, there can be compatibility issues if they are at different versi
 To alleviate this, CondaPkg handles some packages specially. For the following Conda
 packages, if the version is set to `<=julia`, then a version of that package compatible
 with the corresponding Julia package will be installed.
-- `libstdcxx-ng`: Compatible with libstdcxx in `Base`.
+- `libstdcxx`: Compatible with libstdc++ in `Base`.
+- `libstdcxx-ng`: Compatible with libstdc++ in `Base`.
 - `openssl`: Compatible with `OpenSSL_jll` (if installed).
 
-You can override this behaviour with the `libstdcxx_ng_version` and `openssl_version`
-preferences. These can be set to one of:
+You can override this behaviour with the `libstdcxx_version`, `libstdcxx_ng_version` and
+`openssl_version` preferences. These can be set to one of:
 - A (non-empty) specific Conda version specifier.
 - `ignore` to ignore the compatibility constraint entirely.
 - Unset or the empty string for the default behaviour.

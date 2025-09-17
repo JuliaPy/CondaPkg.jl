@@ -134,7 +134,13 @@ struct PipPkgSpec
     binary::String
     extras::Vector{String}
     editable::Bool
-    function PipPkgSpec(name; version = "", binary = "", extras = String[], editable = false)
+    function PipPkgSpec(
+        name;
+        version = "",
+        binary = "",
+        extras = String[],
+        editable = false,
+    )
         name = validate_pip_pkg(name)
         version = validate_pip_version(version)
         binary = validate_pip_binary(binary)
@@ -228,17 +234,8 @@ function pixispec(x::PipPkgSpec)
             else
                 spec["git"] = url
             end
-        elseif startswith(url, r"[a-z]+://")
-            # Handle the file:// prefix.
-            m = match(r"^file://(.*)", url)
-            if m !== nothing
-                spec["path"] = m.captures[1]
-                if x.editable
-                    spec["editable"] = true
-                end
-            else
-                spec["url"] = url
-            end
+        elseif startswith(url, "file:///")
+            spec["path"] = pathfromurl(url)
         else
             # https://pixi.sh/latest/reference/pixi_manifest/#path
             # minimal-project = { path = "./minimal-project", editable = true}
@@ -261,5 +258,7 @@ function pixispec(x::PipPkgSpec)
 end
 validate_pip_editable(editable, version) =
     if editable && !startswith(version, "@")
-        error("invalid pip version for editable install: must start with `@` but version is $(version)")
+        error(
+            "invalid pip version for editable install: must start with `@` but version is $(version)",
+        )
     end

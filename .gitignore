@@ -1,3 +1,9 @@
+# julia
 Manifest.toml
 .CondaPkg
 LocalPreferences.toml
+
+# python
+.venv
+uv.lock
+__pycache__

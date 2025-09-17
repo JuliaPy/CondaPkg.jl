@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.31 (2025-08-28)
+* Bug fix: pip packages specified by file location are now correctly converted to "path"
+  installs with Pixi.
+
+## 0.2.30 (2025-08-19)
+* `build=**cpython**` functionality updated for newer build strings in conda-forge.
+* Special handling of `libstdcxx` for compatibility with Julia's `libstdc++.so`, plus
+  corresponding `libstdcxx_version` preference.
+
+## 0.2.29 (2025-05-14)
+* Bug fix: detect actual libstdcxx version.
+* Bug fix: comparing paths on weird filesystems.
+
 ## 0.2.28 (2025-04-09)
 * Bug fix: remove lazy loading for backends, which is incompatible with precompilation.
 

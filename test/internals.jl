@@ -64,6 +64,51 @@ end
     end
 end
 
+@testitem "pathfromurl" begin
+    include("setup.jl")
+    if Sys.iswindows()
+        @test CondaPkg.pathfromurl("file:///C:/foo/bar.txt") == "C:\\foo\\bar.txt"
+    else
+        @test CondaPkg.pathfromurl("file:///foo/bar.txt") == "/foo/bar.txt"
+    end
+end
+
+@testitem "pixispec" begin
+    include("setup.jl")
+    @testset "$(case.args)" for case in [
+        (args = (), expected = "*"),
+        (args = (version = "=1.2.3",), expected = "=1.2.3"),
+        (
+            args = (extras = ["bar", "baz"],),
+            expected = Dict("extras" => ["bar", "baz"], "version" => "*"),
+        ),
+        (
+            args = (version = "@git+https://github.com/example/example.git",),
+            expected = Dict("git" => "https://github.com/example/example.git"),
+        ),
+        (
+            args = (version = "@git+https://github.com/example/example.git@rev",),
+            expected = Dict(
+                "git" => "https://github.com/example/example.git",
+                "rev" => "rev",
+            ),
+        ),
+        (
+            args = (version = "@git+https://github.com/example/example.git@tag#rev",),
+            expected = Dict(
+                "git" => "https://github.com/example/example.git",
+                "rev" => "rev",
+            ),
+        ),
+        (
+            args = (version = Sys.iswindows() ? "@file:///C:/foo" : "@file:///foo",),
+            expected = Dict("path" => Sys.iswindows() ? "C:\\foo" : "/foo"),
+        ),
+    ]
+        @test CondaPkg.pixispec(CondaPkg.PipPkgSpec("foo"; case.args...)) == case.expected
+    end
+end
+
 @testitem "_resolve_merge_versions" begin
     include("setup.jl")
     @testset "$(case.v1) $(case.v2)" for case in [
@@ -82,6 +127,26 @@ end
     @testset "$new_bound" for new_bound in [nothing, "", "foo"]
         CondaPkg.STATE.test_preferences["libstdcxx_ng_version"] = new_bound
         bound = CondaPkg._compatible_libstdcxx_ng_version()
+        if new_bound === nothing || new_bound == ""
+            if Sys.islinux()
+                if bound !== nothing
+                    @test bound isa String
+                    @test startswith(bound, ">=")
+                end
+            else
+                @test bound === nothing
+            end
+        else
+            @test bound == new_bound
+        end
+    end
+end
+
+@testitem "_compatible_libstdcxx_version" begin
+    include("setup.jl")
+    @testset "$new_bound" for new_bound in [nothing, "", "foo"]
+        CondaPkg.STATE.test_preferences["libstdcxx_version"] = new_bound
+        bound = CondaPkg._compatible_libstdcxx_version()
         if new_bound === nothing || new_bound == ""
             if Sys.islinux()
                 if bound !== nothing
