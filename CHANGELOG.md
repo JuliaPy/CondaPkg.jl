@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.32 (2025-09-17)
 * Add `editable` property to pip packages, specifying whether to install them in
   editable mode.
 
