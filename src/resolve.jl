@@ -594,8 +594,7 @@ function _resolve_pip_diff(old_specs, new_specs)
     return (removed, changed, added)
 end
 
-function _verbosity_flags()
-    n = getpref_verbosity()
+function _verbosity_flags(n = getpref_verbosity())
     n < 0 ? ["-" * "q"^(-n)] : n > 0 ? ["-" * "v"^n] : String[]
 end
 
@@ -995,11 +994,13 @@ function resolve(;
                 mkpath(dirname(configtomlpath))
                 write(configtomlpath, configtomlstr)
                 # initialise pixi
+                vrb = getpref_verbosity()
+                vrb_flags = _verbosity_flags(vrb)
                 _run(
                     io,
-                    pixi_cmd(`init --format pixi $meta_dir`),
+                    pixi_cmd(`init $vrb_flags --format pixi $meta_dir`),
                     "Initialising pixi",
-                    flags = ["--quiet"],
+                    flags = vrb_flags,
                 )
                 # load pixi.toml
                 pixitomlpath = joinpath(meta_dir, "pixi.toml")
@@ -1042,18 +1043,22 @@ function resolve(;
                 pixitomlstr = sprint(TOML.print, pixitoml)
                 write(pixitomlpath, pixitomlstr)
                 _log(io, "Wrote $pixitomlpath")
-                _logblock(io, eachline(pixitomlpath), color = :light_black)
+                if vrb ≥ 0
+                    _logblock(io, eachline(pixitomlpath), color = :light_black)
+                end
                 if force
                     _run(
                         io,
-                        pixi_cmd(`update --manifest-path $pixitomlpath`),
+                        pixi_cmd(`update $vrb_flags --manifest-path $pixitomlpath`),
                         "Updating packages",
+                        flags = vrb_flags,
                     )
                 end
                 _run(
                     io,
-                    pixi_cmd(`install --manifest-path $pixitomlpath`),
+                    pixi_cmd(`install $vrb_flags --manifest-path $pixitomlpath`),
                     "Installing packages",
+                    flags = vrb_flags,
                 )
             end
         else
