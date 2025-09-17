@@ -198,7 +198,7 @@ end
         @test occursin("v1.0.0", status()) == !isnull
 
         # check editability
-        if editable
+        if editable && !isnull
             @assert isdir(fullpath)
             added_path = joinpath(fullpath, "src", "example_python_package", "added.py")
             # check a particular submodule does not exist
