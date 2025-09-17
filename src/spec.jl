@@ -237,8 +237,7 @@ function pixispec(x::PipPkgSpec)
         elseif startswith(url, "file:///")
             spec["path"] = pathfromurl(url)
         else
-            # https://pixi.sh/latest/reference/pixi_manifest/#path
-            spec["path"] = url
+            spec["url"] = url
         end
     else
         spec["version"] = x.version == "" ? "*" : x.version
