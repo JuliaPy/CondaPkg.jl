@@ -57,7 +57,7 @@ These functions are intended to be used interactively when the Pkg REPL is not a
 - `rm(pkg)` removes a dependency or a vector of dependencies.
 - `add_channel(channel)` adds a channel.
 - `rm_channel(channel)` removes a channel.
-- `add_pip(pkg; version="")` adds/replaces a pip dependency.
+- `add_pip(pkg; version="", binary="", editable=false)` adds/replaces a pip dependency.
 - `rm_pip(pkg)` removes a pip dependency.
 
 ### CondaPkg.toml
@@ -90,6 +90,7 @@ some-local-package = "@ ./foo.zip"
 version = "~=2.1"
 extras = ["email", "timezone"]
 binary = "no"  # or "only"
+editable = true
 ```
 
 ## Access the Conda environment

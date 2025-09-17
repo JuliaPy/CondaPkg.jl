@@ -25,6 +25,8 @@ end
     @test_throws Exception CondaPkg.PipPkgSpec("")
     @test_throws Exception CondaPkg.PipPkgSpec("foo!")
     @test_throws Exception CondaPkg.PipPkgSpec("foo", version = "1.2")
+    @test_throws Exception CondaPkg.PipPkgSpec("foo", editable = true)
+    @test_throws Exception CondaPkg.PipPkgSpec("foo", version = "1.2", editable = true)
     spec = CondaPkg.PipPkgSpec("  F...OO_-0  ", version = "  @./SOME/Path  ")
     @test spec.name == "f-oo-0"
     @test spec.version == "@./SOME/Path"
@@ -36,6 +38,8 @@ end
         CondaPkg.PkgSpec("foo", version = "=1.2.3", channel = "bar"),
         CondaPkg.ChannelSpec("fooo"),
         CondaPkg.PipPkgSpec("foooo", version = "==2.3.4"),
+        CondaPkg.PipPkgSpec("bar", version = "@ /abs/path/somewhere", editable = true),
+        CondaPkg.PipPkgSpec("baz", version = "@ ./rel/path/somewhere", editable = true)
     ]
     for spec in specs
         io = IOBuffer()

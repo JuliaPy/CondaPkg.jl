@@ -133,12 +133,20 @@ struct PipPkgSpec
     version::String
     binary::String
     extras::Vector{String}
-    function PipPkgSpec(name; version = "", binary = "", extras = String[])
+    editable::Bool
+    function PipPkgSpec(
+        name;
+        version = "",
+        binary = "",
+        extras = String[],
+        editable = false,
+    )
         name = validate_pip_pkg(name)
         version = validate_pip_version(version)
         binary = validate_pip_binary(binary)
         extras = validate_pip_extras(extras)
-        new(name, version, binary, extras)
+        validate_pip_editable(editable, version)
+        new(name, version, binary, extras, editable)
     end
 end
 
@@ -146,9 +154,10 @@ Base.:(==)(x::PipPkgSpec, y::PipPkgSpec) =
     (x.name == y.name) &&
     (x.version == y.version) &&
     (x.binary == y.binary) &&
-    (x.extras == y.extras)
+    (x.extras == y.extras) &&
+    (x.editable == y.editable)
 Base.hash(x::PipPkgSpec, h::UInt) =
-    hash(x.extras, hash(x.binary, hash(x.version, hash(x.name, h))))
+    hash(x.editable, hash(x.extras, hash(x.binary, hash(x.version, hash(x.name, h)))))
 
 is_valid_pip_pkg(name) = occursin(r"^\s*[-_.A-Za-z0-9]+\s*$", name)
 
@@ -233,6 +242,9 @@ function pixispec(x::PipPkgSpec)
     else
         spec["version"] = x.version == "" ? "*" : x.version
     end
+    if x.editable
+        spec["editable"] = true
+    end
     if !isempty(x.extras)
         spec["extras"] = x.extras
     end
@@ -242,3 +254,10 @@ function pixispec(x::PipPkgSpec)
         spec
     end
 end
+
+validate_pip_editable(editable, version) =
+    if editable && !startswith(version, "@")
+        error(
+            "invalid pip version for editable install: must start with `@` but version is $(version)",
+        )
+    end
