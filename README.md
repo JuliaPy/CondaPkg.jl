@@ -90,7 +90,7 @@ some-local-package = "@ ./foo.zip"
 version = "~=2.1"
 extras = ["email", "timezone"]
 binary = "no"  # or "only"
-editable = true  # install package with `--editable`/`-e` `pip` argument if `true`: https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs
+editable = true
 ```
 
 ## Access the Conda environment
