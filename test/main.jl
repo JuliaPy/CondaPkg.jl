@@ -163,83 +163,12 @@ end
     end
 end
 
-@testitem "pip install/remove a local python package" begin
-    include("setup.jl")
-    CondaPkg.add("python", version = "==3.10.2")
-    # verify package isn't already installed
-    @test !occursin("foo", status())
-    CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import foo"`)
-    end
-
-    # install package
-    # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
-    pkg_path = joinpath(dirname(@__FILE__), "FooNonEditable")
-    CondaPkg.add_pip("foononeditable", version = "@ $(pkg_path)")
-    @test occursin("foononeditable", status())
-    @test occursin(pkg_path, status())
-    CondaPkg.withenv() do
-        isnull || run(`python -c "import foononeditable"`)
-    end
-
-    # remove package
-    CondaPkg.rm_pip("foononeditable")
-    @test !occursin("foononeditable", status())
-    CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import foononeditable"`)
-    end
-end
-
-@testitem "pip install/remove a local editable python package" begin
-    include("setup.jl")
-    CondaPkg.add("python", version = "==3.10.2")
-    # verify package isn't already installed
-    @test !occursin("foo", status())
-    CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import foo"`)
-    end
-
-    # install package
-    # The directory with the setup.py file (here `Foo`) needs to be different from the name of the Python module (here `foo`), otherwise `import foo` will never throw an exception and the tests checking that the package isn't installed will fail.
-    pkg_path = joinpath(dirname(@__FILE__), "Foo")
-    CondaPkg.add_pip("foo", version = "@ $(pkg_path)", editable = true)
-    @test occursin("foo", status())
-    @test occursin(pkg_path, status())
-    CondaPkg.withenv() do
-        isnull || run(`python -c "import foo"`)
-    end
-
-    # The `added` module shouldn't exist.
-    CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import foo.added"`)
-    end
-
-    # Now add the `added.py` file to create the `added` module.
-    added_src_path = joinpath(dirname(@__FILE__), "Foo", "foo", "test", "added.py")
-    added_dst_path = joinpath(dirname(@__FILE__), "Foo", "foo", "added.py")
-    cp(added_src_path, added_dst_path)
-
-    # Test that the `added` module exists.
-    CondaPkg.withenv() do
-        isnull || run(`python -c "import foo.added; print(foo.added.y)"`)
-    end
-
-    # Remove the added file for later tests.
-    rm(added_dst_path)
-
-    # remove package
-    CondaPkg.rm_pip("foo")
-    @test !occursin("foo", status())
-    CondaPkg.withenv() do
-        isnull || @test_throws Exception run(`python -c "import foo"`)
-    end
-end
-
 @testitem "pip install/remove local python package" begin
-    @testset "file $file" for file in [
-        "example-python-package",
-        "example_python_package-1.0.0-py3-none-any.whl",
-        "example_python_package-1.0.0.tar.gz",
+    @testset "file $file $kwargs" for (file, kwargs) in [
+        ("example-python-package", NamedTuple()),
+        ("example_python_package-1.0.0-py3-none-any.whl", NamedTuple()),
+        ("example_python_package-1.0.0.tar.gz", NamedTuple()),
+        ("example-python-package", (editable = true,)),
     ]
         include("setup.jl")
         CondaPkg.add("python", version = "==3.10.2")
@@ -252,13 +181,46 @@ end
 
         # install package
         path = "./test/data/$file"
-        CondaPkg.add_pip("example-python-package", version = "@$path")
+        fullpath = abspath(dirname(CondaPkg.cur_deps_file()), path)
+        @assert ispath(fullpath)
+        editable = get(kwargs, :editable, false)
+        CondaPkg.add_pip("example-python-package", version = "@$path"; kwargs...)
         @test occursin("example-python-package", status())
-        @test occursin("(@$path)", status())
+        if isempty(kwargs)
+            @test occursin("(@$path)", status())
+        else
+            @test occursin("(@$path,", status())
+        end
+        @test occursin("editable", status()) == editable
         CondaPkg.withenv() do
             isnull || run(`python -c "import example_python_package"`)
         end
         @test occursin("v1.0.0", status()) == !isnull
+
+        # check editability
+        if editable
+            @assert isdir(fullpath)
+            added_path = joinpath(fullpath, "src", "example_python_package", "added.py")
+            # check a particular submodule does not exist
+            rm(added_path; force = true)
+            CondaPkg.withenv() do
+                @test_throws Exception run(
+                    `python -c "from example_python_package.added import foo"`,
+                )
+            end
+            # now add it and check we can import it
+            write(added_path, "foo = 12")
+            CondaPkg.withenv() do
+                run(`python -c "from example_python_package.added import foo"`)
+            end
+            # remove it again
+            rm(added_path; force = true)
+            CondaPkg.withenv() do
+                @test_throws Exception run(
+                    `python -c "from example_python_package.added import foo"`,
+                )
+            end
+        end
 
         # remove package
         CondaPkg.rm_pip("example-python-package")
