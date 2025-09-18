@@ -1,7 +1,7 @@
 # Changelog
 
-## Unreleased
-* Add `dev` section to CondaPkg.toml, specifying development dependencies which are only
+## 0.2.33 (2025-09-18)
+* Add `[dev]` section to CondaPkg.toml, specifying development dependencies which are only
   installed for packages being developed/tested.
 
 ## 0.2.32 (2025-09-17)
