@@ -26,7 +26,7 @@ $
     CondaPkg.PkgSpec(name, version = version, channel = channel, build = build)
 end
 
-function parse_pip_pkg(x::String; binary::String = "", editable=false)
+function parse_pip_pkg(x::String; binary::String = "", editable = false)
     m = match(
         r"""
 ^
@@ -41,7 +41,13 @@ $
     name = m.captures[1]
     extras = split(something(m.captures[3], ""), ",", keepempty = false)
     version = something(m.captures[4], "")
-    CondaPkg.PipPkgSpec(name, version = version, binary = binary, extras = extras, editable = editable)
+    CondaPkg.PipPkgSpec(
+        name,
+        version = version,
+        binary = binary,
+        extras = extras,
+        editable = editable,
+    )
 end
 
 function parse_channel(x::String)
@@ -68,6 +74,8 @@ const editable_opt = Pkg.REPLMode.OptionDeclaration([
     :takes_arg => false,
     :api => :editable => true,
 ])
+
+const dev_opt = Pkg.REPLMode.OptionDeclaration([:name => "dev", :api => :dev => true])
 
 ### status
 
@@ -136,13 +144,13 @@ const update_spec = Pkg.REPLMode.CommandSpec(
 
 ### add
 
-function add(args)
-    CondaPkg.add(parse_pkg.(args))
+function add(args; dev = false)
+    CondaPkg.add(parse_pkg.(args); dev)
 end
 
 const add_help = Markdown.parse("""
 ```
-conda add pkg ...
+conda add [--dev] pkg ...
 ```
 
 Add packages to the environment.
@@ -165,17 +173,18 @@ const add_spec = Pkg.REPLMode.CommandSpec(
     help = add_help,
     description = "add Conda packages",
     arg_count = 0 => Inf,
+    option_spec = [dev_opt],
 )
 
 ### channel_add
 
-function channel_add(args)
-    CondaPkg.add(parse_channel.(args))
+function channel_add(args; dev = false)
+    CondaPkg.add(parse_channel.(args); dev)
 end
 
 const channel_add_help = Markdown.parse("""
 ```
-conda channel_add channel ...
+conda channel_add [--dev] channel ...
 ```
 
 Add channels to the environment.
@@ -194,17 +203,18 @@ const channel_add_spec = Pkg.REPLMode.CommandSpec(
     help = channel_add_help,
     description = "add Conda channels",
     arg_count = 0 => Inf,
+    option_spec = [dev_opt],
 )
 
 ### pip_add
 
-function pip_add(args; binary = "", editable = false)
-    CondaPkg.add([parse_pip_pkg(arg, binary = binary, editable = editable) for arg in args])
+function pip_add(args; binary = "", editable = false, dev = false)
+    CondaPkg.add([parse_pip_pkg(arg; binary, editable) for arg in args]; dev)
 end
 
 const pip_add_help = Markdown.parse("""
 ```
-conda pip_add [--binary={only|no}] [--editable] pkg ...
+conda pip_add [--binary={only|no}] [--editable] [--dev] pkg ...
 ```
 
 Add Pip packages to the environment.
@@ -227,18 +237,18 @@ const pip_add_spec = Pkg.REPLMode.CommandSpec(
     help = pip_add_help,
     description = "add Pip packages",
     arg_count = 0 => Inf,
-    option_spec = [binary_opt, editable_opt],
+    option_spec = [binary_opt, editable_opt, dev_opt],
 )
 
 ### rm
 
-function rm(args)
-    CondaPkg.rm(parse_pkg.(args))
+function rm(args; dev = false)
+    CondaPkg.rm(parse_pkg.(args); dev)
 end
 
 const rm_help = Markdown.parse("""
 ```
-conda rm|remove pkg ...
+conda rm|remove [--dev] pkg ...
 ```
 
 Remove packages from the environment.
@@ -258,17 +268,18 @@ const rm_spec = Pkg.REPLMode.CommandSpec(
     help = rm_help,
     description = "remove Conda packages",
     arg_count = 0 => Inf,
+    option_spec = [dev_opt],
 )
 
 ### channel_rm
 
-function channel_rm(args)
-    CondaPkg.rm(parse_channel.(args))
+function channel_rm(args; dev = false)
+    CondaPkg.rm(parse_channel.(args); dev)
 end
 
 const channel_rm_help = Markdown.parse("""
 ```
-conda channel_rm|channel_remove channel ...
+conda channel_rm|channel_remove [--dev] channel ...
 ```
 
 Remove channels from the environment.
@@ -288,17 +299,18 @@ const channel_rm_spec = Pkg.REPLMode.CommandSpec(
     help = channel_rm_help,
     description = "remove Conda channels",
     arg_count = 0 => Inf,
+    option_spec = [dev_opt],
 )
 
 ### pip_rm
 
-function pip_rm(args)
-    CondaPkg.rm(parse_pip_pkg.(args))
+function pip_rm(args; dev = false)
+    CondaPkg.rm(parse_pip_pkg.(args); dev)
 end
 
 const pip_rm_help = Markdown.parse("""
 ```
-conda pip_rm|pip_remove pkg ...
+conda pip_rm|pip_remove [--dev] pkg ...
 ```
 
 Remove Pip packages from the environment.
@@ -318,6 +330,7 @@ const pip_rm_spec = Pkg.REPLMode.CommandSpec(
     help = pip_rm_help,
     description = "remove Pip packages",
     arg_count = 0 => Inf,
+    option_spec = [dev_opt],
 )
 
 ### gc

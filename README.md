@@ -91,6 +91,10 @@ version = "~=2.1"
 extras = ["email", "timezone"]
 binary = "no"  # or "only"
 editable = true
+
+[dev.deps]
+# Development dependencies, only installed for packages being developed/tested.
+numpy = "~=2.0"
 ```
 
 ## Access the Conda environment
@@ -316,6 +320,19 @@ For example, to map conda-forge to a corporate mirror:
 ```
 pkg> preference add CondaPkg channel_mapping=conda-forge->corporate-conda-mirror
 ```
+
+### Dev dependencies
+
+The `[dev]` section in a CondaPkg.toml is parsed if it is in a package which is
+currently being developed (in the sense of `Pkg.develop`) or tested. It can contain
+`deps`, `channels` and `pip_deps` that are only required while developing or testing
+the package and will not be installed for ordinary users.
+
+You can pass `dev=true` to the `add` and `rm` functions to modify the `dev` section.
+
+Similarly you can pass `--dev` to the `add` and `rm` commands in the Pkg REPL.
+
+Dev dependencies are shown by `status()` in separate sections.
 
 ## Frequently Asked Questions
 

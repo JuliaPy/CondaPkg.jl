@@ -1,0 +1,4 @@
+
+[dev.deps]
+tomli = "==2.2.1"
+requests = "==2.32.5"
