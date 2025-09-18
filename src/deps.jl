@@ -30,10 +30,10 @@ function write_deps(toml; file = cur_deps_file())
     return
 end
 
-function parse_deps(toml)
+function parse_deps(toml; main::Bool = true, dev::Bool = false)
     # packages
     packages = PkgSpec[]
-    if haskey(toml, "deps")
+    if main && haskey(toml, "deps")
         deps = _convert(Dict{String,Any}, toml["deps"])
         for (name, dep) in deps
             version = ""
@@ -63,7 +63,7 @@ function parse_deps(toml)
 
     # channels
     channels = ChannelSpec[]
-    if haskey(toml, "channels")
+    if main && haskey(toml, "channels")
         chan_names = _convert(Vector{String}, toml["channels"])
         for name in chan_names
             push!(channels, ChannelSpec(name))
@@ -72,7 +72,7 @@ function parse_deps(toml)
 
     # pip packages
     pip_packages = PipPkgSpec[]
-    if haskey(toml, "pip")
+    if main && haskey(toml, "pip")
         pip = _convert(Dict{String,Any}, toml["pip"])
         if haskey(pip, "deps")
             pip_deps = _convert(Dict{String,Any}, pip["deps"])
@@ -102,18 +102,32 @@ function parse_deps(toml)
                 else
                     error("pip.deps must be String or Dict, got $(typeof(dep))")
                 end
-                pkg = PipPkgSpec(name, version = version, binary = binary, extras = extras, editable = editable)
+                pkg = PipPkgSpec(
+                    name,
+                    version = version,
+                    binary = binary,
+                    extras = extras,
+                    editable = editable,
+                )
                 push!(pip_packages, pkg)
             end
         end
+    end
+
+    # dev dependencies
+    if dev && haskey(toml, "dev")
+        devdeps = parse_deps(toml["dev"])
+        append!(packages, devdeps.packages)
+        append!(channels, devdeps.channels)
+        append!(pip_packages, devdeps.pip_packages)
     end
 
     # done
     return (packages = packages, channels = channels, pip_packages = pip_packages)
 end
 
-function read_parsed_deps(file)
-    return parse_deps(read_deps(; file))
+function read_parsed_deps(file; main = true, dev = false)
+    return parse_deps(read_deps(; file); main, dev)
 end
 
 function current_packages()
@@ -158,10 +172,22 @@ function status(; io::IO = stderr)
     dfile = cur_deps_file()
     resolved = is_resolved()
     isnull = backend() == :Null
-    pkgs, channels, pippkgs = read_parsed_deps(dfile)
-    curpkgs = resolved && !isnull && !isempty(pkgs) ? current_packages() : nothing
-    curpippkgs = resolved && !isnull && !isempty(pippkgs) ? current_pip_packages() : nothing
-    blank = isempty(pkgs) && isempty(channels) && isempty(pippkgs)
+    dtoml = read_deps(; file = dfile)
+    pkgs, channels, pippkgs = parse_deps(dtoml)
+    dev_pkgs, dev_channels, dev_pippkgs = parse_deps(dtoml; main = false, dev = true)
+    curpkgs =
+        resolved && !isnull && (!isempty(pkgs) || !isempty(dev_pkgs)) ? current_packages() :
+        nothing
+    curpippkgs =
+        resolved && !isnull && (!isempty(pippkgs) || !isempty(dev_pippkgs)) ?
+        current_pip_packages() : nothing
+    blank =
+        isempty(pkgs) &&
+        isempty(channels) &&
+        isempty(pippkgs) &&
+        isempty(dev_pkgs) &&
+        isempty(dev_channels) &&
+        isempty(dev_pippkgs)
 
     # print status
     printstyled(io, "CondaPkg Status", color = :light_green)
@@ -183,8 +209,9 @@ function status(; io::IO = stderr)
         println(io)
         println(io, "  ", STATE.conda_env)
     end
-    if !isempty(pkgs)
-        printstyled(io, "Packages", bold = true, color = :cyan)
+    function show_pkgs(pkgs, title)
+        isempty(pkgs) && return
+        printstyled(io, title, bold = true, color = :cyan)
         println(io)
         sort!(pkgs, by = x -> x.name)
         for pkg in pkgs
@@ -206,16 +233,22 @@ function status(; io::IO = stderr)
             println(io)
         end
     end
-    if !isempty(channels)
-        printstyled(io, "Channels", bold = true, color = :cyan)
+    show_pkgs(pkgs, "Packages")
+    show_pkgs(dev_pkgs, "Dev Packages")
+    function show_channels(channels, title)
+        isempty(channels) && return
+        printstyled(io, title, bold = true, color = :cyan)
         println(io)
         sort!(channels, by = x -> x.name)
         for chan in channels
             println(io, "  ", chan.name)
         end
     end
-    if !isempty(pippkgs)
-        printstyled(io, "Pip packages", bold = true, color = :cyan)
+    show_channels(channels, "Channels")
+    show_channels(channels, "Dev Channels")
+    function show_pippkgs(pippkgs, title)
+        isempty(pippkgs) && return
+        printstyled(io, title, bold = true, color = :cyan)
         println(io)
         sort!(pippkgs, by = x -> x.name)
         for pkg in pippkgs
@@ -242,6 +275,8 @@ function status(; io::IO = stderr)
             println(io)
         end
     end
+    show_pippkgs(pippkgs, "Pip Packages")
+    show_pippkgs(dev_pippkgs, "Dev Pip Packages")
 end
 
 # Do nothing for existing specs
@@ -256,13 +291,21 @@ function _add_or_rm(
     resolve = true,
     file = cur_deps_file(),
     io::IO = stderr,
+    dev::Bool = false,
     kw...,
 )
     old_content = (resolve && isfile(file)) ? read(file) : nothing
     toml = read_deps(; file)
 
     for pkg in pkgs
-        op!(toml, _to_spec(pkg; channel))
+        spec = _to_spec(pkg; channel)
+        if dev
+            devtoml = get!(Dict{String,Any}, toml, "dev")
+            op!(devtoml, spec)
+            isempty(devtoml) && delete!(toml, "dev")
+        else
+            op!(toml, spec)
+        end
     end
     write_deps(toml; file)
     STATE.resolved = false
@@ -383,8 +426,8 @@ function rm!(toml, pkg::PipPkgSpec)
 end
 
 """
-    add(pkg; version="", channel="", build="", resolve=true)
-    add([pkg1, pkg2, ...]; channel="", resolve=true)
+    add(pkg; version="", channel="", build="", resolve=true, dev=false)
+    add([pkg1, pkg2, ...]; channel="", resolve=true, dev=false)
 
 Adds a dependency to the current environment.
 """
@@ -392,15 +435,15 @@ add(pkg::AbstractString; version = "", channel = "", build = "", kw...) =
     add(PkgSpec(pkg, version = version, channel = channel, build = build); kw...)
 
 """
-    rm(pkg; resolve=true)
-    rm([pkg1, pkg2, ...]; resolve=true)
+    rm(pkg; resolve=true, dev=false)
+    rm([pkg1, pkg2, ...]; resolve=true, dev=false)
 
 Removes a dependency from the current environment.
 """
 rm(pkg::AbstractString; kw...) = rm(PkgSpec(pkg); kw...)
 
 """
-    add_channel(channel; resolve=true)
+    add_channel(channel; resolve=true, dev=false)
 
 Adds a channel to the current environment.
 """
@@ -423,8 +466,23 @@ Adds a pip dependency to the current environment.
     Use conda dependencies instead if at all possible. Pip does not handle version
     conflicts gracefully, so it is possible to get incompatible versions.
 """
-add_pip(pkg::AbstractString; version = "", binary = "", extras = String[], editable = false, kw...) =
-    add(PipPkgSpec(pkg, version = version, binary = binary, extras = extras, editable = editable); kw...)
+add_pip(
+    pkg::AbstractString;
+    version = "",
+    binary = "",
+    extras = String[],
+    editable = false,
+    kw...,
+) = add(
+    PipPkgSpec(
+        pkg,
+        version = version,
+        binary = binary,
+        extras = extras,
+        editable = editable,
+    );
+    kw...,
+)
 
 """
     rm_pip(pkg; resolve=true)

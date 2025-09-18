@@ -356,49 +356,64 @@ function _resolve_find_dependencies(io, load_path)
     pip_packages = Dict{String,Dict{String,PipPkgSpec}}() # name -> depsfile -> spec
     extra_path = String[]
     parsed = Set{String}()
+    dev_parsed = Set{String}()
     orig_project = Pkg.project().path
+    function process_file(fn; env = nothing, dev = false)
+        isfile(fn) || return
+        if dev
+            fn in dev_parsed && return
+        else
+            fn in parsed && return
+        end
+        push!(parsed, fn)
+        dev && push!(dev_parsed, fn)
+        if env !== nothing && env ∉ load_path && env ∉ extra_path
+            push!(extra_path, env)
+        end
+        _log(io, "Found $(dev ? "dev " : "")dependencies: $fn")
+        pkgs, chans, pippkgs = read_parsed_deps(fn; dev)
+        for pkg in pkgs
+            if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
+                version = _compatible_libstdcxx_ng_version()
+                version === nothing && continue
+                pkg = PkgSpec(pkg; version)
+            end
+            if pkg.name == "libstdcxx" && pkg.version == "<=julia"
+                version = _compatible_libstdcxx_version()
+                version === nothing && continue
+                pkg = PkgSpec(pkg; version)
+            end
+            if pkg.name == "openssl" && pkg.version == "<=julia"
+                version = _compatible_openssl_version()
+                version === nothing && continue
+                pkg = PkgSpec(pkg; version)
+            end
+            get!(Dict{String,PkgSpec}, packages, pkg.name)[fn] = pkg
+        end
+        if isempty(chans)
+            push!(channels, ChannelSpec("conda-forge"))
+        else
+            append!(channels, chans)
+        end
+        for pkg in pippkgs
+            get!(Dict{String,PipPkgSpec}, pip_packages, pkg.name)[fn] = pkg
+        end
+    end
+    function process_env(env; dev = false)
+        dir = isfile(env) ? dirname(env) : isdir(env) ? env : return
+        process_file(joinpath(dir, "CondaPkg.toml"); env, dev)
+    end
+    function process_proj(proj)
+        process_env(proj.path; dev = proj.ispackage)
+    end
+    function process_dep(dep)
+        process_env(dep.source, dev = dep.is_tracking_path)
+    end
     try
         for proj in dedupepaths(load_path)
             Pkg.activate(proj; io = devnull)
-            for env in [proj; [p.source for p in values(Pkg.dependencies())]]
-                dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
-                fn = joinpath(dir, "CondaPkg.toml")
-                if isfile(fn)
-                    fn in parsed && continue
-                    push!(parsed, fn)
-                    if env ∉ load_path && env ∉ extra_path
-                        push!(extra_path, env)
-                    end
-                    _log(io, "Found dependencies: $fn")
-                    pkgs, chans, pippkgs = read_parsed_deps(fn)
-                    for pkg in pkgs
-                        if pkg.name == "libstdcxx-ng" && pkg.version == "<=julia"
-                            version = _compatible_libstdcxx_ng_version()
-                            version === nothing && continue
-                            pkg = PkgSpec(pkg; version)
-                        end
-                        if pkg.name == "libstdcxx" && pkg.version == "<=julia"
-                            version = _compatible_libstdcxx_version()
-                            version === nothing && continue
-                            pkg = PkgSpec(pkg; version)
-                        end
-                        if pkg.name == "openssl" && pkg.version == "<=julia"
-                            version = _compatible_openssl_version()
-                            version === nothing && continue
-                            pkg = PkgSpec(pkg; version)
-                        end
-                        get!(Dict{String,PkgSpec}, packages, pkg.name)[fn] = pkg
-                    end
-                    if isempty(chans)
-                        push!(channels, ChannelSpec("conda-forge"))
-                    else
-                        append!(channels, chans)
-                    end
-                    for pkg in pippkgs
-                        get!(Dict{String,PipPkgSpec}, pip_packages, pkg.name)[fn] = pkg
-                    end
-                end
-            end
+            process_proj(Pkg.project())
+            foreach(process_dep, values(Pkg.dependencies()))
         end
     finally
         Pkg.activate(orig_project; io = devnull)
