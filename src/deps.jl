@@ -450,14 +450,14 @@ Adds a channel to the current environment.
 add_channel(channel::AbstractString; kw...) = add(ChannelSpec(channel); kw...)
 
 """
-    rm_channel(channel; resolve=true)
+    rm_channel(channel; resolve=true, dev=false)
 
 Removes a channel from the current environment.
 """
 rm_channel(channel::AbstractString; kw...) = rm(ChannelSpec(channel); kw...)
 
 """
-    add_pip(pkg; version="", binary="", extras=[], resolve=true, editable=false)
+    add_pip(pkg; version="", binary="", extras=[], resolve=true, editable=false, dev=false)
 
 Adds a pip dependency to the current environment.
 
@@ -485,7 +485,7 @@ add_pip(
 )
 
 """
-    rm_pip(pkg; resolve=true)
+    rm_pip(pkg; resolve=true, dev=false)
 
 Removes a pip dependency from the current environment.
 """
