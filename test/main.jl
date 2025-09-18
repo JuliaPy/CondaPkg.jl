@@ -37,6 +37,17 @@ end
     @test occursin("python", status())
 end
 
+@testitem "install dev dependencies" begin
+    include("setup.jl")
+    # test that the dev dependencies in CondaPkg.toml get installed
+    CondaPkg.withenv() do
+        isnull || run(
+            `python -c "import tomli, requests; assert requests.__version__ == '2.32.5'; assert tomli.__version__ == '2.2.1'"`,
+        )
+    end
+    @test true
+end
+
 @testitem "install/remove python package" begin
     include("setup.jl")
     CondaPkg.add("python", version = "==3.10.2")
