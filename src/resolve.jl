@@ -848,7 +848,9 @@ function resolve(;
         conda_env = joinpath(Base.DEPOT_PATH[1], "conda_environments", conda_env_name)
         shared = true
     else
-        isabspath(conda_env) || error("shared env must be an absolute path")
+        if !isabspath(conda_env)
+            conda_env = joinpath(dirname(Base.active_project()), conda_env)
+        end
         occursin(".CondaPkg", conda_env) &&
             error("shared env must not be an existing .CondaPkg, select another directory")
         shared = true

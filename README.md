@@ -226,7 +226,9 @@ By default, CondaPkg installs Conda packages into the current project, so that d
 projects can have different dependencies. If you wish to centralize the Conda environment,
 you can set one of these preferences:
 - `env=@<name>` for a named shared environment, stored in `~/.julia/conda_environments/<name>`.
-- `env=<some absolute path>` for a shared environment at the given path.
+- `env=<some path>` for a shared environment at the given path. If the path is relative,
+  it is taken to be relative to the current Julia project, e.g if you have `conda-env/` in
+  the same folder as `Project.toml` then set `env=conda-env`.
 - `backend=Current` to use the currently activated Conda environment.
 
 **Warning:** If you do this, the versions specified in a per-julia-version `CondaPkg.toml`

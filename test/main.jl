@@ -143,9 +143,9 @@ end
     end
 
     # install package without extras
-    CondaPkg.add_pip("pydantic", version = "==2.9.2")
+    CondaPkg.add_pip("pydantic", version = "==2.12.2")
     @test occursin("pydantic", status())
-    @test occursin("(==2.9.2)", status())
+    @test occursin("(==2.12.2)", status())
     CondaPkg.withenv() do
         isnull || run(`python -c "import pydantic"`)
         # fails on Windows sometimes - not sure why
@@ -154,17 +154,17 @@ end
             Sys.iswindows() ||
             @test_throws Exception run(`python -c "import email_validator"`)
     end
-    @test occursin("v2.9.2", status()) == !isnull
+    @test occursin("v2.12.2", status()) == !isnull
 
     # install package with extras
-    CondaPkg.add_pip("pydantic", version = "==2.9.2", extras = ["email"])
+    CondaPkg.add_pip("pydantic", version = "==2.12.2", extras = ["email"])
     @test occursin("pydantic", status())
-    @test occursin("(==2.9.2, [email])", status())
+    @test occursin("(==2.12.2, [email])", status())
     CondaPkg.withenv() do
         isnull || run(`python -c "import pydantic"`)
         isnull || run(`python -c "import email_validator"`)
     end
-    @test occursin("v2.9.2", status()) == !isnull
+    @test occursin("v2.12.2", status()) == !isnull
 
     # remove package
     CondaPkg.rm_pip("pydantic")

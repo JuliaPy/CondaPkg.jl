@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+* If the `env` preference (or `JULIA_CONDAPKG_ENV`) can now be a relative path, which is
+  taken to be relative to the current Julia project.
+
 ## 0.2.33 (2025-09-18)
 * Add `[dev]` section to CondaPkg.toml, specifying development dependencies which are only
   installed for packages being developed/tested.
