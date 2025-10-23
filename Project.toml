@@ -16,7 +16,7 @@ pixi_jll = "4d7b5844-a134-5dcd-ac86-c8f19cd51bed"
 
 [compat]
 Aqua = "0 - 999"
-JSON = "1"
+JSON = "1.2"
 Markdown = "1"
 MicroMamba = "0.1.4"
 OpenSSL_jll = "0 - 999"
