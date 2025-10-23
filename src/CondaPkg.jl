@@ -9,7 +9,7 @@ if isdefined(Base, :Experimental) &&
 end
 
 using Base: @kwdef
-using JSON3: JSON3
+using JSON: JSON
 using Pidfile: Pidfile
 using Preferences: @load_preference
 using Pkg: Pkg
