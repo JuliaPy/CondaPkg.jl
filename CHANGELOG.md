@@ -2,6 +2,7 @@
 
 ## Unreleased
 * Stop using deprecated `[project]` in `pixi.toml`.
+* Pixi backends now support the `binary=no` and `binary=only` options for pip dependencies.
 
 ## 0.2.34 (2026-02-16)
 * If the `env` preference (or `JULIA_CONDAPKG_ENV`) can now be a relative path, which is

@@ -1064,13 +1064,22 @@ function resolve(;
                     pixitoml["pypi-dependencies"] =
                         Dict{String,Any}(spec.name => pixispec(spec) for spec in pip_specs)
                 end
+                pixipypinobinary = String[]
+                pixipypinobuild = String[]
                 for spec in pip_specs
-                    if spec.binary != ""
-                        _log(
-                            io,
-                            "Warning: $b backend ignoring binary=$(spec.binary) for $(spec.name)",
-                        )
+                    if spec.binary == "no"
+                        push!(pixipypinobinary, spec.name)
+                    elseif spec.binary == "only"
+                        push!(pixipypinobuild, spec.name)
+                    elseif spec.binary != ""
+                        error("this is a bug")
                     end
+                end
+                if !isempty(pixipypinobinary)
+                    get!(Dict{String,Any}, pixitoml, "pypi-options")["no-binary"] = pixipypinobinary
+                end
+                if !isempty(pixipypinobuild)
+                    get!(Dict{String,Any}, pixitoml, "pypi-options")["no-build"] = pixipypinobuild
                 end
                 pixitomlstr = sprint(TOML.print, pixitoml)
                 write(pixitomlpath, pixitomlstr)
