@@ -1,7 +1,7 @@
 name = "CondaPkg"
 uuid = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
 authors = ["Christopher Doris <github.com/cjdoris>"]
-version = "0.2.33"
+version = "0.2.34"
 
 [deps]
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.34 (2026-02-16)
 * If the `env` preference (or `JULIA_CONDAPKG_ENV`) can now be a relative path, which is
   taken to be relative to the current Julia project.
 * Internal: move from JSON3 to JSON v1.
