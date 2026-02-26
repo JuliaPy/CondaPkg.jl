@@ -2,12 +2,25 @@
 This file defines `resolve()`, which ensures all dependencies are installed.
 """
 
+# Helper function to check if a package is in the manifest.
+function _manifest_has_package(env, pkgid)
+    path_or_spec = if isdefined(Base, :manifest_uuid_path)
+        Base.manifest_uuid_path(env, pkgid)
+    else
+        # Julia 1.14+: manifest_uuid_path was renamed to manifest_uuid_load_spec.
+        # See: https://github.com/JuliaLang/julia/pull/60018
+        Base.manifest_uuid_load_spec(env, pkgid)
+    end
+
+    !isnothing(path_or_spec) && !ismissing(path_or_spec)
+end
+
 function _resolve_top_env(load_path)
     top_env = ""
     for env in load_path
         proj = Base.env_project_file(env)
         is_condapkg = proj isa String && Base.project_file_name_uuid(proj, "").uuid == UUID
-        depends_on_condapkg = Base.manifest_uuid_path(env, PKGID) !== nothing
+        depends_on_condapkg = _manifest_has_package(env, PKGID)
         if is_condapkg || depends_on_condapkg
             top_env = proj isa String ? dirname(proj) : env
             break
