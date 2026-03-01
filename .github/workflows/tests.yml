@@ -59,7 +59,7 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-downgrade-compat@v1
+      - uses: julia-actions/julia-downgrade-compat@v2
         if: ${{ matrix.version == '1.9' }}
         with:
           skip: Markdown,Pkg,TOML,Aqua,Test,TestItemRunner,OpenSSL_jll
