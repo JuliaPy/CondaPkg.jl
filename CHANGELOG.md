@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.35 (2026-05-14)
 * Stop using deprecated `[project]` in `pixi.toml`.
 * Pixi backends now support the `binary=no` and `binary=only` options for pip dependencies.
 * Fixed compatibility with Julia 1.13.
