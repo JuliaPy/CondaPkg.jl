@@ -1,3 +1,14 @@
+@testitem "_manifest_has_package" begin
+    include("setup.jl")
+    # Test with current environment - CondaPkg should be in its own manifest
+    env = dirname(Base.active_project())
+    @test CondaPkg._manifest_has_package(env, CondaPkg.PKGID)
+
+    # Test with a non-existent package
+    fake_pkgid = Base.PkgId(Base.UUID("00000000-0000-0000-0000-000000000000"), "FakePackage")
+    @test !CondaPkg._manifest_has_package(env, fake_pkgid)
+end
+
 @testitem "PkgSpec" begin
     include("setup.jl")
     @test_throws Exception CondaPkg.PkgSpec("")
