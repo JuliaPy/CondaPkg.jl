@@ -124,6 +124,9 @@ function gc(; io::IO = stderr)
         resolve()
         cmd = conda_cmd(`clean -y --all`, io = io)
         _run(io, cmd, "Removing unused caches")
+    elseif b in PIXI_BACKENDS
+        cmd = pixi_cmd(`clean cache -y`, io = io)
+        _run(io, cmd, "Cleaning pixi cache")
     else
         _log(io, "GC does nothing with the $b backend.")
     end
