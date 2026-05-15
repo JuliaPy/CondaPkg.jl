@@ -206,7 +206,16 @@ end
         CondaPkg.withenv() do
             isnull || run(`python -c "import example_python_package"`)
         end
-        @test occursin("v1.0.0", status()) == !isnull
+        if isnull
+            # null backend does not show versions
+            @test occursin("example-python-package (", status())
+        elseif ispixi && file == "example-python-package"
+            # pixi might or might not report the version for packages installed from a folder
+            @test occursin(r"example-python-package( v1.0.0)? \(", status())
+        else
+            # other cases show the version
+            @test occursin("example-python-package v1.0.0 (", status())
+        end
 
         # check editability
         if editable && !isnull

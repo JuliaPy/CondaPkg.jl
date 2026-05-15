@@ -220,7 +220,7 @@ function status(; io::IO = stderr)
                 curpkg = get(curpkgs, pkg.name, nothing)
                 if curpkg === nothing
                     printstyled(io, " uninstalled", color = :red)
-                else
+                elseif curpkg.version !== nothing
                     print(io, " v", curpkg.version)
                 end
             end
@@ -257,7 +257,7 @@ function status(; io::IO = stderr)
                 curpkg = get(curpippkgs, pkg.name, nothing)
                 if curpkg === nothing
                     printstyled(io, " uninstalled", color = :red)
-                else
+                elseif curpkg.version !== nothing
                     print(io, " v", curpkg.version)
                 end
             end
