@@ -46,18 +46,26 @@ jobs:
         with:
           run-install: false
       - uses: julia-actions/setup-julia@v3
+        id: setup-julia
         with:
           version: ${{ matrix.version }}
+      - id: should-skip
+        run: echo "skip=${{ matrix.version == 'pre' && !contains(steps.setup-julia.outputs.julia-version, '-') }}" >> $GITHUB_OUTPUT
       - uses: julia-actions/cache@v3
+        if: ${{ steps.should-skip.outputs.skip != 'true' }}
       - uses: julia-actions/julia-downgrade-compat@v1
         if: ${{ matrix.version == '1.9' }}
         with:
           skip: Markdown,Pkg,TOML,Aqua,Test,TestItemRunner,OpenSSL_jll
       - uses: julia-actions/julia-buildpkg@v1
+        if: ${{ steps.should-skip.outputs.skip != 'true' }}
       - uses: julia-actions/julia-runtest@v1
+        if: ${{ steps.should-skip.outputs.skip != 'true' }}
         env:
           JULIA_CONDAPKG_BACKEND: ${{ matrix.backend }}
       - uses: julia-actions/julia-processcoverage@v1
+        if: ${{ steps.should-skip.outputs.skip != 'true' }}
       - uses: codecov/codecov-action@v6
+        if: ${{ steps.should-skip.outputs.skip != 'true' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
