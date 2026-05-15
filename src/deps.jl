@@ -148,8 +148,18 @@ function current_pip_packages()
     b = backend()
     if b in CONDA_BACKENDS
         pkglist = withenv() do
-            cmd = `$(which("pip")) list --format=json`
-            JSON.parse(cmd)
+            pip_backend = getpref_pip_backend()
+            if pip_backend == :pip
+                pip_cmd = which("pip")
+                pip_cmd === nothing && error("pip not installed")
+                JSON.parse(`$pip_cmd list --format=json`)
+            elseif pip_backend == :uv
+                uv_cmd = which("uv")
+                uv_cmd === nothing && error("uv not installed")
+                JSON.parse(`$uv_cmd pip list --format=json`)
+            else
+                error("not implemented")
+            end
         end
     elseif b in PIXI_BACKENDS
         cmd =
@@ -220,7 +230,7 @@ function status(; io::IO = stderr)
                 curpkg = get(curpkgs, pkg.name, nothing)
                 if curpkg === nothing
                     printstyled(io, " uninstalled", color = :red)
-                else
+                elseif curpkg.version !== nothing
                     print(io, " v", curpkg.version)
                 end
             end
@@ -257,7 +267,7 @@ function status(; io::IO = stderr)
                 curpkg = get(curpippkgs, pkg.name, nothing)
                 if curpkg === nothing
                     printstyled(io, " uninstalled", color = :red)
-                else
+                elseif curpkg.version !== nothing
                     print(io, " v", curpkg.version)
                 end
             end
