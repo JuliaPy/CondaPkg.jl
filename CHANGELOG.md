@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+* `CondaPkg.gc()` now calls `pixi clean cache` on pixi backends (previously it did nothing).
 * Bug fixes.
 
 ## 0.2.35 (2026-05-14)
