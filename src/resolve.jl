@@ -1037,7 +1037,7 @@ function resolve(;
                 force && Base.rm(joinpath(meta_dir, "pixi.lock"), force = true)
                 # write .pixi/config.toml
                 configtomlpath = joinpath(meta_dir, ".pixi", "config.toml")
-                configtoml = Dict{String,Any}("detached-environments" => false)
+                configtoml = Dict{String,Any}()
                 configtomlstr = sprint(TOML.print, configtoml)
                 mkpath(dirname(configtomlpath))
                 write(configtomlpath, configtomlstr)
