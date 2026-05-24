@@ -28,5 +28,3 @@ let test_dir = joinpath(dirname(CondaPkg.cur_deps_file()), "test")
         symlink(joinpath(dirname(dirname(pathof(CondaPkg))), "test"), test_dir)
     end
 end
-
-ENV["JULIA_DEBUG"] = "CondaPkg"
