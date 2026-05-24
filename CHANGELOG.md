@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* On Pixi backends, respect the user's existing `detached-environment` config.
+
 ## 0.2.36 (2026-05-16)
 * `CondaPkg.gc()` now calls `pixi clean cache` on pixi backends (previously it did nothing).
 * Bug fixes.
