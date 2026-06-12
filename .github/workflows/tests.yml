@@ -66,7 +66,7 @@ jobs:
           JULIA_CONDAPKG_BACKEND: ${{ matrix.backend }}
       - uses: julia-actions/julia-processcoverage@v1
         if: ${{ steps.should-skip.outputs.skip != 'true' }}
-      - uses: codecov/codecov-action@v6
+      - uses: codecov/codecov-action@v7
         if: ${{ steps.should-skip.outputs.skip != 'true' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
