@@ -10,7 +10,7 @@ end
 
 using Base: @kwdef
 using JSON: JSON
-using Pidfile: Pidfile
+using FileWatching: Pidfile
 using Preferences: @load_preference
 using Pkg: Pkg
 using Scratch: @get_scratch!
