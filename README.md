@@ -59,6 +59,7 @@ These functions are intended to be used interactively when the Pkg REPL is not a
 - `rm_channel(channel)` removes a channel.
 - `add_pip(pkg; version="", binary="", editable=false)` adds/replaces a pip dependency.
 - `rm_pip(pkg)` removes a pip dependency.
+- `export(path="."; external_pip_requirements=false)` writes an `environment.yml` file to a path or `IO`; set `external_pip_requirements=true`, a filename, or an `IO` to write pip requirements separately.
 
 ### CondaPkg.toml
 
