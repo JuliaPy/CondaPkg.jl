@@ -724,6 +724,9 @@ function _resolve_pip_install(io, pip_specs, load_path, backend)
         if spec.editable
             # remove the @ from the beginning of the path.
             url = replace(spec.version, r"@\s*" => "")
+            if !isempty(spec.extras)
+                url *= "[" * join(spec.extras, ",") * "]"
+            end
             push!(args, "--editable", url)
         end
     end
