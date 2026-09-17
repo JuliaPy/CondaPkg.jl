@@ -106,6 +106,12 @@ function _resolve_can_skip_1(conda_env, load_path, meta_file)
         @debug "backend has changed" meta.backend backend()
         return false
     end
+    for proj in meta.unresolved_path
+        if !isnothing(Base.project_file_manifest_path(proj))
+            @debug "environment has been resolved" proj
+            return false
+        end
+    end
     timestamp = max(meta.timestamp, stat(meta_file).mtime)
     for env in [meta.load_path; meta.extra_path]
         dir = isfile(env) ? dirname(env) : isdir(env) ? env : continue
@@ -368,6 +374,7 @@ function _resolve_find_dependencies(io, load_path)
     channels = ChannelSpec[]
     pip_packages = Dict{String,Dict{String,PipPkgSpec}}() # name -> depsfile -> spec
     extra_path = String[]
+    unresolved_path = String[]
     parsed = Set{String}()
     dev_parsed = Set{String}()
     orig_project = Pkg.project().path
@@ -425,8 +432,14 @@ function _resolve_find_dependencies(io, load_path)
     try
         for proj in dedupepaths(load_path)
             Pkg.activate(proj; io = devnull)
-            process_proj(Pkg.project())
-            foreach(process_dep, values(Pkg.dependencies()))
+            project = Pkg.project()
+            process_proj(project)
+
+            if isnothing(Base.project_file_manifest_path(project.path))
+                push!(unresolved_path, project.path)
+            else
+                foreach(process_dep, values(Pkg.dependencies()))
+            end
         end
     finally
         Pkg.activate(orig_project; io = devnull)
@@ -434,7 +447,7 @@ function _resolve_find_dependencies(io, load_path)
     if isempty(channels)
         push!(channels, ChannelSpec("conda-forge"))
     end
-    (packages, channels, pip_packages, extra_path)
+    (packages, channels, pip_packages, extra_path, unresolved_path)
 end
 
 function _resolve_merge_packages(packages, channels)
@@ -711,6 +724,9 @@ function _resolve_pip_install(io, pip_specs, load_path, backend)
         if spec.editable
             # remove the @ from the beginning of the path.
             url = replace(spec.version, r"@\s*" => "")
+            if !isempty(spec.extras)
+                url *= "[" * join(spec.extras, ",") * "]"
+            end
             push!(args, "--editable", url)
         end
     end
@@ -889,7 +905,7 @@ function resolve(;
             return
         end
         # find all dependencies
-        (packages, channels, pip_packages, extra_path) =
+        (packages, channels, pip_packages, extra_path, unresolved_path) =
             _resolve_find_dependencies(io, load_path)
 
         # validate channels against allowed list
@@ -1124,6 +1140,7 @@ function resolve(;
             conda_env = conda_env,
             load_path = load_path,
             extra_path = extra_path,
+            unresolved_path = unresolved_path,
             version = VERSION,
             backend = back,
             packages = specs,

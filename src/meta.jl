@@ -4,13 +4,14 @@ information about the most recent resolve.
 """
 
 # increment whenever the metadata format changes
-const META_VERSION = 15
+const META_VERSION = 16
 
 @kwdef mutable struct Meta
     timestamp::Float64
     conda_env::String
     load_path::Vector{String}
     extra_path::Vector{String}
+    unresolved_path::Vector{String}
     version::VersionNumber
     backend::Symbol
     packages::Vector{PkgSpec}
@@ -26,6 +27,7 @@ function read_meta(io::IO)
             conda_env = read_meta(io, String),
             load_path = read_meta(io, Vector{String}),
             extra_path = read_meta(io, Vector{String}),
+            unresolved_path = read_meta(io, Vector{String}),
             version = read_meta(io, VersionNumber),
             backend = read_meta(io, Symbol),
             packages = read_meta(io, Vector{PkgSpec}),
@@ -89,6 +91,7 @@ function write_meta(io::IO, meta::Meta)
     write_meta(io, meta.conda_env)
     write_meta(io, meta.load_path)
     write_meta(io, meta.extra_path)
+    write_meta(io, meta.unresolved_path)
     write_meta(io, meta.version)
     write_meta(io, meta.backend)
     write_meta(io, meta.packages)
