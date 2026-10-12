@@ -113,20 +113,38 @@ end
         # subprocess so loading another Python cannot affect later Julia tests.
         script = raw"""
         import ctypes, os, platform, sys, sysconfig
+        print("Python executable:", sys.executable)
+        print("Python version:", sys.version)
+        print("Python implementation:", platform.python_implementation())
+        print("LD_LIBRARY_PATH:", os.environ.get("LD_LIBRARY_PATH"))
+        print("LD_PRELOAD:", os.environ.get("LD_PRELOAD"))
         assert platform.python_implementation() == "CPython"
         if sys.platform == "win32":
             suffix = "t" if sysconfig.get_config_var("Py_GIL_DISABLED") else ""
             library = os.path.join(sys.base_prefix, f"python{sys.version_info.major}{sys.version_info.minor}{suffix}.dll")
         else:
             library = os.path.join(sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LDLIBRARY"))
+        print("Shared library:", library)
         assert os.path.isfile(library), library
+        print("Loading shared library")
         lib = ctypes.CDLL(library)
+        print("Calling Py_GetVersion")
         lib.Py_GetVersion.restype = ctypes.c_char_p
-        assert lib.Py_GetVersion().decode().startswith(platform.python_version())
+        version = lib.Py_GetVersion().decode()
+        print("Shared library version:", version)
+        assert version.startswith(platform.python_version()), version
+        print("Importing ssl")
         import ssl
+        print("OpenSSL version:", ssl.OPENSSL_VERSION)
         """
+        @info "PythonCall integration environment" julia = VERSION fallback python_version
         CondaPkg.withenv() do
-            @test success(`python -c $script`)
+            # Flush progress before a possible native crash; enable Python's fault
+            # handler and retain process exit/signal details in Julia's exception.
+            @test begin
+                run(`python -u -X faulthandler -c $script`)
+                true
+            end
         end
     end
 end
