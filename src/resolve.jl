@@ -450,41 +450,117 @@ function _resolve_find_dependencies(io, load_path)
     (packages, channels, pip_packages, extra_path, unresolved_path)
 end
 
+# Recognise numeric bounds which prove that every alternative is below GCC 15.
+# Unknown Conda match syntax is left to the solver rather than guessed at.
+function _resolve_excludes_libstdcxx15(version)
+    all(split(version, '|')) do alternative
+        any(split(alternative, ',')) do constraint
+            m = match(r"^\s*(<=|<|==|=)?\s*([0-9]+(?:\.[0-9]+)*)(\.\*)?\s*$", constraint)
+            m === nothing && return false
+            op, number, wildcard = m.captures
+            v = try
+                VersionNumber(number)
+            catch
+                return false
+            end
+            if op == "<" && wildcard === nothing
+                return v <= v"15"
+            elseif op in ("<=", "==", "=", nothing)
+                return v < v"15"
+            end
+            return false
+        end
+    end
+end
+
+# The **bundled-or-separate** libpython build marker means that an embedding package
+# needs Python's shared library, whether bundled with Python or installed separately.
+# conda-forge split it into libpython for Python 3.15; backports to older Python
+# versions depend on libpython automatically, while older builds still bundle it.
+# The new Linux libpython builds require libstdcxx >=15, which can conflict with
+# the <=julia runtime bound. In that case, drop only marked requirements and cap
+# Python below 3.15 (including prereleases), letting the solver find an older build.
+# Ordinary libpython requirements remain mandatory and may still cause a conflict.
+#
+# This convention is specific to conda-forge: require that explicit libpython
+# channel, reject other explicit Python channels, and pin unset Python channels
+# to conda-forge so the solver cannot choose a provider with different packaging.
+# Run after <=julia expansion but before channel mapping, so mirrors work too.
+# On macOS retain libpython; on Windows it is empty and Python provides the DLL.
+function _resolve_libpython!(packages; linux = Sys.islinux())
+    python = get(packages, "python", Dict{String,PkgSpec}())
+    libpython = get(packages, "libpython", Dict{String,PkgSpec}())
+    marked = filter(p -> p.second.build == "**bundled-or-separate**", collect(libpython))
+    for (fn, pkg) in marked
+        pkg.channel == "conda-forge" || error(
+            "libpython build **bundled-or-separate** requires an explicit conda-forge channel ($fn)",
+        )
+    end
+    if !isempty(marked)
+        isempty(python) && error("libpython build **bundled-or-separate** requires a python dependency")
+        all(p -> p.channel in ("", "conda-forge"), values(python)) || error(
+            "libpython build **bundled-or-separate** requires python from conda-forge",
+        )
+        fallback = linux && any(("libstdcxx", "libstdcxx-ng")) do name
+            pkgs = get(packages, name, Dict{String,PkgSpec}())
+            specs = collect(values(pkgs))
+            all(p -> p.channel in ("", "conda-forge"), specs) &&
+                !isempty(specs) && _resolve_excludes_libstdcxx15(
+                    reduce(_resolve_merge_versions, (p.version for p in specs)),
+                )
+        end
+        for (fn, pkg) in marked
+            if fallback
+                delete!(libpython, fn)
+            else
+                libpython[fn] = PkgSpec(pkg; build = "")
+            end
+        end
+        isempty(libpython) && delete!(packages, "libpython")
+        # Keep file-sourced Python specs intact for diagnostics. A separate internal
+        # requirement pins the provider and, when needed, caps the version; ordinary
+        # dependency merging intersects it with all user/package requirements.
+        python["<internal:libpython>"] = PkgSpec(
+            "python";
+            channel = "conda-forge",
+            version = fallback ? "<3.15.0a0" : "",
+        )
+    end
+    return packages
+end
+
+# **cpython** is a provider-independent request for CPython rather than PyPy.
+# Translate it to conda-forge's build glob; anaconda and pkgs/main already provide
+# CPython without a build selector. Prefer explicit Python channels over the
+# ordered environment channels when choosing a provider for an unset channel.
+# Run before channel mapping because these build conventions belong to the
+# original providers, even when their packages are fetched through mirrors.
+function _resolve_python!(packages, channels)
+    python = get(packages, "python", Dict{String,PkgSpec}())
+    any(pkg.build == "**cpython**" for pkg in values(python)) || return packages
+    supported_channels = ("conda-forge", "anaconda", "pkgs/main")
+    candidate_channels = String[pkg.channel for pkg in values(python)]
+    append!(candidate_channels, (c.name for c in channels))
+    filter!(c -> c in supported_channels, candidate_channels)
+    isempty(candidate_channels) && error(
+        "can currently only install cpython from conda-forge, anaconda or pkgs/main channel",
+    )
+    for (fn, pkg) in python
+        pkg.build == "**cpython**" || continue
+        channel = isempty(pkg.channel) ? first(candidate_channels) : pkg.channel
+        channel in supported_channels || error(
+            "can currently only install cpython from conda-forge, anaconda or pkgs/main channel",
+        )
+        build = channel == "conda-forge" ? "*cp*" : "" # "cpython" or "cp313"
+        python[fn] = PkgSpec(pkg; channel, build)
+    end
+    return packages
+end
+
 function _resolve_merge_packages(packages, channels)
     specs = PkgSpec[]
     for (name, pkgs) in packages
         @assert length(pkgs) > 0
-        # special case: name=python, channel=**cpython**
-        if name == "python" && any(pkg.build == "**cpython**" for pkg in values(pkgs))
-            candidate_channels = String[]
-            append!(candidate_channels, (pkg.channel for pkg in values(pkgs)))
-            append!(candidate_channels, (c.name for c in channels))
-            filter!(c -> c in ("conda-forge", "anaconda", "pkgs/main"), candidate_channels)
-            if isempty(candidate_channels)
-                error(
-                    "can currently only install cpython from conda-forge, anaconda or pkgs/main channel",
-                )
-            end
-            channel = first(candidate_channels)
-            for (fn, pkg) in collect(pkgs)
-                if pkg.build == "**cpython**"
-                    if pkg.channel == ""
-                        pkg = PkgSpec(pkg, channel = channel)
-                    end
-                    if pkg.channel == "conda-forge"
-                        build = "*cp*"  # "cpython" or "cp313"
-                    elseif pkg.channel in ("anaconda", "pkgs/main")
-                        build = ""
-                    else
-                        error(
-                            "can currently only install cpython from conda-forge, anaconda or pkgs/main channel",
-                        )
-                    end
-                    pkg = PkgSpec(pkg, build = build)
-                    pkgs[fn] = pkg
-                end
-            end
-        end
         # now merge packages with the same name
         version = ""
         channel = ""
@@ -921,6 +997,10 @@ function resolve(;
 
         # order channels according to preferences
         _resolve_order_channels!(channels, getpref_channel_order())
+
+        # Interpret provider conventions before mapping channels to mirrors.
+        _resolve_libpython!(packages)
+        _resolve_python!(packages, channels)
 
         # apply channel mapping
         _resolve_map_channels!(channels, packages, getpref_channel_mapping())

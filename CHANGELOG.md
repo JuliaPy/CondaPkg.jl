@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+* Require Julia 1.10 or later.
+* Add the conda-forge `libpython` build marker `**bundled-or-separate**` for Python embedding with older Julia libstdc++ runtimes.
 * On Pixi backends, respect the user's existing `detached-environment` config.
 
 ## 0.2.36 (2026-05-16)

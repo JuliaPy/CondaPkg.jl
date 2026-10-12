@@ -1,0 +1,18 @@
+# PythonCall's dependencies, with simplified Python bounds and the forthcoming
+# shared-library requirement. Keep these together to exercise their interaction.
+[deps.openssl]
+version = "<=julia"
+
+[deps.libstdcxx]
+version = "<=julia"
+
+[deps.libstdcxx-ng]
+version = "<=julia"
+
+[deps.python]
+build = "**cpython**"
+version = ">=3.10,<4"
+
+[deps.libpython]
+channel = "conda-forge"
+build = "**bundled-or-separate**"
