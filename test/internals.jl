@@ -9,43 +9,46 @@
     @test !CondaPkg._manifest_has_package(env, fake_pkgid)
 end
 
-@testitem "_resolve_find_dependencies without manifest" begin
+@testitem "_resolve_find_dependencies without project or manifest" begin
     include("setup.jl")
 
-    mktempdir() do dir
-        write(
-            joinpath(dir, "Project.toml"),
-            """
-            [deps]
-            CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
-            """,
-        )
-        write(joinpath(dir, "CondaPkg.toml"), "[deps]\nfoo = \"\"\n")
-        load_path = [dir; Base.load_path()]
-        packages, _, _, _, unresolved_path =
-            CondaPkg._resolve_find_dependencies(devnull, load_path)
-        @test haskey(packages, "foo")
-        @test any(p -> samefile(p, joinpath(dir, "Project.toml")), unresolved_path)
+    for project_exists in (false, true)
+        mktempdir() do dir
+            project_file = joinpath(dir, "Project.toml")
+            project_contents = """
+                [deps]
+                CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
+                """
+            project_exists && write(project_file, project_contents)
+            write(joinpath(dir, "CondaPkg.toml"), "[deps]\nfoo = \"\"\n")
+            load_path = [dir; Base.load_path()]
+            packages, _, _, _, unresolved_path =
+                CondaPkg._resolve_find_dependencies(devnull, load_path)
+            @test haskey(packages, "foo") == project_exists
+            @test project_file in unresolved_path
 
-        # resolving the project later should invalidate the metadata
-        conda_env = mkpath(joinpath(dir, "env"))
-        meta_file = joinpath(dir, "meta")
-        meta = CondaPkg.Meta(
-            timestamp = time(),
-            conda_env = conda_env,
-            load_path = String[],
-            extra_path = String[],
-            unresolved_path = unresolved_path,
-            version = CondaPkg.VERSION,
-            backend = CondaPkg.backend(),
-            packages = CondaPkg.PkgSpec[],
-            channels = CondaPkg.ChannelSpec[],
-            pip_packages = CondaPkg.PipPkgSpec[],
-        )
-        open(io -> CondaPkg.write_meta(io, meta), meta_file, "w")
-        @test CondaPkg._resolve_can_skip_1(conda_env, String[], meta_file)
-        touch(joinpath(dir, "Manifest.toml"))
-        @test !CondaPkg._resolve_can_skip_1(conda_env, String[], meta_file)
+            # resolving the project later should invalidate the metadata
+            conda_env = mkpath(joinpath(dir, "env"))
+            meta_file = joinpath(dir, "meta")
+            meta = CondaPkg.Meta(
+                timestamp = time(),
+                conda_env = conda_env,
+                load_path = String[],
+                extra_path = String[],
+                unresolved_path = unresolved_path,
+                version = CondaPkg.VERSION,
+                backend = CondaPkg.backend(),
+                packages = CondaPkg.PkgSpec[],
+                channels = CondaPkg.ChannelSpec[],
+                pip_packages = CondaPkg.PipPkgSpec[],
+            )
+            open(io -> CondaPkg.write_meta(io, meta), meta_file, "w")
+            @test CondaPkg._resolve_can_skip_1(conda_env, String[], meta_file)
+            write(project_file, project_contents)
+            @test CondaPkg._resolve_can_skip_1(conda_env, String[], meta_file)
+            touch(joinpath(dir, "Manifest.toml"))
+            @test !CondaPkg._resolve_can_skip_1(conda_env, String[], meta_file)
+        end
     end
 end
 
