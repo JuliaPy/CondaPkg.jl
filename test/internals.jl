@@ -25,7 +25,9 @@ end
             packages, _, _, _, unresolved_path =
                 CondaPkg._resolve_find_dependencies(devnull, load_path)
             @test haskey(packages, "foo") == project_exists
-            @test project_file in unresolved_path
+            @test any(unresolved_path) do path
+                basename(path) == "Project.toml" && samefile(dirname(path), dir)
+            end
 
             # resolving the project later should invalidate the metadata
             conda_env = mkpath(joinpath(dir, "env"))
