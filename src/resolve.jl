@@ -517,16 +517,14 @@ function _resolve_libpython!(packages; linux = Sys.islinux())
             end
         end
         isempty(libpython) && delete!(packages, "libpython")
-        # Pin the provider: an unset channel could otherwise select another channel's Python.
-        for (fn, pkg) in python
-            version = if fallback
-                isempty(pkg.version) ? "<3.15.0a0" :
-                _resolve_merge_versions(pkg.version, "<3.15.0a0")
-            else
-                pkg.version
-            end
-            python[fn] = PkgSpec(pkg; channel = "conda-forge", version)
-        end
+        # Keep file-sourced Python specs intact for diagnostics. A separate internal
+        # requirement pins the provider and, when needed, caps the version; ordinary
+        # dependency merging intersects it with all user/package requirements.
+        python["<internal:libpython>"] = PkgSpec(
+            "python";
+            channel = "conda-forge",
+            version = fallback ? "<3.15.0a0" : "",
+        )
     end
     return packages
 end

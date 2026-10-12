@@ -42,8 +42,22 @@
         result = resolve(S("python"; version = "3.13.*|>=3.15", build = "**cpython**"),
             marked, S("libpython"; version = ">=3.13"), S("libstdcxx"; version = "<15"))
         @test result["libpython"].version == ">=3.13"
-        @test result["python"].version == "3.13.*, <3.15.0a0 | >=3.15, <3.15.0a0"
+        # Dict iteration can put the synthetic constraint before or after the original.
+        alternatives = Set(Set(strip.(split(part, ','))) for part in split(result["python"].version, '|'))
+        @test alternatives == Set([Set(["3.13.*", "<3.15.0a0"]), Set([">=3.15", "<3.15.0a0"])])
         @test result["python"].build == "*cp*"
+    end
+    @testset "preserve file-sourced Python specs" begin
+        for linux in [true, false]
+            original = S("python"; version = ">=3.12", build = "**cpython**")
+            packages = deps(original, marked, S("libstdcxx"; version = "<15"))
+            CondaPkg._resolve_libpython!(packages; linux)
+            @test packages["python"]["1"] == original
+            @test length(packages["python"]) == 2
+            @test packages["python"]["<internal:libpython>"] == S(
+                "python"; channel = "conda-forge", version = linux ? "<3.15.0a0" : "",
+            )
+        end
     end
     @testset "channel checks" begin
         @test_throws ErrorException resolve(marked)
