@@ -61,8 +61,9 @@
     end
     @testset "channel checks" begin
         @test_throws ErrorException resolve(marked)
-        @test_throws ErrorException resolve(S("python"; channel = "anaconda"), marked)
-        @test_throws ErrorException resolve(S("python"), S("python"; channel = "anaconda"), marked)
+        @test_throws ErrorException resolve(S("python"; channel = "unknown"), marked)
+        @test_throws ErrorException resolve(S("python"; channel = "conda-forge"), S("python"; channel = "anaconda"), marked)
+        @test_throws ErrorException resolve(S("python"; channel = "pkgs/main"), S("python"; channel = "anaconda"), marked)
         for channel in ["", "anaconda"]
             @test_throws ErrorException resolve(S("python"), S(marked; channel))
         end
@@ -74,6 +75,20 @@
         mapped_channels = copy(channels)
         CondaPkg._resolve_map_channels!(mapped_channels, packages, Dict("conda-forge" => "mirror"))
         @test all(p.channel == "mirror" for p in CondaPkg._resolve_merge_packages(packages, mapped_channels))
+    end
+    @testset "bundled Anaconda providers" begin
+        for channel in ["anaconda", "pkgs/main"], linux in [true, false]
+            original = S("python"; channel, version = ">=3.10,<4", build = "**cpython**")
+            runtime = S("libstdcxx"; version = "<15")
+            packages = deps(original, S("python"), marked, runtime)
+            CondaPkg._resolve_libpython!(packages; linux)
+            @test !haskey(packages, "libpython")
+            @test packages["python"] == deps(original, S("python"))["python"]
+            result = resolve(original, S("python"), marked, runtime; linux)
+            @test result["python"] == S("python"; channel, version = original.version)
+            ordinary = S("libpython"; channel, version = ">=3.10")
+            @test resolve(original, marked, ordinary; linux)["libpython"] == ordinary
+        end
     end
     @testset "CPython providers" begin
         for (channel, build) in [("conda-forge", "*cp*"), ("anaconda", ""), ("pkgs/main", "")]
