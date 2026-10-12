@@ -81,3 +81,52 @@
         end
     end
 end
+
+@testitem "install PythonCall dependencies" begin
+    include("setup.jl")
+    # Resolve the actual combination through file discovery, <=julia expansion,
+    # marker handling, and the backend solver, using this Julia's runtime bounds.
+    source = read(joinpath(@__DIR__, "data", "pythoncall", "CondaPkg.toml"), String)
+    write(CondaPkg.cur_deps_file(), source)
+    @test CondaPkg.resolve(force = true) === nothing
+    @test read(CondaPkg.cur_deps_file(), String) == source
+    if !isnull
+        installed = CondaPkg.current_packages()
+        python_version = VersionNumber(installed["python"].version)
+        @test v"3.10" <= python_version < v"4"
+        fallback = Sys.islinux() && any(
+            bound !== nothing && CondaPkg._resolve_excludes_libstdcxx15(bound)
+            for bound in (
+                CondaPkg._compatible_libstdcxx_version(),
+                CondaPkg._compatible_libstdcxx_ng_version(),
+            )
+        )
+        meta = open(CondaPkg.read_meta, joinpath(CondaPkg.STATE.meta_dir, "meta"))
+        @test any(p -> p.name == "libpython", meta.packages) == !fallback
+        if fallback
+            @test python_version < v"3.15.0-DEV"
+        else
+            @test haskey(installed, "libpython")
+        end
+        # Check the installed interpreter is CPython and its shared library is
+        # present and loadable, whether supplied by python or libpython. Use a
+        # subprocess so loading another Python cannot affect later Julia tests.
+        script = raw"""
+        import ctypes, os, platform, sys, sysconfig
+        assert platform.python_implementation() == "CPython"
+        if sys.platform == "win32":
+            suffix = "t" if sysconfig.get_config_var("Py_GIL_DISABLED") else ""
+            library = os.path.join(sys.base_prefix, f"python{sys.version_info.major}{sys.version_info.minor}{suffix}.dll")
+        else:
+            library = os.path.join(sysconfig.get_config_var("LIBDIR"), sysconfig.get_config_var("LDLIBRARY"))
+        assert os.path.isfile(library), library
+        lib = ctypes.CDLL(library)
+        lib.Py_GetVersion.restype = ctypes.c_char_p
+        assert lib.Py_GetVersion().decode().startswith(platform.python_version())
+        import ssl
+        """
+        CondaPkg.withenv() do
+            @test success(`python -c $script`)
+        end
+    end
+end
