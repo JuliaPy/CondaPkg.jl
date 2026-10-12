@@ -107,7 +107,7 @@ function _resolve_can_skip_1(conda_env, load_path, meta_file)
         return false
     end
     for proj in meta.unresolved_path
-        if !isnothing(Base.project_file_manifest_path(proj))
+        if isfile(proj) && !isnothing(Base.project_file_manifest_path(proj))
             @debug "environment has been resolved" proj
             return false
         end
@@ -435,7 +435,8 @@ function _resolve_find_dependencies(io, load_path)
             project = Pkg.project()
             process_proj(project)
 
-            if isnothing(Base.project_file_manifest_path(project.path))
+            if !isfile(project.path) ||
+               isnothing(Base.project_file_manifest_path(project.path))
                 push!(unresolved_path, project.path)
             else
                 foreach(process_dep, values(Pkg.dependencies()))

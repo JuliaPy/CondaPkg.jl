@@ -50,6 +50,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
       - id: should-skip
+        shell: bash
         run: echo "skip=${{ matrix.version == 'pre' && !contains(steps.setup-julia.outputs.julia-version, '-') }}" >> $GITHUB_OUTPUT
       - uses: julia-actions/cache@v3
         if: ${{ steps.should-skip.outputs.skip != 'true' }}

@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* Bug fixes.
+
 ## 0.2.37 (2026-10-12)
 * Require Julia 1.10 or later.
 * Add the conda-forge `libpython` build marker `**bundled-or-separate**` for Python embedding with older Julia libstdc++ runtimes.
