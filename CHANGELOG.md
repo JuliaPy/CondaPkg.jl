@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.37 (2026-10-12)
 * Require Julia 1.10 or later.
 * Add the conda-forge `libpython` build marker `**bundled-or-separate**` for Python embedding with older Julia libstdc++ runtimes.
 * On Pixi backends, respect the user's existing `detached-environment` config.
+* Support unresolved environments in the load path.
+* Bug fixes.
 
 ## 0.2.36 (2026-05-16)
 * `CondaPkg.gc()` now calls `pixi clean cache` on pixi backends (previously it did nothing).
