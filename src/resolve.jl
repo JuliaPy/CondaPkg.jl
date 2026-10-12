@@ -482,9 +482,12 @@ end
 # Python below 3.15 (including prereleases), letting the solver find an older build.
 # Ordinary libpython requirements remain mandatory and may still cause a conflict.
 #
-# This convention is specific to conda-forge: require that explicit libpython
-# channel, reject other explicit Python channels, and pin unset Python channels
-# to conda-forge so the solver cannot choose a provider with different packaging.
+# Require an explicit conda-forge channel on marked libpython requirements, since
+# that package name may have a different meaning elsewhere. Published Python
+# builds from anaconda and pkgs/main bundle the shared library, so remove marked
+# requirements when Python explicitly selects either provider, without a version
+# cap. Reject conflicting/unknown Python providers. Otherwise pin unset Python
+# channels to conda-forge so the solver cannot choose different packaging.
 # Run after <=julia expansion but before channel mapping, so mirrors work too.
 # On macOS retain libpython; on Windows it is empty and Python provides the DLL.
 function _resolve_libpython!(packages; linux = Sys.islinux())
@@ -498,8 +501,18 @@ function _resolve_libpython!(packages; linux = Sys.islinux())
     end
     if !isempty(marked)
         isempty(python) && error("libpython build **bundled-or-separate** requires a python dependency")
-        all(p -> p.channel in ("", "conda-forge"), values(python)) || error(
-            "libpython build **bundled-or-separate** requires python from conda-forge",
+        python_channels = unique([p.channel for p in values(python) if !isempty(p.channel)])
+        length(python_channels) <= 1 || error("multiple channels specified for package 'python'")
+        channel = isempty(python_channels) ? "conda-forge" : only(python_channels)
+        if channel in ("anaconda", "pkgs/main")
+            for (fn, _) in marked
+                delete!(libpython, fn)
+            end
+            isempty(libpython) && delete!(packages, "libpython")
+            return packages
+        end
+        channel == "conda-forge" || error(
+            "libpython build **bundled-or-separate** requires python from conda-forge, anaconda or pkgs/main",
         )
         fallback = linux && any(("libstdcxx", "libstdcxx-ng")) do name
             pkgs = get(packages, name, Dict{String,PkgSpec}())
