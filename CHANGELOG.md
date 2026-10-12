@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.38 (2026-10-12)
 * Bug fixes.
 
 ## 0.2.37 (2026-10-12)
