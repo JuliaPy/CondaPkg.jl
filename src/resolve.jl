@@ -135,12 +135,23 @@ _convert(::Type{T}, @nospecialize(x)) where {T} = convert(T, x)::T
 
 # For each (V, B) in this list, if Julia has libstdc++ loaded at version at least V, then
 # B is a compatible bound for libstdcxx-ng.
-# See https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
-# See https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/config/abi/pre/gnu.ver
-# See https://gcc.gnu.org/develop.html#timeline.
-# Last updated: 2025-05-11
+#
+# This page describes the mapping between GCC versions and GLIBCXX_3.4.X versions, but
+# the specifics of the table are often out of date and sometimes incorrect:
+# https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html
+#
+# Use the below file as the source of truth, but exclude unreleased versions of GCC:
+# https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/config/abi/pre/gnu.ver
+#
+# The following page has the release timeline for GCC, where you can see which versions
+# were released when:
+# https://gcc.gnu.org/develop.html#timeline.
+#
+# Last updated: 2026-10-14
 const _compatible_libstdcxx_ng_versions = [
-    (v"3.4.34", ">=3.4,<=15.1"),
+    (v"3.4.36", ">=3.4,<=16.2"),
+    (v"3.4.35", ">=3.4,<16.2"),
+    (v"3.4.34", ">=3.4,<16.0"),
     (v"3.4.33", ">=3.4,<15.0"),
     (v"3.4.32", ">=3.4,<14.0"),
     (v"3.4.31", ">=3.4,<13.2"),
