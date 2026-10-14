@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* Update `libstdcxx` and `libstdcxx-ng` compatibility bounds through GCC 16.2.
+
 ## 0.2.38 (2026-10-12)
 * Bug fixes.
 
