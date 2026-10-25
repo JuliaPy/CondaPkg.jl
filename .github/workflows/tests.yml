@@ -41,6 +41,8 @@ jobs:
             backend: SystemPixi
     steps:
       - uses: actions/checkout@v7
+      - uses: mamba-org/setup-micromamba@v3
+        if: ${{ matrix.backend == 'System' }}
       - uses: prefix-dev/setup-pixi@v0
         if: ${{ matrix.backend == 'SystemPixi' }}
         with:
