@@ -135,6 +135,10 @@ function current_packages()
     if b in CONDA_BACKENDS
         cmd = conda_cmd(`list -p $(envdir()) --json`)
         pkglist = JSON.parse(cmd)
+        # Recent micromamba versions wrap the package array in an object.
+        if pkglist isa AbstractDict
+            pkglist = pkglist["packages"]
+        end
     elseif b in PIXI_BACKENDS
         cmd =
             pixi_cmd(`list --manifest-path $(joinpath(STATE.meta_dir, "pixi.toml")) --json`)
