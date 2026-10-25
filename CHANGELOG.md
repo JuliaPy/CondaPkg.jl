@@ -2,6 +2,8 @@
 
 ## Unreleased
 * Update `libstdcxx` and `libstdcxx-ng` compatibility bounds through GCC 16.2.
+* Pixi backends now specify the full platform when resolving. This means that
+  environments using CUDA (e.g. `pytorch-gpu`) should now resolve correctly.
 
 ## 0.2.38 (2026-10-12)
 * Bug fixes.
